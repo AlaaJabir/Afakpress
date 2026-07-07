@@ -1,44 +1,34 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { articles, getArticlesByCategory } from "@/lib/content";
-
-const categoryLabels: Record<string, string> = {
-  سياسة: "سياسة",
-  اقتصاد: "اقتصاد",
-  ثقافة: "ثقافة",
-  رياضة: "رياضة",
-  آراء: "آراء",
-};
+import { ArticleCard } from "@/components/ArticleCard";
+import { categories, getArticlesByCategory, getCategory } from "@/data/articles";
 
 export function generateStaticParams() {
-  return Object.keys(categoryLabels).map((slug) => ({ slug }));
+  return categories.map((category) => ({ slug: category.slug }));
 }
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
-  const label = categoryLabels[params.slug];
+export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const category = getCategory(slug);
 
-  if (!label) {
+  if (!category) {
     notFound();
   }
 
-  const categoryArticles = getArticlesByCategory(label);
+  const categoryArticles = getArticlesByCategory(slug);
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-red-700">تصنيف</p>
-        <h1 className="mt-3 text-3xl font-semibold text-zinc-950">{label}</h1>
-        <p className="mt-3 text-zinc-600">تغطية شاملة ومختارة بعناية في هذا القسم.</p>
+    <section className="mx-auto max-w-4xl">
+      <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Category</p>
+      <h1 className="mt-3 text-4xl font-black text-slate-950">{category.name}</h1>
+      <p className="mt-4 text-lg leading-8 text-slate-600">{category.description}</p>
+      <div className="mt-10 space-y-6">
+        {categoryArticles.length > 0 ? (
+          categoryArticles.map((article) => <ArticleCard key={article.slug} article={article} />)
+        ) : (
+          <p className="border border-slate-200 bg-white p-6 text-slate-600">No published articles in this category yet.</p>
+        )}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {categoryArticles.map((article) => (
-          <article key={article.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold text-zinc-950">{article.title}</h2>
-            <p className="mt-2 text-sm text-zinc-600">{article.excerpt}</p>
-            <Link href={`/article/${article.slug}`} className="mt-4 inline-block text-sm font-semibold text-red-700">اقرأ الخبر</Link>
-          </article>
-        ))}
-      </div>
-    </main>
+    </section>
   );
 }
+

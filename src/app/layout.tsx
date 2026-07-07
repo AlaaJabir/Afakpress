@@ -1,33 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { BreakingNewsBar } from "@/components/BreakingNewsBar";
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { breakingNews } from "@/data/articles";
 
 export const metadata: Metadata = {
   title: "Afakpress",
-  description: "Platforme marocaine de presse numérique et d'information régionale",
+  description: "Moroccan press and regional news platform",
+  openGraph: {
+    title: "Afakpress",
+    description: "Moroccan press and regional news platform",
+    type: "website",
+  },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en">
+      <body>
+        <Header />
+        <BreakingNewsBar articles={breakingNews} />
+        <main className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-8">{children}</main>
+        <Footer />
+      </body>
     </html>
   );
 }

@@ -1,45 +1,49 @@
 import Link from "next/link";
+import { articles, categories } from "@/data/articles";
+import { moroccoRegions } from "@/data/morocco-regions";
 
-const cards = [
-  { title: "المقالات", value: "24" },
-  { title: "الأقسام", value: "8" },
-  { title: "الأقاليم", value: "12" },
-  { title: "الإعدادات", value: "3" },
+const metrics = [
+  { label: "Published articles", value: articles.length },
+  { label: "Categories", value: categories.length },
+  { label: "Morocco regions", value: moroccoRegions.length },
 ];
 
 export default function AdminPage() {
   return (
-    <main className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="rounded-3xl border border-zinc-200 bg-zinc-950 p-8 text-white shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-red-400">لوحة الإدارة</p>
-        <h1 className="mt-3 text-3xl font-semibold">Afakpress Admin</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-300">واجهة إدارية احترافية لتمكين إدارة المقالات والأقسام والأقاليم والإعدادات في المستقبل.</p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-4">
-        {cards.map((card) => (
-          <div key={card.title} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-zinc-600">{card.title}</p>
-            <p className="mt-3 text-3xl font-semibold text-zinc-950">{card.value}</p>
+    <div className="space-y-8">
+      <section className="border border-slate-200 bg-white p-8">
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Admin</p>
+        <h1 className="mt-3 text-4xl font-black text-slate-950">Afakpress publishing overview</h1>
+        <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+          A clean deployment-ready admin placeholder for editorial monitoring. A CMS or secure dashboard can be connected after the public Vercel deployment is stable.
+        </p>
+        <Link href="/" className="mt-6 inline-block bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700">
+          Open homepage
+        </Link>
+      </section>
+      <section className="grid gap-4 md:grid-cols-3">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="border border-slate-200 bg-white p-6">
+            <p className="text-sm font-bold uppercase text-slate-500">{metric.label}</p>
+            <p className="mt-3 text-4xl font-black text-slate-950">{metric.value}</p>
           </div>
         ))}
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-zinc-950">لوحة الإدارة</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {['المقالات','الفئات','الأقاليم','المناطق','البلديات','القوائم','الإعدادات'].map((item) => (
-              <div key={item} className="rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700">{item}</div>
-            ))}
-          </div>
+      </section>
+      <section className="border border-slate-200 bg-white p-6">
+        <h2 className="text-2xl font-black text-slate-950">Editorial queue</h2>
+        <div className="mt-5 divide-y divide-slate-200">
+          {articles.map((article) => (
+            <div key={article.slug} className="grid gap-2 py-4 lg:grid-cols-[1fr_160px_140px]">
+              <Link href={`/article/${article.slug}`} className="font-black text-slate-950 hover:text-red-700">
+                {article.title}
+              </Link>
+              <span className="text-sm font-bold text-slate-500">{article.category}</span>
+              <span className="text-sm font-bold text-slate-500">{article.publishedAt}</span>
+            </div>
+          ))}
         </div>
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-zinc-950">إجراءات سريعة</h2>
-          <div className="mt-4 space-y-3">
-            <Link href="/" className="block rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 hover:border-red-700">العودة إلى الموقع</Link>
-            <Link href="/article/maroc-accelere-reformes-attractivite-economique" className="block rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 hover:border-red-700">عرض مثال مقال</Link>
-          </div>
-        </div>
-      </div>
-    </main>
+      </section>
+    </div>
   );
 }
+

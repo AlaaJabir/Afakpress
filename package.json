@@ -1,5 +1,5 @@
 {
-  "name": "afakpress-app",
+  "name": "afakpress",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
+  },
+  "engines": {
+    "node": ">=20.18.0"
   },
   "dependencies": {
     "next": "16.2.10",

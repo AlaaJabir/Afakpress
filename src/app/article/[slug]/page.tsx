@@ -1,44 +1,43 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { articles, getArticleBySlug } from "@/lib/content";
+import Image from "next/image";
+import { articles, getArticle } from "@/data/articles";
+import { getRegion } from "@/data/articles";
 
 export function generateStaticParams() {
   return articles.map((article) => ({ slug: article.slug }));
 }
 
-export default function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = getArticleBySlug(params.slug);
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = getArticle(slug);
 
   if (!article) {
     notFound();
   }
 
+  const region = getRegion(article.region);
+
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-red-700">{article.category}</p>
-        <h1 className="mt-3 text-3xl font-semibold leading-tight text-zinc-950">{article.title}</h1>
-        <p className="mt-4 text-sm text-zinc-600">بقلم {article.author} • {article.publishedAt} • {article.region} / {article.province} / {article.commune}</p>
+    <article className="mx-auto max-w-4xl">
+      <div className="border-b-4 border-slate-950 pb-6">
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">{article.category}</p>
+        <h1 className="mt-4 text-4xl font-black leading-tight text-slate-950 lg:text-6xl">{article.title}</h1>
+        <p className="mt-5 text-xl leading-8 text-slate-600">{article.excerpt}</p>
+        <div className="mt-6 flex flex-wrap gap-4 text-sm font-bold text-slate-500">
+          <span>{article.author}</span>
+          <span>{article.publishedAt}</span>
+          <span>{article.readingTime}</span>
+          {region ? <span>{region.name}</span> : null}
+        </div>
       </div>
-      <img src={article.image} alt={article.title} className="h-[320px] w-full rounded-3xl object-cover" />
-      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
-        <article className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-          <p className="text-lg leading-8 text-zinc-700">{article.excerpt}</p>
-          <p className="mt-6 text-lg leading-8 text-zinc-700">هذا نموذج لصفحة مقالة Afakpress مصممة بصياغة صحافية احترافية، مع بنية قابلة للتوسّع في المستقبل عند ربطها بقاعدة بيانات أو CMS.</p>
-        </article>
-        <aside className="space-y-4">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-zinc-950">مقالات ذات صلة</h2>
-            <div className="mt-4 space-y-3">
-              {articles.filter((item) => item.id !== article.id).slice(0, 3).map((item) => (
-                <Link key={item.id} href={`/article/${item.slug}`} className="block rounded-xl border border-zinc-200 p-3 text-sm text-zinc-700 hover:border-red-700">
-                  {item.title}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </aside>
+      <div className="relative mt-8 h-[420px] w-full overflow-hidden">
+        <Image src={article.image} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" />
       </div>
-    </main>
+      <div className="mt-8 space-y-6 text-lg leading-9 text-slate-700">
+        {article.body.map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+      </div>
+    </article>
   );
 }

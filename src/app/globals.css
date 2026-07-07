@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f4ef;
-  --foreground: #111111;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -18,4 +26,9 @@ a {
 
 img {
   display: block;
+}
+
+button,
+input {
+  font: inherit;
 }
