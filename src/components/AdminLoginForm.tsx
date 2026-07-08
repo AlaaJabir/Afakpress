@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase";
 
 const inputClass = "min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-red-700 focus:ring-4 focus:ring-red-100";
 const primaryButtonClass = "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-400";
 
 export function AdminLoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,6 +27,7 @@ export function AdminLoginForm() {
 
       const response = await fetch("/api/auth/admin-session", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           accessToken: data.session.access_token,
@@ -40,8 +39,7 @@ export function AdminLoginForm() {
       if (!response.ok) throw new Error(payload.error ?? "Admin access denied.");
 
       await supabase.auth.signOut();
-      router.replace("/admin/dashboard");
-      router.refresh();
+      window.location.replace("/admin/dashboard");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Login failed.");
     } finally {

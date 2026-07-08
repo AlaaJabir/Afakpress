@@ -1,5 +1,6 @@
 import { ADMIN_ACCESS_COOKIE, ADMIN_REFRESH_COOKIE } from "@/lib/admin-auth";
 import { createServerSupabaseClient, createServiceSupabaseAdminClient } from "@/lib/supabase";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -39,22 +40,21 @@ export async function POST(request: Request) {
     return Response.json({ error: "Access denied." }, { status: 403 });
   }
 
-  const response = Response.json({ ok: true, admin: { email: admin.email, role: admin.role } });
-  response.headers.append(
-    "Set-Cookie",
-    `${ADMIN_ACCESS_COOKIE}=${encodeURIComponent(accessToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Number(expiresIn) || 3600}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
-  );
-  response.headers.append(
-    "Set-Cookie",
-    `${ADMIN_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${process.env.NODE_ENV === "production" ? "; Secure" : ""}`,
-  );
+  const response = NextResponse.json({ ok: true, admin: { email: admin.email, role: admin.role } });
+  response.cookies.set(ADMIN_ACCESS_COOKIE, accessToken, {
+    ...cookieOptions,
+    maxAge: Number(expiresIn) || 3600,
+  });
+  response.cookies.set(ADMIN_REFRESH_COOKIE, refreshToken, {
+    ...cookieOptions,
+    maxAge: 60 * 60 * 24 * 30,
+  });
   return response;
 }
 
 export async function DELETE() {
-  const response = Response.json({ ok: true });
-  response.headers.append("Set-Cookie", `${ADMIN_ACCESS_COOKIE}=; Path=${cookieOptions.path}; HttpOnly; SameSite=Lax; Max-Age=0${cookieOptions.secure ? "; Secure" : ""}`);
-  response.headers.append("Set-Cookie", `${ADMIN_REFRESH_COOKIE}=; Path=${cookieOptions.path}; HttpOnly; SameSite=Lax; Max-Age=0${cookieOptions.secure ? "; Secure" : ""}`);
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set(ADMIN_ACCESS_COOKIE, "", { ...cookieOptions, maxAge: 0 });
+  response.cookies.set(ADMIN_REFRESH_COOKIE, "", { ...cookieOptions, maxAge: 0 });
   return response;
 }
-
