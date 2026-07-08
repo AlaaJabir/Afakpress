@@ -14,103 +14,27 @@ type MenuNode = {
   children: MenuNode[];
 };
 
-function nodeId(prefix: string, fallback: string, id?: string) {
+function sourceId(prefix: string, fallback: string, id?: string) {
   return `${prefix}-${id || fallback}`;
 }
 
-function regionNodes(regions: RegionSource[]): MenuNode[] {
+function buildRegionNodes(regions: RegionSource[]): MenuNode[] {
   return regions.map((region) => ({
-    id: nodeId("region", region.slug, "id" in region ? region.id : undefined),
+    id: sourceId("region", region.slug, "id" in region ? region.id : undefined),
     label: region.name,
     href: `/region/${region.slug}`,
     children: region.provinces.map((province) => ({
-      id: nodeId("province", `${region.slug}-${province.slug}`, "id" in province ? province.id : undefined),
+      id: sourceId("province", `${region.slug}-${province.slug}`, "id" in province ? province.id : undefined),
       label: province.name,
       href: `/province/${province.slug}`,
       children: province.communes.map((commune) => ({
-        id: nodeId("commune", `${region.slug}-${province.slug}-${commune.slug}`, "id" in commune ? commune.id : undefined),
+        id: sourceId("commune", `${region.slug}-${province.slug}-${commune.slug}`, "id" in commune ? commune.id : undefined),
         label: commune.name,
         href: `/commune/${commune.slug}`,
         children: [],
       })),
     })),
   }));
-}
-
-function trimPath(path: string[], depth: number, id: string) {
-  return [...path.slice(0, depth), id];
-}
-
-function DesktopBranch({
-  node,
-  depth,
-  openPath,
-  setOpenPath,
-}: {
-  node: MenuNode;
-  depth: number;
-  openPath: string[];
-  setOpenPath: (path: string[]) => void;
-}) {
-  const isOpen = openPath[depth] === node.id;
-  const hasChildren = node.children.length > 0;
-
-  const open = () => setOpenPath(trimPath(openPath, depth, node.id));
-  const closeFromRoot = () => {
-    if (depth === 0) setOpenPath([]);
-  };
-
-  return (
-    <li
-      className={depth === 0 ? "relative" : "relative"}
-      onMouseEnter={open}
-      onMouseLeave={closeFromRoot}
-    >
-      <Link
-        aria-expanded={hasChildren ? isOpen : undefined}
-        aria-haspopup={hasChildren ? "menu" : undefined}
-        dir="auto"
-        href={node.href}
-        onFocus={open}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            setOpenPath([]);
-            event.currentTarget.blur();
-          }
-          if ((event.key === "ArrowDown" || event.key === "ArrowRight") && hasChildren) {
-            event.preventDefault();
-            open();
-          }
-        }}
-        className={
-          depth === 0
-            ? "flex min-h-12 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-3 text-sm font-black uppercase text-slate-800 transition hover:border-red-700 hover:text-red-700 focus:border-red-700 focus:text-red-700 focus:outline-none"
-            : "flex min-h-10 items-center justify-between gap-4 rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 focus:outline-none"
-        }
-      >
-        <span>{node.label}</span>
-        {hasChildren ? <span aria-hidden="true" className="text-red-700">{depth === 0 ? "+" : ">"}</span> : null}
-      </Link>
-      {hasChildren ? (
-        <div
-          className={[
-            "absolute z-50 border border-slate-200 bg-white opacity-0 shadow-2xl transition duration-150 ease-out",
-            isOpen ? "pointer-events-auto visible translate-x-0 translate-y-0 opacity-100" : "pointer-events-none invisible",
-            depth === 0
-              ? "left-0 top-full max-h-[76vh] w-[min(360px,calc(100vw-2rem))] translate-y-2 overflow-y-auto p-2"
-              : "left-full top-0 max-h-[70vh] w-[min(320px,calc(100vw-2rem))] translate-x-2 overflow-y-auto p-2",
-          ].join(" ")}
-          onMouseEnter={open}
-        >
-          <ul className="grid gap-1" role="menu">
-            {node.children.map((child) => (
-              <DesktopBranch key={child.id} node={child} depth={depth + 1} openPath={openPath} setOpenPath={setOpenPath} />
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </li>
-  );
 }
 
 function MobileBranch({ node, depth }: { node: MenuNode; depth: number }) {
@@ -157,25 +81,154 @@ export function MegaMenu({
   regions: RegionSource[];
   leadingItems?: MenuNode[];
 }) {
-  const [openPath, setOpenPath] = useState<string[]>([]);
-  const items = useMemo(() => [...leadingItems, ...regionNodes(regions)], [leadingItems, regions]);
+  const regionItems = useMemo(() => buildRegionNodes(regions), [regions]);
+  const mobileItems = useMemo(() => [...leadingItems, ...regionItems], [leadingItems, regionItems]);
+  const [activeRegionId, setActiveRegionId] = useState("");
+  const [activeProvinceId, setActiveProvinceId] = useState("");
+
+  const activeRegion = regionItems.find((region) => region.id === activeRegionId) ?? null;
+  const activeProvince = activeRegion?.children.find((province) => province.id === activeProvinceId) ?? activeRegion?.children[0] ?? null;
+
+  const openRegion = (region: MenuNode) => {
+    setActiveRegionId(region.id);
+    setActiveProvinceId(region.children[0]?.id ?? "");
+  };
+
+  const closeMenu = () => {
+    setActiveRegionId("");
+    setActiveProvinceId("");
+  };
 
   return (
-    <>
-      <nav className="hidden min-w-0 flex-1 items-center gap-1 lg:flex" aria-label="Primary navigation" onMouseLeave={() => setOpenPath([])}>
-        <ul className="flex min-w-0 items-center gap-1">
-          {items.map((item) => (
-            <DesktopBranch key={item.id} node={item} depth={0} openPath={openPath} setOpenPath={setOpenPath} />
+    <div className="relative z-[100] min-w-0 flex-1" onMouseLeave={closeMenu}>
+      <nav className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Primary navigation">
+        <div className="flex shrink-0 items-center gap-1">
+          {leadingItems.map((item) => (
+            <Link
+              key={item.id}
+              href={item.href}
+              className="flex min-h-12 items-center whitespace-nowrap border-b-2 border-transparent px-3 text-sm font-black uppercase text-slate-800 transition hover:border-red-700 hover:text-red-700 focus:border-red-700 focus:text-red-700 focus:outline-none"
+              onFocus={closeMenu}
+            >
+              {item.label}
+            </Link>
           ))}
-        </ul>
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+          {regionItems.map((region) => (
+            <Link
+              key={region.id}
+              aria-expanded={activeRegionId === region.id}
+              aria-haspopup="menu"
+              dir="auto"
+              href={region.href}
+              onFocus={() => openRegion(region)}
+              onMouseEnter={() => openRegion(region)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") closeMenu();
+                if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+                  event.preventDefault();
+                  openRegion(region);
+                }
+              }}
+              className={`flex min-h-12 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm font-black uppercase transition focus:outline-none ${
+                activeRegionId === region.id
+                  ? "border-red-700 text-red-700"
+                  : "border-transparent text-slate-800 hover:border-red-700 hover:text-red-700 focus:border-red-700 focus:text-red-700"
+              }`}
+            >
+              <span>{region.label}</span>
+              <span aria-hidden="true" className="text-red-700">+</span>
+            </Link>
+          ))}
+        </div>
       </nav>
+
+      {activeRegion ? (
+        <div
+          className="absolute left-0 top-full z-[1000] hidden w-[min(860px,calc(100vw-2rem))] translate-y-0 overflow-hidden border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[300px_minmax(0,1fr)]"
+          onMouseEnter={() => {
+            setActiveRegionId(activeRegion.id);
+            setActiveProvinceId(activeProvince?.id ?? activeRegion.children[0]?.id ?? "");
+          }}
+          role="menu"
+        >
+          <div className="max-h-[72vh] overflow-y-auto border-r border-slate-200 bg-slate-50 p-2">
+            <Link
+              dir="auto"
+              href={activeRegion.href}
+              className="mb-2 block rounded-md bg-white px-3 py-3 text-sm font-black text-slate-950 shadow-sm transition hover:text-red-700 focus:text-red-700 focus:outline-none"
+            >
+              {activeRegion.label}
+            </Link>
+            <ul className="grid gap-1">
+              {activeRegion.children.map((province) => (
+                <li key={province.id}>
+                  <Link
+                    aria-expanded={activeProvince?.id === province.id}
+                    aria-haspopup={province.children.length > 0 ? "menu" : undefined}
+                    dir="auto"
+                    href={province.href}
+                    onFocus={() => setActiveProvinceId(province.id)}
+                    onMouseEnter={() => setActiveProvinceId(province.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") closeMenu();
+                      if (event.key === "ArrowRight") {
+                        event.preventDefault();
+                        setActiveProvinceId(province.id);
+                      }
+                    }}
+                    className={`flex min-h-11 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-bold transition focus:outline-none ${
+                      activeProvince?.id === province.id
+                        ? "bg-red-700 text-white"
+                        : "text-slate-700 hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700"
+                    }`}
+                  >
+                    <span>{province.label}</span>
+                    {province.children.length > 0 ? <span aria-hidden="true">&gt;</span> : null}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="max-h-[72vh] overflow-y-auto p-5">
+            {activeProvince ? (
+              <>
+                <Link
+                  dir="auto"
+                  href={activeProvince.href}
+                  className="text-xl font-black text-slate-950 transition hover:text-red-700 focus:text-red-700 focus:outline-none"
+                >
+                  {activeProvince.label}
+                </Link>
+                <div className="mt-4 grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
+                  {activeProvince.children.map((commune) => (
+                    <Link
+                      key={commune.id}
+                      dir="auto"
+                      href={commune.href}
+                      className="rounded-md px-3 py-2 text-sm font-bold leading-5 text-slate-700 transition hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 focus:outline-none"
+                    >
+                      {commune.label}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm font-bold text-slate-500">No provinces are available for this region.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       <nav className="w-full lg:hidden" aria-label="Mobile primary navigation">
         <ul className="grid gap-1 py-2">
-          {items.map((item) => (
+          {mobileItems.map((item) => (
             <MobileBranch key={item.id} node={item} depth={0} />
           ))}
         </ul>
       </nav>
-    </>
+    </div>
   );
 }
