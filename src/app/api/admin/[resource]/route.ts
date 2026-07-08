@@ -1,4 +1,4 @@
-import { cmsCredentials } from "@/lib/cms";
+import { getAdminSessionFromRequest } from "@/lib/admin-auth";
 import { createServiceSupabaseAdminClient } from "@/lib/supabase";
 import type { AdminResource } from "@/lib/supabase-cms";
 
@@ -10,11 +10,9 @@ function unauthorized() {
   return Response.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-function isAuthorized(request: Request) {
-  const email = request.headers.get("x-afakpress-admin-email")?.toLowerCase();
-  const password = request.headers.get("x-afakpress-admin-password");
-  const account = email ? cmsCredentials[email] : null;
-  return Boolean(account && password && account.password === password);
+async function isAuthorized(request: Request) {
+  const session = await getAdminSessionFromRequest(request);
+  return Boolean(session);
 }
 
 function tableName(resource: string): AdminResource | null {
@@ -22,7 +20,7 @@ function tableName(resource: string): AdminResource | null {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ resource: string }> }) {
-  if (!isAuthorized(request)) return unauthorized();
+  if (!(await isAuthorized(request))) return unauthorized();
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
@@ -37,7 +35,7 @@ export async function POST(request: Request, context: { params: Promise<{ resour
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ resource: string }> }) {
-  if (!isAuthorized(request)) return unauthorized();
+  if (!(await isAuthorized(request))) return unauthorized();
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
@@ -54,7 +52,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ resource: string }> }) {
-  if (!isAuthorized(request)) return unauthorized();
+  if (!(await isAuthorized(request))) return unauthorized();
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 

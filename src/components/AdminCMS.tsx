@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   getPublishedArticles,
   makeId,
@@ -19,6 +20,8 @@ import {
 } from "@/lib/cms";
 import { useCms } from "@/lib/cms-store";
 import { slugify } from "@/lib/slug";
+import { canManageAdmins, cmsRoleFromAdmin, type AdminRole } from "@/lib/admin-roles";
+import type { AdminSession, AdminUserRecord } from "@/lib/admin-auth";
 import {
   articlePayload,
   breakingPayload,
@@ -37,6 +40,7 @@ type Section =
   | "menus"
   | "breaking"
   | "regions"
+  | "admins"
   | "authors"
   | "pages"
   | "homepage"
@@ -53,6 +57,7 @@ const sections: { id: Section; label: string }[] = [
   { id: "menus", label: "Menus" },
   { id: "breaking", label: "Breaking News" },
   { id: "regions", label: "Morocco Regions" },
+  { id: "admins", label: "Admins" },
   { id: "authors", label: "Authors" },
   { id: "pages", label: "Pages" },
   { id: "homepage", label: "Homepage" },
@@ -126,16 +131,34 @@ async function adminRequest(resource: AdminResource, method: "POST" | "PATCH" | 
   return payload.data;
 }
 
-export function AdminCMS() {
-  const { state, setState, currentUser, login, logout, hasAccess, notice, notify, resetDemo, adminHeaders, refreshFromSupabase, isLoading, error } = useCms();
-  const [email, setEmail] = useState("admin@afakpress.ma");
-  const [password, setPassword] = useState("afakpress2026");
+export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
+  const router = useRouter();
+  const { state, setState, setCurrentUser, notice, notify, resetDemo, adminHeaders, refreshFromSupabase, isLoading, error } = useCms();
+  const currentUser: CmsUser = useMemo(() => ({
+    id: adminSession.userId,
+    name: adminSession.email,
+    email: adminSession.email,
+    role: cmsRoleFromAdmin(adminSession.role),
+    position: adminSession.role.replace("_", " "),
+    bio: "",
+    avatar: "",
+    socialLinks: "",
+  }), [adminSession]);
   const [active, setActive] = useState<Section>("dashboard");
   const [query, setQuery] = useState("");
   const [articleDraft, setArticleDraft] = useState<CmsArticle>({ ...emptyArticle });
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
 
-  const visibleSections = sections.filter((section) => hasAccess(section.id));
+  useEffect(() => {
+    setCurrentUser(currentUser);
+    return () => setCurrentUser(null);
+  }, [currentUser, setCurrentUser]);
+
+  const hasSectionAccess = (area: string) => {
+    if (area === "admins") return canManageAdmins(adminSession.role);
+    return rolePermissions[currentUser.role].includes(area);
+  };
+  const visibleSections = sections.filter((section) => hasSectionAccess(section.id));
   const published = getPublishedArticles(state);
   const stats = useMemo(() => {
     const provinces = state.regions.reduce((sum, region) => sum + region.provinces.length, 0);
@@ -158,36 +181,12 @@ export function AdminCMS() {
     ];
   }, [state]);
 
-  if (!currentUser) {
-    return (
-      <div className="grid min-h-screen bg-slate-950 lg:grid-cols-[minmax(0,1fr)_520px]">
-        <div className="hidden bg-[linear-gradient(135deg,#020617_0%,#111827_55%,#7f1d1d_100%)] p-12 text-white lg:flex lg:flex-col lg:justify-between">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.28em] text-red-200">Afakpress CMS</p>
-            <h1 className="mt-5 max-w-2xl text-6xl font-black leading-tight">Newsroom operations, publishing, and menus in one desk.</h1>
-          </div>
-          <p className="max-w-xl text-sm leading-7 text-slate-300">A production-style admin space for Moroccan regional coverage, editorial workflows, media, categories, authors, and dynamic navigation.</p>
-        </div>
-        <div className="flex items-center justify-center bg-slate-100 p-4 sm:p-8">
-          <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-xl">
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Protected CMS</p>
-            <h1 className="mt-3 text-3xl font-black text-slate-950">Afakpress Admin Login</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-600">Demo accounts: admin, editor, journalist, moderator at afakpress.ma. Passwords follow role + 2026, except admin uses afakpress2026.</p>
-            <div className="mt-6 space-y-4">
-              <Field label="Email">
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} />
-              </Field>
-              <Field label="Password">
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
-              </Field>
-              <button className={`${primaryButtonClass} w-full`} onClick={() => login(email, password)} type="button">Sign in</button>
-            </div>
-            {notice ? <Notice type={notice.type} message={notice.message} /> : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const logout = async () => {
+    await fetch("/api/auth/admin-session", { method: "DELETE" });
+    setCurrentUser(null);
+    router.replace("/admin/login");
+    router.refresh();
+  };
 
   const saveArticle = async () => {
     const category = state.categories.find((item) => item.id === articleDraft.categoryId || item.slug === articleDraft.category);
@@ -262,7 +261,7 @@ export function AdminCMS() {
               <p className="text-2xl font-black">Afakpress CMS</p>
               <p className="mt-1 text-xs font-bold uppercase text-slate-400">{currentUser.role}</p>
             </div>
-            <button className="text-sm font-bold text-red-300" onClick={logout} type="button">Logout</button>
+            <button className="text-sm font-bold text-red-300" onClick={() => void logout()} type="button">Logout</button>
           </div>
           <input className="mt-5 min-h-11 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-white outline-none transition focus:border-red-500" placeholder="Search articles, sections" value={query} onChange={(event) => setQuery(event.target.value)} />
           <nav className="mt-5 grid gap-1">
@@ -274,7 +273,7 @@ export function AdminCMS() {
           </nav>
           <div className="mt-6 rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-xs leading-6 text-slate-400">
             <p className="font-black text-white">Permissions</p>
-            <p>{rolePermissions[currentUser.role].join(", ")}</p>
+            <p>{adminSession.role}: {rolePermissions[currentUser.role].join(", ")}{canManageAdmins(adminSession.role) ? ", admins" : ""}</p>
           </div>
         </aside>
 
@@ -305,6 +304,7 @@ export function AdminCMS() {
               saveArticle={saveArticle}
               bulkDelete={bulkDelete}
               bulkUpdate={bulkUpdate}
+              currentUser={currentUser}
             />
           ) : null}
           {active === "media" ? <MediaPanel /> : null}
@@ -312,6 +312,7 @@ export function AdminCMS() {
           {active === "menus" ? <MenusPanel /> : null}
           {active === "breaking" ? <BreakingNewsPanel /> : null}
           {active === "regions" ? <RegionsPanel /> : null}
+          {active === "admins" ? <AdminsPanel currentRole={adminSession.role} /> : null}
           {active === "authors" ? <AuthorsPanel /> : null}
           {active === "pages" ? <PagesPanel /> : null}
           {active === "homepage" ? <HomepagePanel /> : null}
@@ -367,6 +368,7 @@ function ArticlesPanel({
   saveArticle,
   bulkDelete,
   bulkUpdate,
+  currentUser,
 }: {
   articles: CmsArticle[];
   draft: CmsArticle;
@@ -376,8 +378,9 @@ function ArticlesPanel({
   saveArticle: () => void;
   bulkDelete: () => void;
   bulkUpdate: (key: "status" | "category", value: string) => void;
+  currentUser: CmsUser;
 }) {
-  const { state, setState, currentUser, notify, adminHeaders, refreshFromSupabase } = useCms();
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const statusOptions: ArticleStatus[] = ["Draft", "Pending Review", "Scheduled", "Published"];
@@ -786,6 +789,123 @@ function RegionsPanel() {
           </div>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function AdminsPanel({ currentRole }: { currentRole: AdminRole }) {
+  const { notify } = useCms();
+  const [admins, setAdmins] = useState<AdminUserRecord[]>([]);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<AdminRole>("admin");
+  const [isLoading, setIsLoading] = useState(false);
+  const roles: AdminRole[] = ["super_admin", "admin", "editor", "journalist"];
+
+  const loadAdmins = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/admin-users", { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not load admins.");
+      setAdmins(payload.data ?? []);
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Could not load admins.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (canManageAdmins(currentRole)) void loadAdmins();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRole]);
+
+  const addAdmin = async () => {
+    try {
+      const response = await fetch("/api/admin-users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not add admin.");
+      setEmail("");
+      setRole("admin");
+      await loadAdmins();
+      notify(payload.invited ? "success" : "warning", payload.invited ? "Admin added and invitation sent." : `Admin added. Invite warning: ${payload.inviteError || "Supabase invite was not sent."}`);
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Could not add admin.");
+    }
+  };
+
+  const updateAdmin = async (id: string, payload: { role?: AdminRole; status?: string }) => {
+    try {
+      const response = await fetch("/api/admin-users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...payload }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not update admin.");
+      await loadAdmins();
+      notify("success", "Admin updated.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Could not update admin.");
+    }
+  };
+
+  const deleteAdmin = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin-users?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Could not delete admin.");
+      await loadAdmins();
+      notify("warning", "Admin deleted.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Could not delete admin.");
+    }
+  };
+
+  if (!canManageAdmins(currentRole)) {
+    return <div className="rounded-lg border border-red-200 bg-white p-6 text-red-800">Access denied. Only super admins can manage admin users.</div>;
+  }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-xl font-black text-slate-950">Admin users</h2>
+          <button className={buttonClass} onClick={() => void loadAdmins()} type="button">{isLoading ? "Loading" : "Refresh"}</button>
+        </div>
+        <div className="divide-y divide-slate-200">
+          {admins.map((admin) => (
+            <div key={admin.id} className="grid gap-3 py-4 lg:grid-cols-[minmax(0,1fr)_180px_150px_auto] lg:items-center">
+              <div>
+                <p className="font-black text-slate-950">{admin.email}</p>
+                <p className="mt-1 text-xs font-bold text-slate-500">{admin.user_id || "No linked auth user yet"}</p>
+              </div>
+              <select className={inputClass} value={admin.role} onChange={(event) => void updateAdmin(admin.id, { role: event.target.value as AdminRole })}>
+                {roles.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <select className={inputClass} value={admin.status} onChange={(event) => void updateAdmin(admin.id, { status: event.target.value })}>
+                <option value="active">active</option>
+                <option value="disabled">disabled</option>
+              </select>
+              <button className={buttonClass} onClick={() => void deleteAdmin(admin.id)} type="button">Delete</button>
+            </div>
+          ))}
+        </div>
+      </section>
+      <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-xl font-black text-slate-950">Add admin</h2>
+        <div className="mt-5 grid gap-4">
+          <Field label="Email"><input className={inputClass} onChange={(event) => setEmail(event.target.value)} type="email" value={email} /></Field>
+          <Field label="Role"><select className={inputClass} value={role} onChange={(event) => setRole(event.target.value as AdminRole)}>{roles.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
+          <p className="text-sm leading-6 text-slate-600">Adding an admin creates or updates the admin_users record and attempts to send a Supabase Auth invitation from the server.</p>
+          <button className={primaryButtonClass} onClick={() => void addAdmin()} type="button">Add admin</button>
+        </div>
+      </aside>
     </div>
   );
 }

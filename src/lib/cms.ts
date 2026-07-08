@@ -203,13 +203,6 @@ const users: CmsUser[] = [
   { id: "user-moderator", name: "Review Desk", email: "moderator@afakpress.ma", role: "Moderator", position: "Moderator", bio: "Reviews comments and submitted articles.", avatar: "", socialLinks: "" },
 ];
 
-export const cmsCredentials: Record<string, { password: string; userId: string }> = {
-  "admin@afakpress.ma": { password: "afakpress2026", userId: "user-super" },
-  "editor@afakpress.ma": { password: "editor2026", userId: "user-editor" },
-  "journalist@afakpress.ma": { password: "journalist2026", userId: "user-journalist" },
-  "moderator@afakpress.ma": { password: "moderator2026", userId: "user-moderator" },
-};
-
 function section(label: string, order: number): HomepageSection {
   return { id: slugify(label), label, enabled: true, order };
 }

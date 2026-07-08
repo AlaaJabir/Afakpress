@@ -10,6 +10,11 @@ export type Database = {
         Insert: { id?: string; name?: string | null; email?: string | null; role?: string | null; avatar?: string | null };
         Update: { id?: string; name?: string | null; email?: string | null; role?: string | null; avatar?: string | null };
       };
+      admin_users: {
+        Row: Row<{ id: string; user_id: string | null; email: string; role: "super_admin" | "admin" | "editor" | "journalist"; status: string; created_at: string | null }>;
+        Insert: { id?: string; user_id?: string | null; email: string; role?: "super_admin" | "admin" | "editor" | "journalist"; status?: string; created_at?: string | null };
+        Update: { id?: string; user_id?: string | null; email?: string; role?: "super_admin" | "admin" | "editor" | "journalist"; status?: string; created_at?: string | null };
+      };
       categories: {
         Row: Row<{ id: string; name: string; slug: string; description: string | null; parent_id: string | null; order_index: number | null; is_active: boolean | null }>;
         Insert: { id?: string; name: string; slug: string; description?: string | null; parent_id?: string | null; order_index?: number | null; is_active?: boolean | null };

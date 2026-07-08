@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { canAccess, cmsCredentials, initialCmsState, type CmsState, type CmsUser, type NoticeType } from "@/lib/cms";
+import { canAccess, initialCmsState, type CmsState, type CmsUser, type NoticeType } from "@/lib/cms";
 import { loadSupabaseCmsState } from "@/lib/supabase-cms";
 
 type Notice = { type: NoticeType; message: string } | null;
@@ -10,8 +10,7 @@ type CmsStore = {
   state: CmsState;
   setState: React.Dispatch<React.SetStateAction<CmsState>>;
   currentUser: CmsUser | null;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  setCurrentUser: (user: CmsUser | null) => void;
   hasAccess: (area: string) => boolean;
   notice: Notice;
   notify: (type: NoticeType, message: string) => void;
@@ -23,8 +22,6 @@ type CmsStore = {
 };
 
 const STORAGE_KEY = "afakpress-cms-state-v2";
-const SESSION_KEY = "afakpress-cms-user-v1";
-const SESSION_PASSWORD_KEY = "afakpress-cms-password-v1";
 const CmsContext = createContext<CmsStore | null>(null);
 
 export function CmsProvider({ children }: { children: React.ReactNode }) {
@@ -35,19 +32,7 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
     const storedState = window.localStorage.getItem(STORAGE_KEY);
     return storedState ? (JSON.parse(storedState) as CmsState) : initialCmsState;
   });
-  const [currentUser, setCurrentUser] = useState<CmsUser | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-    const storedUser = window.sessionStorage.getItem(SESSION_KEY);
-    return storedUser ? (JSON.parse(storedUser) as CmsUser) : null;
-  });
-  const [currentPassword, setCurrentPassword] = useState(() => {
-    if (typeof window === "undefined") {
-      return "";
-    }
-    return window.sessionStorage.getItem(SESSION_PASSWORD_KEY) ?? "";
-  });
+  const [currentUser, setCurrentUser] = useState<CmsUser | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -87,29 +72,6 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent("afakpress-cms-updated", { detail: state }));
   }, [state]);
 
-  const login = (email: string, password: string) => {
-    const account = cmsCredentials[email.toLowerCase()];
-    const user = state.users.find((item) => item.id === account?.userId);
-    if (!account || account.password !== password || !user) {
-      notify("error", "Invalid email or password.");
-      return false;
-    }
-    setCurrentUser(user);
-    setCurrentPassword(password);
-    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    window.sessionStorage.setItem(SESSION_PASSWORD_KEY, password);
-    notify("success", `Welcome, ${user.name}.`);
-    return true;
-  };
-
-  const logout = () => {
-    setCurrentUser(null);
-    setCurrentPassword("");
-    window.sessionStorage.removeItem(SESSION_KEY);
-    window.sessionStorage.removeItem(SESSION_PASSWORD_KEY);
-    notify("warning", "Signed out.");
-  };
-
   const resetDemo = () => {
     setState(initialCmsState);
     notify("warning", "CMS demo data restored.");
@@ -119,16 +81,13 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
     state,
     setState,
     currentUser,
-    login,
-    logout,
+    setCurrentUser,
     hasAccess: (area) => (currentUser ? canAccess(currentUser.role, area) : false),
     notice,
     notify,
     resetDemo,
     adminHeaders: () => ({
       "Content-Type": "application/json",
-      "x-afakpress-admin-email": currentUser?.email ?? "",
-      "x-afakpress-admin-password": currentPassword,
     }),
     refreshFromSupabase,
     isLoading,

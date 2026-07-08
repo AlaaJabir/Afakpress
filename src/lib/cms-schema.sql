@@ -19,6 +19,27 @@ create table users (
   created_at timestamptz default now()
 );
 
+create table admin_users (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  email text unique not null,
+  role text not null default 'admin' check (role in ('super_admin', 'admin', 'editor', 'journalist')),
+  status text not null default 'active' check (status in ('active', 'disabled')),
+  created_at timestamptz default now()
+);
+
+insert into admin_users (user_id, email, role, status)
+values (
+  (select id from auth.users where lower(email) = 'professionnal.a@gmail.com' limit 1),
+  'professionnal.a@gmail.com',
+  'super_admin',
+  'active'
+)
+on conflict (email) do update
+set user_id = excluded.user_id,
+    role = 'super_admin',
+    status = 'active';
+
 create table categories (
   id text primary key,
   parent_id text references categories(id),
@@ -153,4 +174,3 @@ create table site_settings (
   id text primary key default 'global',
   data jsonb not null default '{}'
 );
-
