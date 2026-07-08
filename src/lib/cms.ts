@@ -295,36 +295,34 @@ const media: CmsMedia[] = cmsArticles.map((article, index) => ({
   optimized: true,
 }));
 
+function regionMenu(region: CmsRegion): CmsMenuItem {
+  return {
+    id: `menu-${region.slug}`,
+    label: region.name,
+    href: `/region/${region.slug}`,
+    type: "Region",
+    children: region.provinces.map((province) => ({
+      id: `menu-${region.slug}-${province.slug}`,
+      label: province.name,
+      href: `/region/${region.slug}`,
+      type: "Province",
+      children: province.communes.map((commune) => ({
+        id: `menu-${region.slug}-${province.slug}-${commune.slug}`,
+        label: commune.name,
+        href: `/region/${region.slug}`,
+        type: "Commune",
+        children: [],
+      })),
+    })),
+  };
+}
+
 const menus: CmsMenuItem[] = [
   { id: "menu-national", label: "National", href: "/category/national", type: "Category", children: [] },
   { id: "menu-economy", label: "Economy", href: "/category/economy", type: "Category", children: [] },
   { id: "menu-culture", label: "Culture", href: "/category/culture", type: "Category", children: [] },
   { id: "menu-opinion", label: "Opinion", href: "/category/opinion", type: "Category", children: [] },
-  {
-    id: "menu-regions",
-    label: "Regions",
-    href: "/category/regions",
-    type: "Custom",
-    children: cmsRegions.map((region) => ({
-      id: `menu-${region.slug}`,
-      label: region.name,
-      href: `/region/${region.slug}`,
-      type: "Region",
-      children: region.provinces.map((province) => ({
-        id: `menu-${region.slug}-${province.slug}`,
-        label: province.name,
-        href: `/region/${region.slug}`,
-        type: "Province",
-        children: province.communes.map((commune) => ({
-          id: `menu-${region.slug}-${province.slug}-${commune.slug}`,
-          label: commune.name,
-          href: `/region/${region.slug}`,
-          type: "Commune",
-          children: [],
-        })),
-      })),
-    })),
-  },
+  ...cmsRegions.map(regionMenu),
 ];
 
 export const initialCmsState: CmsState = {

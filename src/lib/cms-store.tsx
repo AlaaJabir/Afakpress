@@ -22,7 +22,7 @@ type CmsStore = {
   error: string;
 };
 
-const STORAGE_KEY = "afakpress-cms-state-v1";
+const STORAGE_KEY = "afakpress-cms-state-v2";
 const SESSION_KEY = "afakpress-cms-user-v1";
 const SESSION_PASSWORD_KEY = "afakpress-cms-password-v1";
 const CmsContext = createContext<CmsStore | null>(null);

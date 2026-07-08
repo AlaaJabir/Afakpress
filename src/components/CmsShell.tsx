@@ -3,7 +3,35 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CmsProvider, useCms } from "@/lib/cms-store";
-import { getPublishedArticles, type CmsMenuItem } from "@/lib/cms";
+import { getPublishedArticles, type CmsMenuItem, type CmsRegion } from "@/lib/cms";
+
+function regionMenuItem(region: CmsRegion): CmsMenuItem {
+  return {
+    id: `region-menu-${region.id}`,
+    label: region.name,
+    href: `/region/${region.slug}`,
+    type: "Region",
+    active: true,
+    showInHeader: true,
+    children: region.provinces.map((province) => ({
+      id: `province-menu-${region.id}-${province.id}`,
+      label: province.name,
+      href: `/region/${region.slug}`,
+      type: "Province",
+      active: true,
+      showInHeader: true,
+      children: province.communes.map((commune) => ({
+        id: `commune-menu-${region.id}-${province.id}-${commune.id}`,
+        label: commune.name,
+        href: `/region/${region.slug}`,
+        type: "Commune",
+        active: true,
+        showInHeader: true,
+        children: [],
+      })),
+    })),
+  };
+}
 
 function MenuItem({ item, depth = 0 }: { item: CmsMenuItem; depth?: number }) {
   const visibleChildren = item.children.filter((child) => child.active !== false && child.showInHeader !== false);
@@ -12,6 +40,7 @@ function MenuItem({ item, depth = 0 }: { item: CmsMenuItem; depth?: number }) {
     return (
       <Link
         href={item.href}
+        dir="auto"
         className={depth === 0 ? "flex min-h-12 items-center border-b-2 border-transparent px-3 text-sm font-black uppercase text-slate-800 transition hover:border-red-700 hover:text-red-700" : "block rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-700"}
       >
         {item.label}
@@ -23,12 +52,13 @@ function MenuItem({ item, depth = 0 }: { item: CmsMenuItem; depth?: number }) {
     <div className={depth === 0 ? "group relative" : "group/sub relative"}>
       <Link
         href={item.href}
+        dir="auto"
         className={depth === 0 ? "flex min-h-12 items-center gap-2 border-b-2 border-transparent px-3 text-sm font-black uppercase text-slate-800 transition hover:border-red-700 hover:text-red-700" : "flex items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-700"}
       >
         <span>{item.label}</span>
         <span aria-hidden="true" className="text-red-700">{depth === 0 ? "+" : ">"}</span>
       </Link>
-      <div className={depth === 0 ? "invisible absolute left-0 top-full z-50 w-[min(920px,calc(100vw-2rem))] translate-y-2 border border-slate-200 bg-white p-4 opacity-0 shadow-2xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100" : "invisible absolute left-full top-0 z-50 min-w-56 translate-x-2 border border-slate-200 bg-white p-2 opacity-0 shadow-xl transition group-hover/sub:visible group-hover/sub:translate-x-0 group-hover/sub:opacity-100"}>
+      <div className={depth === 0 ? "invisible absolute left-0 top-full z-50 max-h-[75vh] w-[min(920px,calc(100vw-2rem))] translate-y-2 overflow-y-auto border border-slate-200 bg-white p-4 opacity-0 shadow-2xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100" : "invisible absolute left-full top-0 z-50 max-h-[70vh] min-w-56 translate-x-2 overflow-y-auto border border-slate-200 bg-white p-2 opacity-0 shadow-xl transition group-hover/sub:visible group-hover/sub:translate-x-0 group-hover/sub:opacity-100"}>
         <div className={depth === 0 ? "grid gap-2 sm:grid-cols-2 xl:grid-cols-3" : "grid gap-1"}>
           {visibleChildren.map((child) => (
             <MenuItem key={child.id} item={child} depth={depth + 1} />
@@ -45,7 +75,10 @@ function Chrome({ children }: { children: React.ReactNode }) {
   const breaking = state.breakingNews.filter((item) => item.isActive).sort((a, b) => a.orderIndex - b.orderIndex)[0];
   const breakingArticle = breaking?.articleId ? state.articles.find((article) => article.id === breaking.articleId) : null;
   const categories = state.categories;
-  const headerMenus = state.menus.filter((item) => item.active !== false && item.showInHeader !== false);
+  const headerMenus = [
+    ...state.menus.filter((item) => item.type !== "Region" && item.active !== false && item.showInHeader !== false),
+    ...state.regions.map(regionMenuItem),
+  ];
   const footerMenus = state.menus.filter((item) => item.active !== false && item.showInFooter === true);
 
   return (

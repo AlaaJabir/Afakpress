@@ -682,13 +682,112 @@ function BreakingNewsPanel() {
 
 function RegionsPanel() {
   const { state, setState, notify } = useCms();
-  const addRegion = () => setState((current) => ({ ...current, regions: [...current.regions, { id: makeId("region"), name: "New Region", slug: "new-region", provinces: [] }] }));
+  const [activeRegionId, setActiveRegionId] = useState(state.regions[0]?.id ?? "");
+  const [activeProvinceId, setActiveProvinceId] = useState(state.regions[0]?.provinces[0]?.id ?? "");
+  const activeRegion = state.regions.find((region) => region.id === activeRegionId) ?? state.regions[0];
+  const activeProvince = activeRegion?.provinces.find((province) => province.id === activeProvinceId) ?? activeRegion?.provinces[0];
+  const totals = state.regions.reduce(
+    (summary, region) => ({
+      provinces: summary.provinces + region.provinces.length,
+      communes: summary.communes + region.provinces.reduce((sum, province) => sum + province.communes.length, 0),
+    }),
+    { provinces: 0, communes: 0 },
+  );
+
   const updateRegion = (region: CmsRegion) => setState((current) => ({ ...current, regions: current.regions.map((item) => item.id === region.id ? region : item) }));
-  const addProvince = (region: CmsRegion) => updateRegion({ ...region, provinces: [...region.provinces, { id: makeId("province"), name: "New Province", slug: "new-province", communes: [] }] });
   const updateProvince = (region: CmsRegion, province: CmsProvince) => updateRegion({ ...region, provinces: region.provinces.map((item) => item.id === province.id ? province : item) });
-  const addCommune = (region: CmsRegion, province: CmsProvince) => updateProvince(region, { ...province, communes: [...province.communes, { id: makeId("commune"), name: "New Commune", slug: "new-commune" }] });
   const updateCommune = (region: CmsRegion, province: CmsProvince, commune: CmsCommune) => updateProvince(region, { ...province, communes: province.communes.map((item) => item.id === commune.id ? commune : item) });
-  return <div className="border border-slate-200 bg-white p-5"><button className={primaryButtonClass} onClick={() => { addRegion(); notify("success", "Region added."); }} type="button">Add Region</button><div className="mt-5 space-y-6">{state.regions.map((region) => <div key={region.id} className="border border-slate-200 p-4"><div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]"><input className={inputClass} value={region.name} onChange={(event) => updateRegion({ ...region, name: event.target.value, slug: slugify(event.target.value) })} /><input className={inputClass} value={region.slug} onChange={(event) => updateRegion({ ...region, slug: event.target.value })} /><button className={buttonClass} onClick={() => addProvince(region)} type="button">Add Province</button><button className={buttonClass} onClick={() => setState((current) => ({ ...current, regions: current.regions.filter((item) => item.id !== region.id) }))} type="button">Delete</button></div><div className="mt-4 space-y-4 pl-4">{region.provinces.map((province) => <div key={province.id} className="border-l-4 border-red-200 pl-4"><div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]"><input className={inputClass} value={province.name} onChange={(event) => updateProvince(region, { ...province, name: event.target.value, slug: slugify(event.target.value) })} /><input className={inputClass} value={province.slug} onChange={(event) => updateProvince(region, { ...province, slug: event.target.value })} /><button className={buttonClass} onClick={() => addCommune(region, province)} type="button">Add Commune</button><button className={buttonClass} onClick={() => updateRegion({ ...region, provinces: region.provinces.filter((item) => item.id !== province.id) })} type="button">Delete</button></div><div className="mt-3 grid gap-2 pl-4 md:grid-cols-2">{province.communes.map((commune) => <div key={commune.id} className="grid gap-2 md:grid-cols-[1fr_auto]"><input className={inputClass} value={commune.name} onChange={(event) => updateCommune(region, province, { ...commune, name: event.target.value, slug: slugify(event.target.value) })} /><button className={buttonClass} onClick={() => updateProvince(region, { ...province, communes: province.communes.filter((item) => item.id !== commune.id) })} type="button">Delete</button></div>)}</div></div>)}</div></div>)}</div></div>;
+  const addRegion = () => {
+    const region = { id: makeId("region"), name: "New Region", slug: "new-region", provinces: [] };
+    setState((current) => ({ ...current, regions: [...current.regions, region] }));
+    setActiveRegionId(region.id);
+    setActiveProvinceId("");
+    notify("success", "Region added.");
+  };
+  const addProvince = (region: CmsRegion) => {
+    const province = { id: makeId("province"), name: "New Province", slug: "new-province", communes: [] };
+    updateRegion({ ...region, provinces: [...region.provinces, province] });
+    setActiveProvinceId(province.id);
+    notify("success", "Province added.");
+  };
+  const addCommune = (region: CmsRegion, province: CmsProvince) => {
+    const commune = { id: makeId("commune"), name: "New Commune", slug: "new-commune" };
+    updateProvince(region, { ...province, communes: [...province.communes, commune] });
+    notify("success", "Commune added.");
+  };
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black text-slate-950">Region tree</h2>
+            <p className="mt-1 text-xs font-bold uppercase text-slate-500">{state.regions.length} regions / {totals.provinces} provinces / {totals.communes} communes</p>
+          </div>
+          <button className={primaryButtonClass} onClick={addRegion} type="button">Add</button>
+        </div>
+        <div className="mt-5 max-h-[70vh] space-y-2 overflow-y-auto pr-1">
+          {state.regions.map((region) => (
+            <button key={region.id} className={`w-full rounded-md border px-3 py-3 text-left transition ${activeRegion?.id === region.id ? "border-red-300 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-700 hover:border-red-200"}`} onClick={() => { setActiveRegionId(region.id); setActiveProvinceId(region.provinces[0]?.id ?? ""); }} type="button">
+              <span dir="auto" className="block text-sm font-black">{region.name}</span>
+              <span className="mt-1 block text-xs font-bold text-slate-500">{region.provinces.length} provinces</span>
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      {activeRegion ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+            <Field label="Region name"><input dir="auto" className={inputClass} value={activeRegion.name} onChange={(event) => updateRegion({ ...activeRegion, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
+            <Field label="Slug"><input className={inputClass} value={activeRegion.slug} onChange={(event) => updateRegion({ ...activeRegion, slug: event.target.value })} /></Field>
+            <button className={`${buttonClass} self-end`} onClick={() => addProvince(activeRegion)} type="button">Add Province</button>
+            <button className={`${buttonClass} self-end`} onClick={() => { setState((current) => ({ ...current, regions: current.regions.filter((item) => item.id !== activeRegion.id) })); setActiveRegionId(state.regions.find((item) => item.id !== activeRegion.id)?.id ?? ""); notify("warning", "Region deleted."); }} type="button">Delete Region</button>
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <div>
+              <h3 className="text-sm font-black uppercase text-slate-500">Provinces / Prefectures</h3>
+              <div className="mt-3 max-h-[58vh] space-y-2 overflow-y-auto pr-1">
+                {activeRegion.provinces.map((province) => (
+                  <button key={province.id} className={`w-full rounded-md border px-3 py-3 text-left transition ${activeProvince?.id === province.id ? "border-red-300 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-700 hover:border-red-200"}`} onClick={() => setActiveProvinceId(province.id)} type="button">
+                    <span dir="auto" className="block text-sm font-black">{province.name}</span>
+                    <span className="mt-1 block text-xs font-bold text-slate-500">{province.communes.length} communes</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {activeProvince ? (
+              <div className="min-w-0">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+                  <Field label="Province / Prefecture name"><input dir="auto" className={inputClass} value={activeProvince.name} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
+                  <Field label="Slug"><input className={inputClass} value={activeProvince.slug} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, slug: event.target.value })} /></Field>
+                  <button className={`${buttonClass} self-end`} onClick={() => addCommune(activeRegion, activeProvince)} type="button">Add Commune</button>
+                  <button className={`${buttonClass} self-end`} onClick={() => { updateRegion({ ...activeRegion, provinces: activeRegion.provinces.filter((item) => item.id !== activeProvince.id) }); setActiveProvinceId(activeRegion.provinces.find((item) => item.id !== activeProvince.id)?.id ?? ""); notify("warning", "Province deleted."); }} type="button">Delete Province</button>
+                </div>
+                <div className="mt-5 max-h-[52vh] overflow-y-auto pr-1">
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {activeProvince.communes.map((commune) => (
+                      <div key={commune.id} className="grid gap-2 rounded-md border border-slate-200 p-3">
+                        <input dir="auto" className={inputClass} value={commune.name} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, name: event.target.value, slug: slugify(event.target.value) })} />
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                          <input className={inputClass} value={commune.slug} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, slug: event.target.value })} />
+                          <button className={buttonClass} onClick={() => updateProvince(activeRegion, { ...activeProvince, communes: activeProvince.communes.filter((item) => item.id !== commune.id) })} type="button">Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-md border border-slate-200 bg-slate-50 p-5 text-sm font-bold text-slate-600">Select or add a province to manage communes.</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
 }
 
 function AuthorsPanel() {
