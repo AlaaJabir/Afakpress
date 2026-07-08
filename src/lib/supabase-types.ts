@@ -15,6 +15,21 @@ export type Database = {
         Insert: { id?: string; name: string; slug: string; description?: string | null; parent_id?: string | null; order_index?: number | null; is_active?: boolean | null };
         Update: { id?: string; name?: string; slug?: string; description?: string | null; parent_id?: string | null; order_index?: number | null; is_active?: boolean | null };
       };
+      regions: {
+        Row: Row<{ id: string; name: string; slug: string }>;
+        Insert: { id?: string; name: string; slug: string };
+        Update: { id?: string; name?: string; slug?: string };
+      };
+      provinces: {
+        Row: Row<{ id: string; region_id: string; name: string; slug: string }>;
+        Insert: { id?: string; region_id: string; name: string; slug: string };
+        Update: { id?: string; region_id?: string; name?: string; slug?: string };
+      };
+      communes: {
+        Row: Row<{ id: string; province_id: string; name: string; slug: string }>;
+        Insert: { id?: string; province_id: string; name: string; slug: string };
+        Update: { id?: string; province_id?: string; name?: string; slug?: string };
+      };
       articles: {
         Row: Row<{
           id: string;

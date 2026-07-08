@@ -304,12 +304,12 @@ function regionMenu(region: CmsRegion): CmsMenuItem {
     children: region.provinces.map((province) => ({
       id: `menu-${region.slug}-${province.slug}`,
       label: province.name,
-      href: `/region/${region.slug}`,
+      href: `/province/${province.slug}`,
       type: "Province",
       children: province.communes.map((commune) => ({
         id: `menu-${region.slug}-${province.slug}-${commune.slug}`,
         label: commune.name,
-        href: `/region/${region.slug}`,
+        href: `/commune/${commune.slug}`,
         type: "Commune",
         children: [],
       })),

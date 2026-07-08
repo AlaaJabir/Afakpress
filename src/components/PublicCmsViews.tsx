@@ -246,10 +246,80 @@ export function CmsRegionPage({ slug }: { slug: string }) {
         <div className="mt-5 space-y-5">
           {region.provinces.map((province) => (
             <div key={province.id}>
-              <h3 className="font-black text-slate-950">{province.name}</h3>
+              <Link href={`/province/${province.slug}`} className="font-black text-slate-950 hover:text-red-700">{province.name}</Link>
               <p className="mt-2 text-sm leading-6 text-slate-600">{province.communes.map((commune) => commune.name).join(", ")}</p>
             </div>
           ))}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+export function CmsProvincePage({ slug }: { slug: string }) {
+  const { state } = useCms();
+  const match = state.regions.flatMap((region) => region.provinces.map((province) => ({ region, province }))).find((item) => item.province.slug === slug);
+  const provinceArticles = getPublishedArticles(state).filter((article) => article.province === slug);
+
+  if (!match) {
+    return <p className="border border-slate-200 bg-white p-6 text-slate-600">Province or prefecture not found.</p>;
+  }
+
+  return (
+    <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
+      <section>
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Province / Prefecture</p>
+        <h1 className="mt-3 text-4xl font-black text-slate-950">{match.province.name}</h1>
+        <Link href={`/region/${match.region.slug}`} className="mt-4 inline-block text-sm font-black text-red-700 hover:underline">
+          {match.region.name}
+        </Link>
+        <div className="mt-8 space-y-6">
+          {provinceArticles.length > 0 ? provinceArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="border border-slate-200 bg-white p-6 text-slate-600">No articles are assigned to this province yet.</p>}
+        </div>
+      </section>
+      <aside className="border border-slate-200 bg-white p-6">
+        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Communes</h2>
+        <div className="mt-5 grid gap-2">
+          {match.province.communes.map((commune) => (
+            <Link key={commune.id} href={`/commune/${commune.slug}`} className="rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-700">
+              {commune.name}
+            </Link>
+          ))}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+export function CmsCommunePage({ slug }: { slug: string }) {
+  const { state } = useCms();
+  const match = state.regions
+    .flatMap((region) => region.provinces.flatMap((province) => province.communes.map((commune) => ({ region, province, commune }))))
+    .find((item) => item.commune.slug === slug);
+  const communeArticles = getPublishedArticles(state).filter((article) => article.commune === slug);
+
+  if (!match) {
+    return <p className="border border-slate-200 bg-white p-6 text-slate-600">Commune not found.</p>;
+  }
+
+  return (
+    <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
+      <section>
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Commune</p>
+        <h1 className="mt-3 text-4xl font-black text-slate-950">{match.commune.name}</h1>
+        <div className="mt-4 flex flex-wrap gap-3 text-sm font-black">
+          <Link href={`/province/${match.province.slug}`} className="text-red-700 hover:underline">{match.province.name}</Link>
+          <Link href={`/region/${match.region.slug}`} className="text-slate-600 hover:text-red-700">{match.region.name}</Link>
+        </div>
+        <div className="mt-8 space-y-6">
+          {communeArticles.length > 0 ? communeArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="border border-slate-200 bg-white p-6 text-slate-600">No articles are assigned to this commune yet.</p>}
+        </div>
+      </section>
+      <aside className="border border-slate-200 bg-white p-6">
+        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Local context</h2>
+        <div className="mt-5 grid gap-3 text-sm font-bold text-slate-700">
+          <Link href={`/region/${match.region.slug}`} className="hover:text-red-700">{match.region.name}</Link>
+          <Link href={`/province/${match.province.slug}`} className="hover:text-red-700">{match.province.name}</Link>
         </div>
       </aside>
     </div>

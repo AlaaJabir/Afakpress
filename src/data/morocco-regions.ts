@@ -1764,7 +1764,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "سيدي المخفي",
-            "slug": "سيدي-المخفي"
+            "slug": "سيدي-المخفي-2"
           },
           {
             "name": "تمزكانة",
@@ -3116,7 +3116,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "بني يخلف",
-            "slug": "بني-يخلف"
+            "slug": "بني-يخلف-2"
           },
           {
             "name": "سيدي موسى بن علي",
@@ -3178,7 +3178,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "أولاد حسين",
-            "slug": "ا-ولاد-حسين"
+            "slug": "ا-ولاد-حسين-2"
           },
           {
             "name": "سيدي امحمد اخديم",
@@ -3194,7 +3194,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "أولاد عيسى",
-            "slug": "ا-ولاد-عيسى"
+            "slug": "ا-ولاد-عيسى-2"
           },
           {
             "name": "أولاد سيدي علي بن يوسف",
@@ -3264,7 +3264,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "أولاد عزوز",
-            "slug": "ا-ولاد-عزوز"
+            "slug": "ا-ولاد-عزوز-2"
           },
           {
             "name": "أولاد صالح",
@@ -3944,7 +3944,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "مجاط",
-            "slug": "مجاط"
+            "slug": "مجاط-2"
           },
           {
             "name": "ادويران",
@@ -4466,7 +4466,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "سيدي غانم",
-            "slug": "سيدي-غانم"
+            "slug": "سيدي-غانم-2"
           },
           {
             "name": "الزاويت",
@@ -4576,7 +4576,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "سيدي غانم",
-            "slug": "سيدي-غانم"
+            "slug": "سيدي-غانم-3"
           },
           {
             "name": "سيدي منصور",
@@ -4620,7 +4620,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "سيدي بوبكر",
-            "slug": "سيدي-بوبكر"
+            "slug": "سيدي-بوبكر-2"
           },
           {
             "name": "الجبيلات",
@@ -5336,7 +5336,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "تازارين",
-            "slug": "تازارين"
+            "slug": "تازارين-2"
           },
           {
             "name": "النقوب",
@@ -5786,7 +5786,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "أولاد عيسى",
-            "slug": "ا-ولاد-عيسى"
+            "slug": "ا-ولاد-عيسى-3"
           },
           {
             "name": "إدا وكيلال",
@@ -5874,7 +5874,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "أسايس",
-            "slug": "ا-سايس"
+            "slug": "ا-سايس-2"
           },
           {
             "name": "أكادير ملول",
@@ -6374,7 +6374,7 @@ export const moroccoRegions: MoroccoRegion[] = [
           },
           {
             "name": "لمسيد",
-            "slug": "لمسيد"
+            "slug": "لمسيد-2"
           },
           {
             "name": "كتلة زمور",

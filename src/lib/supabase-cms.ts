@@ -6,6 +6,7 @@ import type {
   CmsMedia,
   CmsMenuItem,
   CmsPage,
+  CmsRegion,
   CmsState,
   CmsUser,
 } from "@/lib/cms";
@@ -21,6 +22,9 @@ type MediaRow = Tables["media"]["Row"];
 type ProfileRow = Tables["profiles"]["Row"];
 type PageRow = Tables["pages"]["Row"];
 type BreakingRow = Tables["breaking_news"]["Row"];
+type RegionRow = Tables["regions"]["Row"];
+type ProvinceRow = Tables["provinces"]["Row"];
+type CommuneRow = Tables["communes"]["Row"];
 
 export type AdminResource = "articles" | "categories" | "menus" | "media" | "breaking_news" | "pages" | "settings";
 
@@ -176,11 +180,33 @@ function breakingFromRow(row: BreakingRow): CmsBreakingNews {
   };
 }
 
+function buildRegionTree(regionRows: RegionRow[], provinceRows: ProvinceRow[], communeRows: CommuneRow[]): CmsRegion[] {
+  return regionRows.map((region) => ({
+    id: region.id,
+    name: region.name,
+    slug: region.slug,
+    provinces: provinceRows
+      .filter((province) => province.region_id === region.id)
+      .map((province) => ({
+        id: province.id,
+        name: province.name,
+        slug: province.slug,
+        communes: communeRows
+          .filter((commune) => commune.province_id === province.id)
+          .map((commune) => ({
+            id: commune.id,
+            name: commune.name,
+            slug: commune.slug,
+          })),
+      })),
+  }));
+}
+
 export async function loadSupabaseCmsState(): Promise<CmsState | null> {
   const supabase = createBrowserSupabaseClient();
   if (!supabase) return null;
 
-  const [categoriesResult, profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult] = await Promise.all([
+  const [categoriesResult, profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionsResult, provincesResult, communesResult] = await Promise.all([
     supabase.from("categories").select("*").eq("is_active", true).order("order_index", { ascending: true }),
     supabase.from("profiles").select("*"),
     supabase.from("articles").select("*").order("published_at", { ascending: false }),
@@ -188,6 +214,9 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
     supabase.from("media").select("*"),
     supabase.from("pages").select("*"),
     supabase.from("breaking_news").select("*").order("order_index", { ascending: true }),
+    supabase.from("regions").select("*"),
+    supabase.from("provinces").select("*"),
+    supabase.from("communes").select("*"),
   ]);
 
   const firstError = [categoriesResult, profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult].find((result) => result.error)?.error;
@@ -198,12 +227,14 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
   const categories = (categoriesResult.data ?? []).map(categoryFromRow);
   const users = (profilesResult.data ?? []).map(userFromRow);
   const articles = (articlesResult.data ?? []).map((row) => articleFromRow(row, categories, users));
+  const regions = regionsResult.error || provincesResult.error || communesResult.error ? initialCmsState.regions : buildRegionTree(regionsResult.data ?? [], provincesResult.data ?? [], communesResult.data ?? []);
 
   return {
     ...initialCmsState,
     users: users.length ? users : initialCmsState.users,
     categories: categories.length ? categories : initialCmsState.categories,
     articles: articles.length ? articles : initialCmsState.articles,
+    regions: regions.length ? regions : initialCmsState.regions,
     menus: menusResult.data?.length ? buildMenuTree(menusResult.data) : initialCmsState.menus,
     media: mediaResult.data?.map(mediaFromRow) ?? [],
     pages: pagesResult.data?.map(pageFromRow) ?? initialCmsState.pages,
