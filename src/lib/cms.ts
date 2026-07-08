@@ -103,7 +103,20 @@ export type CmsMenuItem = {
   label: string;
   href: string;
   type: "Custom" | "Page" | "Category" | "Region" | "Province" | "Commune";
+  active?: boolean;
+  showInHeader?: boolean;
+  showInFooter?: boolean;
+  order?: number;
   children: CmsMenuItem[];
+};
+
+export type CmsBreakingNews = {
+  id: string;
+  title: string;
+  articleId: string;
+  url: string;
+  isActive: boolean;
+  orderIndex: number;
 };
 
 export type CmsPage = {
@@ -168,6 +181,7 @@ export type CmsState = {
   media: CmsMedia[];
   articles: CmsArticle[];
   menus: CmsMenuItem[];
+  breakingNews: CmsBreakingNews[];
   pages: CmsPage[];
   comments: CmsComment[];
   subscribers: CmsSubscriber[];
@@ -176,8 +190,8 @@ export type CmsState = {
 };
 
 export const rolePermissions: Record<Role, string[]> = {
-  "Super Admin": ["dashboard", "articles", "categories", "media", "menus", "regions", "authors", "pages", "homepage", "comments", "newsletter", "seo", "settings"],
-  Editor: ["dashboard", "articles", "categories", "media", "menus", "homepage"],
+  "Super Admin": ["dashboard", "articles", "categories", "media", "menus", "breaking", "regions", "authors", "pages", "homepage", "comments", "newsletter", "seo", "settings"],
+  Editor: ["dashboard", "articles", "categories", "media", "menus", "breaking", "homepage"],
   Journalist: ["dashboard", "articles", "media"],
   Moderator: ["dashboard", "articles", "comments"],
 };
@@ -320,6 +334,7 @@ export const initialCmsState: CmsState = {
   media,
   articles: cmsArticles,
   menus,
+  breakingNews: [],
   pages: [
     { id: "page-about", title: "About", slug: "about", content: "Afakpress is a Moroccan regional news platform.", seoTitle: "About Afakpress", seoDescription: "About Afakpress", status: "Published" },
     { id: "page-contact", title: "Contact", slug: "contact", content: "Contact the newsroom for tips, corrections, and advertising.", seoTitle: "Contact Afakpress", seoDescription: "Contact Afakpress", status: "Published" },
@@ -380,4 +395,3 @@ export function getPublishedArticles(state: CmsState) {
 export function makeId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
-

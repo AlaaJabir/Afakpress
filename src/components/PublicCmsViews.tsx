@@ -11,8 +11,8 @@ function imageFor(article: CmsArticle) {
 
 function ArticleCard({ article }: { article: CmsArticle }) {
   return (
-    <article className="grid gap-4 border-b border-slate-200 pb-6 sm:grid-cols-[160px_1fr]">
-      <div className="relative h-32 w-full overflow-hidden sm:h-full">
+    <article className="grid gap-4 border-b border-slate-200 pb-6 sm:grid-cols-[180px_1fr]">
+      <div className="relative h-36 w-full overflow-hidden bg-slate-200 sm:h-full">
         <Image src={imageFor(article)} alt="" fill sizes="(min-width: 640px) 160px, 100vw" className="object-cover" />
       </div>
       <div>
@@ -46,7 +46,7 @@ function SectionBlock({ title, href, articles }: { title: string; href: string; 
 }
 
 export function CmsHomePage() {
-  const { state } = useCms();
+  const { state, isLoading, error } = useCms();
   const published = getPublishedArticles(state);
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
@@ -61,12 +61,15 @@ export function CmsHomePage() {
   }
 
   return (
-    <div className="space-y-12">
-      {show("Featured Slider") ? <article className="grid overflow-hidden border border-slate-200 bg-white lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="relative min-h-80 w-full lg:min-h-[560px]">
+    <div className="space-y-14">
+      {isLoading ? <p className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">Loading latest newsroom data...</p> : null}
+      {error ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">{error}</p> : null}
+      {show("Featured Slider") ? <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_420px]">
+        <article className="grid overflow-hidden border border-slate-200 bg-white lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="relative min-h-80 w-full bg-slate-200 lg:min-h-[560px]">
           <Image src={imageFor(featured)} alt="" fill priority sizes="(min-width: 1024px) 58vw, 100vw" className="object-cover" />
         </div>
-        <div className="flex flex-col justify-center p-6 lg:p-10">
+        <div className="flex flex-col justify-center p-6 lg:p-10 xl:p-12">
           <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Top story</p>
           <h1 className="mt-4 text-4xl font-black leading-tight text-slate-950 lg:text-5xl">{featured.title}</h1>
           <p className="mt-5 text-lg leading-8 text-slate-600">{featured.excerpt}</p>
@@ -79,9 +82,24 @@ export function CmsHomePage() {
             Read the story
           </Link>
         </div>
-      </article> : null}
+        </article>
+        <aside className="grid gap-4">
+          {published.slice(1, 4).map((article) => (
+            <Link key={article.id} href={`/article/${article.slug}`} className="grid min-h-40 grid-cols-[140px_1fr] overflow-hidden border border-slate-200 bg-white transition hover:border-red-700">
+              <span className="relative block bg-slate-200">
+                <Image src={imageFor(article)} alt="" fill sizes="140px" className="object-cover" />
+              </span>
+              <span className="p-4">
+                <span className="text-xs font-black uppercase text-red-700">{article.category}</span>
+                <span className="mt-2 block text-lg font-black leading-tight text-slate-950">{article.title}</span>
+                <span className="mt-3 block text-xs font-bold text-slate-500">{article.publishDate}</span>
+              </span>
+            </Link>
+          ))}
+        </aside>
+      </section> : null}
 
-      {show("Latest News") ? <section className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
         <SectionBlock title="Latest news" href="/category/national" articles={published.slice(1, 5)} />
         <aside className="border border-slate-200 bg-white p-6">
           <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Most read</h2>
@@ -98,14 +116,14 @@ export function CmsHomePage() {
         </aside>
       </section> : null}
 
-      {show("Regional News") ? <section>
+      {show("Regional News") ? <section className="mx-auto w-full max-w-screen-2xl">
         <div className="mb-6 flex items-end justify-between gap-4 border-b-4 border-slate-950 pb-3">
           <h2 className="text-2xl font-black uppercase text-slate-950">Morocco regions</h2>
           <Link href="/category/regions" className="text-sm font-black text-red-700 hover:underline">
             Regional desk
           </Link>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
           {state.regions.slice(0, 8).map((region) => (
             <Link key={region.id} href={`/region/${region.slug}`} className="border border-slate-200 bg-white p-5 transition hover:border-red-700">
               <span className="block text-lg font-black text-slate-950">{region.name}</span>
@@ -115,7 +133,7 @@ export function CmsHomePage() {
         </div>
       </section> : null}
 
-      <section className="grid gap-8 lg:grid-cols-3">
+      <section className="grid gap-6 lg:grid-cols-3">
         {state.categories.slice(0, 3).map((category) => {
           const categoryArticles = published.filter((article) => article.category === category.slug).slice(0, 2);
           return (
@@ -128,12 +146,12 @@ export function CmsHomePage() {
         })}
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-2">
+      <section className="grid gap-8 xl:grid-cols-2">
         <SectionBlock title="Regional news" href="/category/regions" articles={regionalArticles} />
         {show("Economy") || show("Opinion") ? <SectionBlock title="Economy and opinion" href="/category/economy" articles={[...economyArticles, ...opinionArticles].slice(0, 3)} /> : null}
       </section>
 
-      <section className="border border-slate-200 bg-slate-950 p-6 text-white">
+      <section className="border border-slate-200 bg-slate-950 p-6 text-white lg:p-8">
         <div className="grid gap-5 lg:grid-cols-[1fr_1fr] lg:items-center">
           <div>
             <h2 className="text-2xl font-black">The Afakpress briefing</h2>
@@ -159,7 +177,7 @@ export function CmsArticlePage({ slug }: { slug: string }) {
   }
 
   return (
-    <article className="mx-auto max-w-4xl">
+    <article className="mx-auto max-w-5xl">
       <div className="border-b-4 border-slate-950 pb-6">
         <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">{article.category}</p>
         <h1 className="mt-4 text-4xl font-black leading-tight text-slate-950 lg:text-6xl">{article.title}</h1>
@@ -171,7 +189,7 @@ export function CmsArticlePage({ slug }: { slug: string }) {
           {region ? <span>{region.name}</span> : null}
         </div>
       </div>
-      <div className="relative mt-8 h-[420px] w-full overflow-hidden">
+      <div className="relative mt-8 h-[420px] w-full overflow-hidden bg-slate-200 lg:h-[560px]">
         <Image src={imageFor(article)} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" />
       </div>
       <div className="mt-8 space-y-6 text-lg leading-9 text-slate-700">
@@ -193,11 +211,11 @@ export function CmsCategoryPage({ slug }: { slug: string }) {
   }
 
   return (
-    <section className="mx-auto max-w-4xl">
+    <section className="mx-auto max-w-6xl">
       <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Category</p>
       <h1 className="mt-3 text-4xl font-black text-slate-950">{category.name}</h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">{category.description}</p>
-      <div className="mt-10 space-y-6">
+      <div className="mt-10 grid gap-6 lg:grid-cols-2">
         {categoryArticles.length > 0 ? categoryArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="border border-slate-200 bg-white p-6 text-slate-600">No published articles in this category yet.</p>}
       </div>
     </section>

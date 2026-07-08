@@ -19,6 +19,15 @@ import {
 } from "@/lib/cms";
 import { useCms } from "@/lib/cms-store";
 import { slugify } from "@/lib/slug";
+import {
+  articlePayload,
+  breakingPayload,
+  categoryPayload,
+  mediaPayload,
+  menuPayload,
+  pagePayload,
+  type AdminResource,
+} from "@/lib/supabase-cms";
 
 type Section =
   | "dashboard"
@@ -26,6 +35,7 @@ type Section =
   | "media"
   | "categories"
   | "menus"
+  | "breaking"
   | "regions"
   | "authors"
   | "pages"
@@ -41,6 +51,7 @@ const sections: { id: Section; label: string }[] = [
   { id: "media", label: "Media" },
   { id: "categories", label: "Categories" },
   { id: "menus", label: "Menus" },
+  { id: "breaking", label: "Breaking News" },
   { id: "regions", label: "Morocco Regions" },
   { id: "authors", label: "Authors" },
   { id: "pages", label: "Pages" },
@@ -91,18 +102,32 @@ const emptyArticle: CmsArticle = {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
-      <span>{label}</span>
+      <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
       {children}
     </label>
   );
 }
 
-const inputClass = "min-h-11 w-full border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-red-700";
-const buttonClass = "min-h-10 border border-slate-300 px-3 text-sm font-black text-slate-900 transition hover:border-red-700 hover:text-red-700";
-const primaryButtonClass = "min-h-10 bg-slate-950 px-3 text-sm font-black text-white transition hover:bg-red-700";
+const inputClass = "min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-red-700 focus:ring-4 focus:ring-red-100";
+const buttonClass = "inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-black text-slate-900 transition hover:border-red-700 hover:text-red-700";
+const primaryButtonClass = "inline-flex min-h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-400";
+
+async function adminRequest(resource: AdminResource, method: "POST" | "PATCH" | "DELETE", headers: HeadersInit, body?: unknown, id?: string) {
+  const url = id ? `/api/admin/${resource}?id=${encodeURIComponent(id)}` : `/api/admin/${resource}`;
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Supabase request failed.");
+  }
+  return payload.data;
+}
 
 export function AdminCMS() {
-  const { state, setState, currentUser, login, logout, hasAccess, notice, notify, resetDemo } = useCms();
+  const { state, setState, currentUser, login, logout, hasAccess, notice, notify, resetDemo, adminHeaders, refreshFromSupabase, isLoading, error } = useCms();
   const [email, setEmail] = useState("admin@afakpress.ma");
   const [password, setPassword] = useState("afakpress2026");
   const [active, setActive] = useState<Section>("dashboard");
@@ -135,25 +160,36 @@ export function AdminCMS() {
 
   if (!currentUser) {
     return (
-      <div className="mx-auto max-w-md border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Protected CMS</p>
-        <h1 className="mt-3 text-3xl font-black text-slate-950">Afakpress Admin Login</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">Demo accounts: admin, editor, journalist, moderator at afakpress.ma. Passwords follow role + 2026, except admin uses afakpress2026.</p>
-        <div className="mt-6 space-y-4">
-          <Field label="Email">
-            <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} />
-          </Field>
-          <Field label="Password">
-            <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
-          </Field>
-          <button className={primaryButtonClass} onClick={() => login(email, password)} type="button">Sign in</button>
+      <div className="grid min-h-screen bg-slate-950 lg:grid-cols-[minmax(0,1fr)_520px]">
+        <div className="hidden bg-[linear-gradient(135deg,#020617_0%,#111827_55%,#7f1d1d_100%)] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.28em] text-red-200">Afakpress CMS</p>
+            <h1 className="mt-5 max-w-2xl text-6xl font-black leading-tight">Newsroom operations, publishing, and menus in one desk.</h1>
+          </div>
+          <p className="max-w-xl text-sm leading-7 text-slate-300">A production-style admin space for Moroccan regional coverage, editorial workflows, media, categories, authors, and dynamic navigation.</p>
         </div>
-        {notice ? <Notice type={notice.type} message={notice.message} /> : null}
+        <div className="flex items-center justify-center bg-slate-100 p-4 sm:p-8">
+          <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-xl">
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Protected CMS</p>
+            <h1 className="mt-3 text-3xl font-black text-slate-950">Afakpress Admin Login</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Demo accounts: admin, editor, journalist, moderator at afakpress.ma. Passwords follow role + 2026, except admin uses afakpress2026.</p>
+            <div className="mt-6 space-y-4">
+              <Field label="Email">
+                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} />
+              </Field>
+              <Field label="Password">
+                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" />
+              </Field>
+              <button className={`${primaryButtonClass} w-full`} onClick={() => login(email, password)} type="button">Sign in</button>
+            </div>
+            {notice ? <Notice type={notice.type} message={notice.message} /> : null}
+          </div>
+        </div>
       </div>
     );
   }
 
-  const saveArticle = () => {
+  const saveArticle = async () => {
     const category = state.categories.find((item) => item.id === articleDraft.categoryId || item.slug === articleDraft.category);
     const region = state.regions.find((item) => item.id === articleDraft.regionId || item.slug === articleDraft.region);
     const province = region?.provinces.find((item) => item.id === articleDraft.provinceId || item.slug === articleDraft.province);
@@ -182,12 +218,23 @@ export function AdminCMS() {
       publishedAt: articleDraft.publishDate,
       canonicalUrl: articleDraft.canonicalUrl || `/article/${slug}`,
     };
-    setState((current) => ({
-      ...current,
-      articles: current.articles.some((article) => article.id === nextArticle.id) ? current.articles.map((article) => (article.id === nextArticle.id ? nextArticle : article)) : [nextArticle, ...current.articles],
-    }));
-    setArticleDraft({ ...emptyArticle });
-    notify("success", "Article saved.");
+    try {
+      const payload = articlePayload(nextArticle);
+      if (articleDraft.id) {
+        await adminRequest("articles", "PATCH", adminHeaders(), { id: articleDraft.id, ...payload });
+      } else {
+        await adminRequest("articles", "POST", adminHeaders(), payload);
+      }
+      setState((current) => ({
+        ...current,
+        articles: current.articles.some((article) => article.id === nextArticle.id) ? current.articles.map((article) => (article.id === nextArticle.id ? nextArticle : article)) : [nextArticle, ...current.articles],
+      }));
+      await refreshFromSupabase();
+      setArticleDraft({ ...emptyArticle });
+      notify("success", "Article saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Article save failed.");
+    }
   };
 
   const bulkUpdate = (key: "status" | "category", value: string) => {
@@ -207,9 +254,9 @@ export function AdminCMS() {
   const filteredArticles = state.articles.filter((article) => `${article.title} ${article.category} ${article.status}`.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div className="min-h-[80vh] bg-slate-100">
-      <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
-        <aside className="border border-slate-200 bg-slate-950 p-5 text-white">
+    <div className="min-h-screen bg-slate-100">
+      <div className="grid min-h-screen gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
+        <aside className="sticky top-0 z-30 h-screen overflow-y-auto border-r border-slate-800 bg-slate-950 p-5 text-white">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-2xl font-black">Afakpress CMS</p>
@@ -217,29 +264,32 @@ export function AdminCMS() {
             </div>
             <button className="text-sm font-bold text-red-300" onClick={logout} type="button">Logout</button>
           </div>
-          <input className="mt-5 min-h-11 w-full border border-slate-700 bg-slate-900 px-3 text-sm text-white outline-none" placeholder="Search dashboard" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="mt-5 min-h-11 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-white outline-none transition focus:border-red-500" placeholder="Search articles, sections" value={query} onChange={(event) => setQuery(event.target.value)} />
           <nav className="mt-5 grid gap-1">
             {visibleSections.map((section) => (
-              <button key={section.id} className={`px-3 py-3 text-left text-sm font-bold transition ${active === section.id ? "bg-red-700 text-white" : "text-slate-300 hover:bg-slate-900"}`} onClick={() => setActive(section.id)} type="button">
+              <button key={section.id} className={`rounded-md px-3 py-3 text-left text-sm font-bold transition ${active === section.id ? "bg-red-700 text-white shadow-lg shadow-red-950/20" : "text-slate-300 hover:bg-slate-900 hover:text-white"}`} onClick={() => setActive(section.id)} type="button">
                 {section.label}
               </button>
             ))}
           </nav>
-          <div className="mt-6 border border-slate-800 p-4 text-xs leading-6 text-slate-400">
+          <div className="mt-6 rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-xs leading-6 text-slate-400">
             <p className="font-black text-white">Permissions</p>
             <p>{rolePermissions[currentUser.role].join(", ")}</p>
           </div>
         </aside>
 
-        <section className="p-4 lg:p-8">
+        <section className="min-w-0 p-4 sm:p-6 lg:p-8">
           {notice ? <Notice type={notice.type} message={notice.message} /> : null}
-          <div className="mb-6 flex flex-col gap-3 border border-slate-200 bg-white p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-6 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">{active}</p>
               <h1 className="mt-1 text-3xl font-black text-slate-950">{sections.find((section) => section.id === active)?.label}</h1>
             </div>
             <div className="flex flex-wrap gap-2">
+              {isLoading ? <span className="inline-flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-black text-slate-600">Loading Supabase</span> : null}
+              {error ? <span className="inline-flex min-h-10 items-center rounded-md bg-amber-50 px-3 text-sm font-black text-amber-800">Supabase error</span> : null}
               <Link className={buttonClass} href="/">View site</Link>
+              <button className={buttonClass} onClick={() => void refreshFromSupabase()} type="button">Refresh data</button>
               <button className={buttonClass} onClick={resetDemo} type="button">Reset demo data</button>
             </div>
           </div>
@@ -260,6 +310,7 @@ export function AdminCMS() {
           {active === "media" ? <MediaPanel /> : null}
           {active === "categories" ? <CategoriesPanel /> : null}
           {active === "menus" ? <MenusPanel /> : null}
+          {active === "breaking" ? <BreakingNewsPanel /> : null}
           {active === "regions" ? <RegionsPanel /> : null}
           {active === "authors" ? <AuthorsPanel /> : null}
           {active === "pages" ? <PagesPanel /> : null}
@@ -282,20 +333,26 @@ function Notice({ type, message }: { type: string; message: string }) {
 function Dashboard({ stats, published }: { stats: (string | number)[][]; published: number }) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
         {stats.map(([label, value]) => (
-          <div key={label} className="border border-slate-200 bg-white p-5">
+          <div key={label} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-black uppercase text-slate-500">{label}</p>
             <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
           </div>
         ))}
       </div>
-      <div className="border border-slate-200 bg-white p-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-black text-slate-950">Publishing health</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">The frontend is connected to the CMS store. Published articles, categories, menus, regions, and homepage settings update immediately in this browser session.</p>
         <div className="mt-5 h-3 overflow-hidden bg-slate-100">
           <div className="h-full bg-red-700" style={{ width: `${Math.min(100, published * 12)}%` }} />
         </div>
+      </div>
+      <div className="rounded-lg border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
+        <h2 className="text-xl font-black">Editorial desk</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-300">Use Articles for publishing, Menus for header structure, Media for assets, and Settings for site identity.</p>
+      </div>
       </div>
     </div>
   );
@@ -320,44 +377,74 @@ function ArticlesPanel({
   bulkDelete: () => void;
   bulkUpdate: (key: "status" | "category", value: string) => void;
 }) {
-  const { state, setState, currentUser, notify } = useCms();
+  const { state, setState, currentUser, notify, adminHeaders, refreshFromSupabase } = useCms();
+  const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const statusOptions: ArticleStatus[] = ["Draft", "Pending Review", "Scheduled", "Published"];
   const provinces = state.regions.find((region) => region.id === draft.regionId)?.provinces ?? [];
   const communes = provinces.find((province) => province.id === draft.provinceId)?.communes ?? [];
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_460px]">
-      <div className="border border-slate-200 bg-white p-5">
-        <div className="mb-4 flex flex-wrap gap-2">
+    <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-black text-slate-950">Article desk</h2>
+          <div className="flex flex-wrap gap-2">
+          <select className={inputClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">All statuses</option>
+            {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+          <select className={inputClass} value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            <option value="">All categories</option>
+            {state.categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
+          </select>
           <button className={buttonClass} onClick={() => bulkUpdate("status", "Published")} type="button">Publish selected</button>
           <button className={buttonClass} onClick={() => bulkUpdate("status", "Draft")} type="button">Draft selected</button>
           <button className={buttonClass} onClick={() => bulkUpdate("category", state.categories[0]?.slug ?? "")} type="button">Bulk category</button>
           <button className={buttonClass} onClick={bulkDelete} type="button">Bulk delete</button>
+          </div>
         </div>
-        <div className="divide-y divide-slate-200">
-          {articles.map((article) => (
-            <div key={article.id} className="grid gap-3 py-4 lg:grid-cols-[32px_1fr_130px_130px_180px] lg:items-center">
+        <div className="overflow-x-auto">
+        <div className="min-w-[920px] divide-y divide-slate-200">
+          <div className="grid grid-cols-[40px_minmax(320px,1fr)_150px_150px_150px_220px] gap-3 border-y border-slate-200 bg-slate-50 px-3 py-3 text-xs font-black uppercase text-slate-500">
+            <span />
+            <span>Title</span>
+            <span>Status</span>
+            <span>Category</span>
+            <span>Date</span>
+            <span>Actions</span>
+          </div>
+          {articles.filter((article) => (!statusFilter || article.status === statusFilter) && (!categoryFilter || article.category === categoryFilter)).map((article) => (
+            <div key={article.id} className="grid grid-cols-[40px_minmax(320px,1fr)_150px_150px_150px_220px] gap-3 px-3 py-4 items-center">
               <input checked={selected.includes(article.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, article.id] : selected.filter((id) => id !== article.id))} type="checkbox" />
               <div>
                 <Link href={`/article/${article.slug}`} className="font-black text-slate-950 hover:text-red-700">{article.title}</Link>
                 <p className="mt-1 text-xs font-bold text-slate-500">{article.excerpt}</p>
               </div>
-              <span className="text-sm font-bold">{article.status}</span>
+              <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{article.status}</span>
               <span className="text-sm font-bold">{article.category}</span>
+              <span className="text-sm font-bold text-slate-500">{article.publishDate}</span>
               <div className="flex flex-wrap gap-2">
                 <button className={buttonClass} onClick={() => setDraft(article)} type="button">Edit</button>
                 <button className={buttonClass} onClick={() => setDraft({ ...article, id: "", title: `${article.title} Copy`, slug: `${article.slug}-copy`, status: "Draft" })} type="button">Duplicate</button>
-                <button className={buttonClass} onClick={() => {
-                  setState((current) => ({ ...current, articles: current.articles.filter((item) => item.id !== article.id) }));
-                  notify("warning", "Article deleted.");
+                <button className={buttonClass} onClick={async () => {
+                  try {
+                    await adminRequest("articles", "DELETE", adminHeaders(), undefined, article.id);
+                    setState((current) => ({ ...current, articles: current.articles.filter((item) => item.id !== article.id) }));
+                    await refreshFromSupabase();
+                    notify("warning", "Article deleted from Supabase.");
+                  } catch (error) {
+                    notify("error", error instanceof Error ? error.message : "Article delete failed.");
+                  }
                 }} type="button">Delete</button>
               </div>
             </div>
           ))}
         </div>
+        </div>
       </div>
-      <div className="border border-slate-200 bg-white p-5">
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-xl font-black text-slate-950">Article editor</h2>
         <div className="mt-5 grid gap-4">
           <Field label="Title"><input className={inputClass} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value, slug: slugify(event.target.value), seoTitle: event.target.value })} /></Field>
@@ -394,15 +481,26 @@ function ArticlesPanel({
 }
 
 function MediaPanel() {
-  const { state, setState, notify } = useCms();
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [draft, setDraft] = useState<CmsMedia>({ id: "", name: "", url: "", type: "Image", folder: "Newsroom", alt: "", caption: "", copyright: "", optimized: true });
-  const save = () => {
+  const save = async () => {
     const item = { ...draft, id: draft.id || makeId("media") };
-    setState((current) => ({ ...current, media: current.media.some((media) => media.id === item.id) ? current.media.map((media) => media.id === item.id ? item : media) : [item, ...current.media] }));
-    setDraft({ id: "", name: "", url: "", type: "Image", folder: "Newsroom", alt: "", caption: "", copyright: "", optimized: true });
-    notify("success", "Media saved.");
+    try {
+      const payload = mediaPayload(item);
+      if (draft.id) {
+        await adminRequest("media", "PATCH", adminHeaders(), { id: draft.id, ...payload });
+      } else {
+        await adminRequest("media", "POST", adminHeaders(), payload);
+      }
+      setState((current) => ({ ...current, media: current.media.some((media) => media.id === item.id) ? current.media.map((media) => media.id === item.id ? item : media) : [item, ...current.media] }));
+      await refreshFromSupabase();
+      setDraft({ id: "", name: "", url: "", type: "Image", folder: "Newsroom", alt: "", caption: "", copyright: "", optimized: true });
+      notify("success", "Media saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Media save failed.");
+    }
   };
-  return <CrudShell title="Media Library" aside={<MediaForm draft={draft} setDraft={setDraft} save={save} />}>{state.media.map((media) => <Row key={media.id} title={media.name} meta={`${media.type} / ${media.folder}`} actions={<><button className={buttonClass} onClick={() => setDraft(media)} type="button">Edit</button><button className={buttonClass} onClick={() => setState((current) => ({ ...current, media: current.media.filter((item) => item.id !== media.id) }))} type="button">Delete</button></>} />)}</CrudShell>;
+  return <CrudShell title="Media Library" aside={<MediaForm draft={draft} setDraft={setDraft} save={save} />}>{state.media.map((media) => <Row key={media.id} title={media.name} meta={`${media.type} / ${media.folder}`} actions={<><button className={buttonClass} onClick={() => setDraft(media)} type="button">Edit</button><button className={buttonClass} onClick={async () => { try { await adminRequest("media", "DELETE", adminHeaders(), undefined, media.id); setState((current) => ({ ...current, media: current.media.filter((item) => item.id !== media.id) })); await refreshFromSupabase(); notify("warning", "Media deleted from Supabase."); } catch (error) { notify("error", error instanceof Error ? error.message : "Media delete failed."); } }} type="button">Delete</button></>} />)}</CrudShell>;
 }
 
 function MediaForm({ draft, setDraft, save }: { draft: CmsMedia; setDraft: (media: CmsMedia) => void; save: () => void }) {
@@ -410,34 +508,176 @@ function MediaForm({ draft, setDraft, save }: { draft: CmsMedia; setDraft: (medi
 }
 
 function CategoriesPanel() {
-  const { state, setState, notify } = useCms();
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [draft, setDraft] = useState<CmsCategory>({ id: "", name: "", slug: "", parentId: "", color: "#b91c1c", icon: "", description: "", seoTitle: "", seoDescription: "" });
-  const save = () => {
+  const save = async () => {
     const item = { ...draft, id: draft.id || makeId("cat"), slug: draft.slug || slugify(draft.name) };
-    setState((current) => ({ ...current, categories: current.categories.some((category) => category.id === item.id) ? current.categories.map((category) => category.id === item.id ? item : category) : [...current.categories, item] }));
-    setDraft({ id: "", name: "", slug: "", parentId: "", color: "#b91c1c", icon: "", description: "", seoTitle: "", seoDescription: "" });
-    notify("success", "Category saved.");
+    try {
+      const payload = categoryPayload(item);
+      if (draft.id) {
+        await adminRequest("categories", "PATCH", adminHeaders(), { id: draft.id, ...payload });
+      } else {
+        await adminRequest("categories", "POST", adminHeaders(), payload);
+      }
+      setState((current) => ({ ...current, categories: current.categories.some((category) => category.id === item.id) ? current.categories.map((category) => category.id === item.id ? item : category) : [...current.categories, item] }));
+      await refreshFromSupabase();
+      setDraft({ id: "", name: "", slug: "", parentId: "", color: "#b91c1c", icon: "", description: "", seoTitle: "", seoDescription: "" });
+      notify("success", "Category saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Category save failed.");
+    }
   };
-  return <CrudShell title="Categories" aside={<div className="grid gap-4"><Field label="Name"><input className={inputClass} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value, slug: slugify(event.target.value) })} /></Field><Field label="Parent"><select className={inputClass} value={draft.parentId} onChange={(event) => setDraft({ ...draft, parentId: event.target.value })}><option value="">None</option>{state.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field><Field label="Color"><input className={inputClass} value={draft.color} onChange={(event) => setDraft({ ...draft, color: event.target.value })} type="color" /></Field><Field label="Icon"><input className={inputClass} value={draft.icon} onChange={(event) => setDraft({ ...draft, icon: event.target.value })} /></Field><Field label="Description"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></Field><Field label="SEO Title"><input className={inputClass} value={draft.seoTitle} onChange={(event) => setDraft({ ...draft, seoTitle: event.target.value })} /></Field><Field label="SEO Description"><input className={inputClass} value={draft.seoDescription} onChange={(event) => setDraft({ ...draft, seoDescription: event.target.value })} /></Field><button className={primaryButtonClass} onClick={save} type="button">Save category</button></div>}>{state.categories.map((category) => <Row key={category.id} title={category.name} meta={category.slug} actions={<><button className={buttonClass} onClick={() => setDraft(category)} type="button">Edit</button><button className={buttonClass} onClick={() => setState((current) => ({ ...current, categories: current.categories.filter((item) => item.id !== category.id) }))} type="button">Delete</button></>} />)}</CrudShell>;
+  return <CrudShell title="Categories" aside={<div className="grid gap-4"><Field label="Name"><input className={inputClass} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value, slug: slugify(event.target.value) })} /></Field><Field label="Parent"><select className={inputClass} value={draft.parentId} onChange={(event) => setDraft({ ...draft, parentId: event.target.value })}><option value="">None</option>{state.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field><Field label="Order Index"><input className={inputClass} defaultValue={0} type="number" /></Field><label className="flex gap-2 text-sm font-bold"><input defaultChecked type="checkbox" /> Active</label><Field label="Description"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></Field><button className={primaryButtonClass} onClick={save} type="button">Save category</button></div>}>{state.categories.map((category) => <Row key={category.id} title={category.name} meta={category.parentId ? `${category.slug} / child category` : category.slug} actions={<><button className={buttonClass} onClick={() => setDraft(category)} type="button">Edit</button><button className={buttonClass} onClick={async () => { try { await adminRequest("categories", "DELETE", adminHeaders(), undefined, category.id); setState((current) => ({ ...current, categories: current.categories.filter((item) => item.id !== category.id) })); await refreshFromSupabase(); notify("warning", "Category deleted from Supabase."); } catch (error) { notify("error", error instanceof Error ? error.message : "Category delete failed."); } }} type="button">Delete</button></>} />)}</CrudShell>;
 }
 
 function MenusPanel() {
-  const { state, setState, notify } = useCms();
-  const [draft, setDraft] = useState<CmsMenuItem>({ id: "", label: "", href: "", type: "Custom", children: [] });
-  const save = () => {
-    const item = { ...draft, id: draft.id || makeId("menu") };
-    setState((current) => ({ ...current, menus: current.menus.some((menu) => menu.id === item.id) ? current.menus.map((menu) => menu.id === item.id ? item : menu) : [...current.menus, item] }));
-    setDraft({ id: "", label: "", href: "", type: "Custom", children: [] });
-    notify("success", "Menu saved.");
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
+  const [draft, setDraft] = useState<CmsMenuItem>({ id: "", label: "", href: "", type: "Custom", active: true, showInHeader: true, showInFooter: false, children: [] });
+  const [parentId, setParentId] = useState("");
+  const flattenMenus = (menus: CmsMenuItem[], depth = 0): { item: CmsMenuItem; depth: number }[] => menus.flatMap((item) => [{ item, depth }, ...flattenMenus(item.children, depth + 1)]);
+  const updateInTree = (menus: CmsMenuItem[], item: CmsMenuItem): CmsMenuItem[] => menus.map((menu) => menu.id === item.id ? { ...item, children: item.children ?? menu.children } : { ...menu, children: updateInTree(menu.children, item) });
+  const deleteInTree = (menus: CmsMenuItem[], id: string): CmsMenuItem[] => menus.filter((menu) => menu.id !== id).map((menu) => ({ ...menu, children: deleteInTree(menu.children, id) }));
+  const addToParent = (menus: CmsMenuItem[], item: CmsMenuItem, targetParentId: string): CmsMenuItem[] => {
+    if (!targetParentId) return [...menus, item];
+    return menus.map((menu) => menu.id === targetParentId ? { ...menu, children: [...menu.children, item] } : { ...menu, children: addToParent(menu.children, item, targetParentId) });
   };
-  const move = (index: number, direction: -1 | 1) => setState((current) => {
+  const moveTopLevel = (index: number, direction: -1 | 1) => setState((current) => {
     const menus = [...current.menus];
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= menus.length) return current;
     [menus[index], menus[nextIndex]] = [menus[nextIndex], menus[index]];
     return { ...current, menus };
   });
-  return <CrudShell title="Menu Builder" aside={<div className="grid gap-4"><Field label="Label"><input className={inputClass} value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} /></Field><Field label="Href"><input className={inputClass} value={draft.href} onChange={(event) => setDraft({ ...draft, href: event.target.value })} /></Field><Field label="Type"><select className={inputClass} value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as CmsMenuItem["type"] })}><option>Custom</option><option>Page</option><option>Category</option><option>Region</option><option>Province</option><option>Commune</option></select></Field><p className="text-sm leading-6 text-slate-600">Use arrows for ordering. Region items support Submenu and Submenu level 2 through nested region/province/commune data.</p><button className={primaryButtonClass} onClick={save} type="button">Save menu</button></div>}>{state.menus.map((menu, index) => <Row key={menu.id} title={menu.label} meta={`${menu.type} / ${menu.href}`} actions={<><button className={buttonClass} onClick={() => move(index, -1)} type="button">Up</button><button className={buttonClass} onClick={() => move(index, 1)} type="button">Down</button><button className={buttonClass} onClick={() => setDraft(menu)} type="button">Edit</button><button className={buttonClass} onClick={() => setState((current) => ({ ...current, menus: current.menus.filter((item) => item.id !== menu.id) }))} type="button">Delete</button></>} />)}</CrudShell>;
+  const save = async () => {
+    const item = { ...draft, id: draft.id || makeId("menu") };
+    const parent = parentId ? flattenMenus(state.menus).find((entry) => entry.item.id === parentId) : null;
+    const level = parent ? Math.min(2, parent.depth + 1) : 0;
+    try {
+      const payload = menuPayload(item, parentId, level, state.menus.length);
+      if (draft.id) {
+        await adminRequest("menus", "PATCH", adminHeaders(), { id: draft.id, ...payload });
+      } else {
+        await adminRequest("menus", "POST", adminHeaders(), payload);
+      }
+      setState((current) => {
+        const exists = flattenMenus(current.menus).some((entry) => entry.item.id === item.id);
+        return { ...current, menus: exists ? updateInTree(current.menus, item) : addToParent(current.menus, item, parentId) };
+      });
+      await refreshFromSupabase();
+      setDraft({ id: "", label: "", href: "", type: "Custom", active: true, showInHeader: true, showInFooter: false, children: [] });
+      setParentId("");
+      notify("success", "Menu saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Menu save failed.");
+    }
+  };
+  const menuOptions = flattenMenus(state.menus).filter((entry) => entry.depth < 2);
+  const editMenu = (menu: CmsMenuItem) => {
+    setDraft(menu);
+    setParentId("");
+  };
+  const deleteMenu = async (id: string) => {
+    try {
+      await adminRequest("menus", "DELETE", adminHeaders(), undefined, id);
+      setState((current) => ({ ...current, menus: deleteInTree(current.menus, id) }));
+      await refreshFromSupabase();
+      notify("warning", "Menu deleted from Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Menu delete failed.");
+    }
+  };
+
+  return (
+    <CrudShell
+      title="Menu Builder"
+      aside={
+        <div className="grid gap-4">
+          <Field label="Label"><input className={inputClass} value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} /></Field>
+          <Field label="Href"><input className={inputClass} value={draft.href} onChange={(event) => setDraft({ ...draft, href: event.target.value })} /></Field>
+          <Field label="Parent menu"><select className={inputClass} value={parentId} onChange={(event) => setParentId(event.target.value)} disabled={Boolean(draft.id)}><option value="">Main menu</option>{menuOptions.map(({ item, depth }) => <option key={item.id} value={item.id}>{`${" - ".repeat(depth)}${item.label}`}</option>)}</select></Field>
+          <Field label="Type"><select className={inputClass} value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as CmsMenuItem["type"] })}><option>Custom</option><option>Page</option><option>Category</option><option>Region</option><option>Province</option><option>Commune</option></select></Field>
+          <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700">
+            <label className="flex items-center gap-2"><input checked={draft.active !== false} onChange={(event) => setDraft({ ...draft, active: event.target.checked })} type="checkbox" /> Active</label>
+            <label className="flex items-center gap-2"><input checked={draft.showInHeader !== false} onChange={(event) => setDraft({ ...draft, showInHeader: event.target.checked })} type="checkbox" /> Show in header</label>
+            <label className="flex items-center gap-2"><input checked={draft.showInFooter === true} onChange={(event) => setDraft({ ...draft, showInFooter: event.target.checked })} type="checkbox" /> Show in footer</label>
+          </div>
+          <p className="text-sm leading-6 text-slate-600">Use Parent menu to create submenu and submenu level 2 items. Top-level ordering uses the Up and Down controls in the tree.</p>
+          <button className={primaryButtonClass} onClick={save} type="button">Save menu</button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        {state.menus.map((menu, index) => (
+          <MenuTreeRow
+            key={menu.id}
+            menu={menu}
+            depth={0}
+            actions={
+              <>
+                <button className={buttonClass} onClick={() => moveTopLevel(index, -1)} type="button">Up</button>
+                <button className={buttonClass} onClick={() => moveTopLevel(index, 1)} type="button">Down</button>
+                <button className={buttonClass} onClick={() => editMenu(menu)} type="button">Edit</button>
+                <button className={buttonClass} onClick={() => void deleteMenu(menu.id)} type="button">Delete</button>
+              </>
+            }
+            editMenu={editMenu}
+            deleteMenu={deleteMenu}
+          />
+        ))}
+      </div>
+    </CrudShell>
+  );
+}
+
+function MenuTreeRow({ menu, depth, actions, editMenu, deleteMenu }: { menu: CmsMenuItem; depth: number; actions?: React.ReactNode; editMenu: (menu: CmsMenuItem) => void; deleteMenu: (id: string) => void | Promise<void> }) {
+  return (
+    <div>
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-[1fr_auto] md:items-center" style={{ marginLeft: depth ? depth * 20 : 0 }}>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black uppercase text-slate-600">{depth === 0 ? "Main menu" : depth === 1 ? "Submenu" : "Level 2"}</span>
+            <p className="font-black text-slate-950">{menu.label}</p>
+          </div>
+          <p className="mt-1 text-xs font-bold text-slate-500">{menu.type} / {menu.href} / {menu.children.length} children</p>
+        </div>
+        <div className="flex flex-wrap gap-2">{actions ?? <><button className={buttonClass} onClick={() => editMenu(menu)} type="button">Edit</button><button className={buttonClass} onClick={() => void deleteMenu(menu.id)} type="button">Delete</button></>}</div>
+      </div>
+      {menu.children.length > 0 ? <div className="mt-3 space-y-3">{menu.children.map((child) => <MenuTreeRow key={child.id} menu={child} depth={depth + 1} editMenu={editMenu} deleteMenu={deleteMenu} />)}</div> : null}
+    </div>
+  );
+}
+
+function BreakingNewsPanel() {
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
+  const [draft, setDraft] = useState({ id: "", title: "", articleId: "", url: "", isActive: true, orderIndex: 0 });
+  const save = async () => {
+    try {
+      const payload = breakingPayload(draft);
+      if (draft.id) {
+        await adminRequest("breaking_news", "PATCH", adminHeaders(), { id: draft.id, ...payload });
+      } else {
+        await adminRequest("breaking_news", "POST", adminHeaders(), payload);
+      }
+      setState((current) => ({
+        ...current,
+        breakingNews: current.breakingNews.some((item) => item.id === draft.id) ? current.breakingNews.map((item) => item.id === draft.id ? draft : item) : [{ ...draft, id: draft.id || makeId("breaking") }, ...current.breakingNews],
+      }));
+      await refreshFromSupabase();
+      setDraft({ id: "", title: "", articleId: "", url: "", isActive: true, orderIndex: 0 });
+      notify("success", "Breaking news saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Breaking news save failed.");
+    }
+  };
+
+  return (
+    <CrudShell
+      title="Breaking News"
+      aside={<div className="grid gap-4"><Field label="Title"><input className={inputClass} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></Field><Field label="Linked Article"><select className={inputClass} value={draft.articleId} onChange={(event) => setDraft({ ...draft, articleId: event.target.value })}><option value="">None</option>{state.articles.map((article) => <option key={article.id} value={article.id}>{article.title}</option>)}</select></Field><Field label="External URL"><input className={inputClass} value={draft.url} onChange={(event) => setDraft({ ...draft, url: event.target.value })} /></Field><Field label="Order Index"><input className={inputClass} value={draft.orderIndex} onChange={(event) => setDraft({ ...draft, orderIndex: Number(event.target.value) })} type="number" /></Field><label className="flex gap-2 text-sm font-bold"><input checked={draft.isActive} onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })} type="checkbox" /> Active</label><button className={primaryButtonClass} onClick={save} type="button">Save breaking news</button></div>}
+    >
+      {state.breakingNews.map((item) => <Row key={item.id} title={item.title} meta={`${item.isActive ? "Active" : "Inactive"} / order ${item.orderIndex}`} actions={<><button className={buttonClass} onClick={() => setDraft(item)} type="button">Edit</button><button className={buttonClass} onClick={async () => { try { await adminRequest("breaking_news", "DELETE", adminHeaders(), undefined, item.id); setState((current) => ({ ...current, breakingNews: current.breakingNews.filter((entry) => entry.id !== item.id) })); await refreshFromSupabase(); notify("warning", "Breaking news deleted from Supabase."); } catch (error) { notify("error", error instanceof Error ? error.message : "Breaking news delete failed."); } }} type="button">Delete</button></>} />)}
+    </CrudShell>
+  );
 }
 
 function RegionsPanel() {
@@ -464,13 +704,24 @@ function AuthorsPanel() {
 }
 
 function PagesPanel() {
-  const { state, setState, notify } = useCms();
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [draft, setDraft] = useState<CmsPage>({ id: "", title: "", slug: "", content: "", seoTitle: "", seoDescription: "", status: "Draft" });
-  const save = () => {
+  const save = async () => {
     const item = { ...draft, id: draft.id || makeId("page"), slug: draft.slug || slugify(draft.title) };
-    setState((current) => ({ ...current, pages: current.pages.some((page) => page.id === item.id) ? current.pages.map((page) => page.id === item.id ? item : page) : [...current.pages, item] }));
-    setDraft({ id: "", title: "", slug: "", content: "", seoTitle: "", seoDescription: "", status: "Draft" });
-    notify("success", "Page saved.");
+    try {
+      const payload = pagePayload(item);
+      if (draft.id) {
+        await adminRequest("pages", "PATCH", adminHeaders(), { id: draft.id, ...payload });
+      } else {
+        await adminRequest("pages", "POST", adminHeaders(), payload);
+      }
+      setState((current) => ({ ...current, pages: current.pages.some((page) => page.id === item.id) ? current.pages.map((page) => page.id === item.id ? item : page) : [...current.pages, item] }));
+      await refreshFromSupabase();
+      setDraft({ id: "", title: "", slug: "", content: "", seoTitle: "", seoDescription: "", status: "Draft" });
+      notify("success", "Page saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Page save failed.");
+    }
   };
   return <CrudShell title="Static Pages" aside={<div className="grid gap-4"><Field label="Title"><input className={inputClass} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value, slug: slugify(event.target.value) })} /></Field><Field label="Slug"><input className={inputClass} value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} /></Field><Field label="Content"><textarea className={`${inputClass} min-h-32 py-3`} value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} /></Field><Field label="SEO Title"><input className={inputClass} value={draft.seoTitle} onChange={(event) => setDraft({ ...draft, seoTitle: event.target.value })} /></Field><Field label="SEO Description"><input className={inputClass} value={draft.seoDescription} onChange={(event) => setDraft({ ...draft, seoDescription: event.target.value })} /></Field><Field label="Status"><select className={inputClass} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as CmsPage["status"] })}><option>Draft</option><option>Published</option></select></Field><button className={primaryButtonClass} onClick={save} type="button">Save page</button></div>}>{state.pages.map((page) => <Row key={page.id} title={page.title} meta={`${page.status} / /${page.slug}`} actions={<button className={buttonClass} onClick={() => setDraft(page)} type="button">Edit</button>} />)}</CrudShell>;
 }
@@ -508,10 +759,9 @@ function SettingsPanel() {
 }
 
 function CrudShell({ title, children, aside }: { title: string; children: React.ReactNode; aside: React.ReactNode }) {
-  return <div className="grid gap-6 xl:grid-cols-[1fr_420px]"><div className="border border-slate-200 bg-white p-5"><h2 className="mb-4 text-xl font-black text-slate-950">{title}</h2><div className="divide-y divide-slate-200">{children}</div></div><aside className="border border-slate-200 bg-white p-5"><h2 className="mb-4 text-xl font-black text-slate-950">Editor</h2>{aside}</aside></div>;
+  return <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_460px]"><div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-4 text-xl font-black text-slate-950">{title}</h2><div className="divide-y divide-slate-200">{children}</div></div><aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><h2 className="mb-4 text-xl font-black text-slate-950">Editor</h2>{aside}</aside></div>;
 }
 
 function Row({ title, meta, actions }: { title: string; meta: string; actions: React.ReactNode }) {
   return <div className="grid gap-3 py-4 md:grid-cols-[1fr_auto] md:items-center"><div><p className="font-black text-slate-950">{title}</p><p className="mt-1 text-xs font-bold text-slate-500">{meta}</p></div><div className="flex flex-wrap gap-2">{actions}</div></div>;
 }
-
