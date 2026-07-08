@@ -40,7 +40,7 @@ export function AdminLoginForm() {
       if (!response.ok) throw new Error(payload.error ?? "Admin access denied.");
 
       await supabase.auth.signOut();
-      router.replace("/admin");
+      router.replace("/admin/dashboard");
       router.refresh();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Login failed.");
@@ -66,4 +66,3 @@ export function AdminLoginForm() {
     </form>
   );
 }
-

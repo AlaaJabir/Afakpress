@@ -1,4 +1,3 @@
-import { AdminCMS } from "@/components/AdminCMS";
 import { getAdminAuthStateFromCookies } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
 
@@ -21,5 +20,5 @@ export default async function AdminPage() {
     );
   }
 
-  return <AdminCMS adminSession={authState.session} />;
+  redirect("/admin/dashboard");
 }

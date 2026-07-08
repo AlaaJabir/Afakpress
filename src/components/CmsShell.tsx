@@ -36,7 +36,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
               <Link href="/#newsletter" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">
                 Newsletter
               </Link>
-              <Link href="/admin" className="border border-slate-300 px-3 py-2 text-slate-900 transition hover:border-red-700 hover:text-red-700">
+              <Link href="/admin/dashboard" className="border border-slate-300 px-3 py-2 text-slate-900 transition hover:border-red-700 hover:text-red-700">
                 Espace rédaction
               </Link>
             </div>

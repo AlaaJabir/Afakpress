@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminLoginPage() {
   const session = await getAdminSessionFromCookies();
-  if (session) redirect("/admin");
+  if (session) redirect("/admin/dashboard");
 
   return (
     <main className="grid min-h-screen bg-slate-950 lg:grid-cols-[minmax(0,1fr)_520px]">
@@ -30,4 +30,3 @@ export default async function AdminLoginPage() {
     </main>
   );
 }
-

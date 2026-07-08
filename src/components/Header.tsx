@@ -14,7 +14,7 @@ export function Header() {
           <div className="flex flex-wrap items-center gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-600 md:gap-2">
             <Link href="/category/national" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">À la une</Link>
             <Link href="/#newsletter" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">Newsletter</Link>
-            <Link href="/admin" className="border border-slate-300 px-3 py-2 text-slate-900 transition hover:border-red-700 hover:text-red-700">Espace rédaction</Link>
+            <Link href="/admin/dashboard" className="border border-slate-300 px-3 py-2 text-slate-900 transition hover:border-red-700 hover:text-red-700">Espace rédaction</Link>
           </div>
         </div>
         <div className="border-t border-slate-100">
