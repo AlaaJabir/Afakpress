@@ -4,9 +4,18 @@ import { getAdminSessionFromCookies } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLoginPage() {
+const errorMessages: Record<string, string> = {
+  access_denied: "This account is not authorized for the Afakpress admin dashboard.",
+  invalid_login: "Invalid email or password.",
+  missing_config: "Supabase authentication is not configured.",
+  missing_fields: "Email and password are required.",
+};
+
+export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const session = await getAdminSessionFromCookies();
   if (session) redirect("/admin/dashboard");
+  const params = await searchParams;
+  const error = params.error ? errorMessages[params.error] ?? "Login failed." : "";
 
   return (
     <main className="grid min-h-screen bg-slate-950 lg:grid-cols-[minmax(0,1fr)_520px]">
@@ -23,7 +32,7 @@ export default async function AdminLoginPage() {
           <h1 className="mt-3 text-3xl font-black text-slate-950">Admin Login</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">Use the email and password configured in Supabase Auth. No demo passwords are stored in this app.</p>
           <div className="mt-6">
-            <AdminLoginForm />
+            <AdminLoginForm error={error} />
           </div>
         </div>
       </section>
