@@ -11,46 +11,40 @@ function Chrome({ children }: { children: React.ReactNode }) {
   const fallbackBreaking = getPublishedArticles(state).find((article) => article.breaking);
   const breaking = state.breakingNews.filter((item) => item.isActive).sort((a, b) => a.orderIndex - b.orderIndex)[0];
   const breakingArticle = breaking?.articleId ? state.articles.find((article) => article.id === breaking.articleId) : null;
-  const categories = state.categories;
-  const leadingItems = categories.slice(0, 4).map((category) => ({
-    id: `category-${category.id}`,
-    label: category.name,
-    href: `/category/${category.slug}`,
-    children: [],
-  }));
+  const today = new Intl.DateTimeFormat("fr-MA", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
   const footerMenus = state.menus.filter((item) => item.active !== false && item.showInFooter === true);
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
         <div className="border-b border-slate-100 bg-slate-950 text-white">
           <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2 text-xs font-bold sm:px-6 lg:px-10">
-            <span>Moroccan independent news platform</span>
-            <span className="hidden text-slate-300 md:inline">{state.settings.contactEmail}</span>
+            <span className="uppercase tracking-[0.18em] text-red-200">Presse marocaine indépendante</span>
+            <span suppressHydrationWarning className="hidden capitalize text-slate-300 md:inline">{today}</span>
           </div>
         </div>
         <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
-          <div className="flex min-h-20 items-center justify-between gap-6">
+          <div className="flex min-h-24 flex-col justify-center gap-4 py-4 md:flex-row md:items-center md:justify-between">
             <Link href="/" className="flex flex-col">
-              <span className="text-3xl font-black uppercase tracking-normal text-slate-950">{state.settings.logo || state.settings.websiteName}</span>
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-red-700">Moroccan newsroom</span>
+              <span className="text-4xl font-black uppercase tracking-normal text-slate-950 md:text-5xl">{state.settings.logo || state.settings.websiteName}</span>
+              <span className="mt-1 text-xs font-semibold uppercase tracking-[0.28em] text-red-700">Journal regional marocain</span>
             </Link>
-            <div className="hidden items-center gap-3 md:flex">
-              <Link href="/category/national" className="bg-red-700 px-4 py-2 text-sm font-black text-white transition hover:bg-slate-950">
-                Latest
+            <div className="flex flex-wrap items-center gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-600 md:gap-2">
+              <Link href="/category/national" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">
+                À la une
               </Link>
-              <Link href="/admin" className="border border-slate-300 px-4 py-2 text-sm font-bold text-slate-900 transition hover:border-red-700 hover:text-red-700">
-                Admin
+              <Link href="/#newsletter" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">
+                Newsletter
+              </Link>
+              <Link href="/admin" className="border border-slate-300 px-3 py-2 text-slate-900 transition hover:border-red-700 hover:text-red-700">
+                Espace rédaction
               </Link>
             </div>
           </div>
         </div>
         <div className="w-full border-t border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-[1600px] flex-wrap items-start gap-1 px-4 sm:px-6 lg:flex-nowrap lg:items-center lg:px-10">
-            <MegaMenu regions={state.regions} leadingItems={leadingItems} />
-            <Link href="/admin" className="ml-auto hidden shrink-0 text-sm font-black uppercase text-red-700 hover:text-slate-950 lg:block">
-              Admin
-            </Link>
+          <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
+            <MegaMenu regions={state.regions} />
           </div>
         </div>
       </header>

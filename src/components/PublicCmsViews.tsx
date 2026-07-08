@@ -151,7 +151,7 @@ export function CmsHomePage() {
         {show("Economy") || show("Opinion") ? <SectionBlock title="Economy and opinion" href="/category/economy" articles={[...economyArticles, ...opinionArticles].slice(0, 3)} /> : null}
       </section>
 
-      <section className="border border-slate-200 bg-slate-950 p-6 text-white lg:p-8">
+      <section id="newsletter" className="border border-slate-200 bg-slate-950 p-6 text-white lg:p-8">
         <div className="grid gap-5 lg:grid-cols-[1fr_1fr] lg:items-center">
           <div>
             <h2 className="text-2xl font-black">The Afakpress briefing</h2>

@@ -18,10 +18,21 @@ function sourceId(prefix: string, fallback: string, id?: string) {
   return `${prefix}-${id || fallback}`;
 }
 
+function regionLabel(name: string) {
+  return name
+    .replace(/^جهة\s+/u, "")
+    .replace(/تافلالت/gu, "تافيلالت")
+    .replace(/اسفي/gu, "آسفي")
+    .replace(/واد الذهب/gu, "وادي الذهب")
+    .replace(/[.\-–]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function buildRegionNodes(regions: RegionSource[]): MenuNode[] {
   return regions.map((region) => ({
     id: sourceId("region", region.slug, "id" in region ? region.id : undefined),
-    label: region.name,
+    label: regionLabel(region.name),
     href: `/region/${region.slug}`,
     children: region.provinces.map((province) => ({
       id: sourceId("province", `${region.slug}-${province.slug}`, "id" in province ? province.id : undefined),
@@ -76,15 +87,13 @@ function MobileBranch({ node, depth }: { node: MenuNode; depth: number }) {
 
 export function MegaMenu({
   regions,
-  leadingItems = [],
 }: {
   regions: RegionSource[];
-  leadingItems?: MenuNode[];
 }) {
   const regionItems = useMemo(() => buildRegionNodes(regions), [regions]);
-  const mobileItems = useMemo(() => [...leadingItems, ...regionItems], [leadingItems, regionItems]);
   const [activeRegionId, setActiveRegionId] = useState("");
   const [activeProvinceId, setActiveProvinceId] = useState("");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const activeRegion = regionItems.find((region) => region.id === activeRegionId) ?? null;
   const activeProvince = activeRegion?.children.find((province) => province.id === activeProvinceId) ?? activeRegion?.children[0] ?? null;
@@ -100,21 +109,9 @@ export function MegaMenu({
   };
 
   return (
-    <div className="relative z-[100] min-w-0 flex-1" onMouseLeave={closeMenu}>
-      <nav className="hidden min-w-0 items-center gap-1 lg:flex" aria-label="Primary navigation">
-        <div className="flex shrink-0 items-center gap-1">
-          {leadingItems.map((item) => (
-            <Link
-              key={item.id}
-              href={item.href}
-              className="flex min-h-12 items-center whitespace-nowrap border-b-2 border-transparent px-3 text-sm font-black uppercase text-slate-800 transition hover:border-red-700 hover:text-red-700 focus:border-red-700 focus:text-red-700 focus:outline-none"
-              onFocus={closeMenu}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+    <div className="relative z-[100] w-full" onMouseLeave={closeMenu}>
+      <nav className="hidden w-full lg:block" aria-label="Primary regional navigation">
+        <div className="grid w-full grid-cols-12 items-stretch divide-x divide-slate-100 border-x border-slate-100">
           {regionItems.map((region) => (
             <Link
               key={region.id}
@@ -131,14 +128,13 @@ export function MegaMenu({
                   openRegion(region);
                 }
               }}
-              className={`flex min-h-12 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm font-black uppercase transition focus:outline-none ${
+              className={`flex min-h-[52px] items-center justify-center border-b-2 px-1.5 text-center text-[11px] font-black leading-4 text-slate-800 transition focus:outline-none xl:px-2 xl:text-xs ${
                 activeRegionId === region.id
-                  ? "border-red-700 text-red-700"
-                  : "border-transparent text-slate-800 hover:border-red-700 hover:text-red-700 focus:border-red-700 focus:text-red-700"
+                  ? "border-red-700 bg-red-50 text-red-700"
+                  : "border-transparent hover:border-red-700 hover:bg-slate-50 hover:text-red-700 focus:border-red-700 focus:text-red-700"
               }`}
             >
-              <span>{region.label}</span>
-              <span aria-hidden="true" className="text-red-700">+</span>
+              <span dir="auto">{region.label}</span>
             </Link>
           ))}
         </div>
@@ -146,7 +142,7 @@ export function MegaMenu({
 
       {activeRegion ? (
         <div
-          className="absolute left-0 top-full z-[1000] hidden w-[min(860px,calc(100vw-2rem))] translate-y-0 overflow-hidden border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[300px_minmax(0,1fr)]"
+          className="absolute left-0 right-0 top-full z-[1000] hidden overflow-hidden border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[320px_minmax(0,1fr)]"
           onMouseEnter={() => {
             setActiveRegionId(activeRegion.id);
             setActiveProvinceId(activeProvince?.id ?? activeRegion.children[0]?.id ?? "");
@@ -222,12 +218,23 @@ export function MegaMenu({
         </div>
       ) : null}
 
-      <nav className="w-full lg:hidden" aria-label="Mobile primary navigation">
-        <ul className="grid gap-1 py-2">
-          {mobileItems.map((item) => (
-            <MobileBranch key={item.id} node={item} depth={0} />
-          ))}
-        </ul>
+      <nav className="w-full lg:hidden" aria-label="Mobile regional navigation">
+        <button
+          aria-expanded={mobileOpen}
+          className="flex min-h-12 w-full items-center justify-between border-y border-slate-200 px-1 text-sm font-black uppercase text-slate-900"
+          onClick={() => setMobileOpen((current) => !current)}
+          type="button"
+        >
+          <span>المناطق</span>
+          <span aria-hidden="true" className="text-xl text-red-700">{mobileOpen ? "-" : "+"}</span>
+        </button>
+        {mobileOpen ? (
+          <ul className="grid gap-1 py-2">
+            {regionItems.map((item) => (
+              <MobileBranch key={item.id} node={item} depth={0} />
+            ))}
+          </ul>
+        ) : null}
       </nav>
     </div>
   );
