@@ -25,9 +25,9 @@ function Chrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
-          <div className="flex min-h-24 flex-col justify-center gap-4 py-4 md:flex-row md:items-center md:justify-between">
-            <Link href="/" className="block h-[180px] w-[260px]" aria-label="Afakpress">
-              <Image src="/afakpress-logo.png" alt="Afakpress" width={260} height={180} priority className="h-full w-full object-contain" />
+          <div className="flex flex-col justify-center gap-3 py-3 md:flex-row md:items-center md:justify-between lg:py-4">
+            <Link href="/" className="block h-[82px] w-[152px] md:h-[92px] md:w-[170px] lg:h-[104px] lg:w-[192px]" aria-label="Afakpress">
+              <Image src="/afakpress-logo.png" alt="Afakpress" width={192} height={104} priority className="h-full w-full object-contain" />
             </Link>
             <div className="flex flex-wrap items-center gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-600 md:gap-2">
               <Link href="/category/national" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">
