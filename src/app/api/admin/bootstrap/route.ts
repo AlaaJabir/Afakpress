@@ -2,7 +2,6 @@ import { getAdminSessionFromRequest } from "@/lib/admin-auth";
 import { cmsRoleFromAdmin } from "@/lib/admin-roles";
 import { initialCmsState } from "@/lib/cms";
 import { createServiceSupabaseAdminClient } from "@/lib/supabase";
-import { slugify } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +15,6 @@ export async function POST(request: Request) {
   const profile = {
     id: session.userId,
     name: session.email,
-    slug: slugify(session.email.split("@")[0] ?? session.email),
     email: session.email,
     role: cmsRoleFromAdmin(session.role),
     avatar: null,
@@ -37,7 +35,11 @@ export async function POST(request: Request) {
 
   if (categories.length) {
     const { error } = await supabase.from("categories").upsert(categories, { onConflict: "id" });
-    if (error) return Response.json({ error: error.message }, { status: 400 });
+    if (error) {
+      const minimalCategories = categories.map(({ id, name, slug }) => ({ id, name, slug }));
+      const { error: fallbackError } = await supabase.from("categories").upsert(minimalCategories, { onConflict: "id" });
+      if (fallbackError) return Response.json({ error: fallbackError.message }, { status: 400 });
+    }
   }
 
   const regions = initialCmsState.regions.map((region) => ({

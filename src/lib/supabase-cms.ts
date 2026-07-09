@@ -229,7 +229,7 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
   if (!supabase) return null;
 
   const [categoriesResult, profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionsResult, provincesResult, communesResult] = await Promise.all([
-    supabase.from("categories").select("*").eq("is_active", true).order("order_index", { ascending: true }),
+    supabase.from("categories").select("*"),
     supabase.from("profiles").select("*"),
     supabase.from("articles").select("*").order("published_at", { ascending: false }),
     supabase.from("menus").select("*").order("order_index", { ascending: true }),
@@ -241,22 +241,23 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
     supabase.from("communes").select("*"),
   ]);
 
-  const firstError = [categoriesResult, profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult].find((result) => result.error)?.error;
+  const firstError = [profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult].find((result) => result.error)?.error;
   if (firstError) {
     throw firstError;
   }
 
-  const categories = (categoriesResult.data ?? []).map(categoryFromRow);
+  const categoryRows = (categoriesResult.data ?? []) as CategoryRow[];
+  const categories = categoriesResult.error ? initialCmsState.categories : categoryRows.filter((row) => row.is_active !== false).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)).map(categoryFromRow);
   const users = (profilesResult.data ?? []).map(userFromRow);
   const regions = regionsResult.error || provincesResult.error || communesResult.error ? initialCmsState.regions : buildRegionTree(regionsResult.data ?? [], provincesResult.data ?? [], communesResult.data ?? []);
   const articles = (articlesResult.data ?? []).map((row) => articleFromRow(row, categories, users, regions));
 
   return {
     ...initialCmsState,
-    users,
-    categories,
+    users: users.length ? users : initialCmsState.users,
+    categories: categories.length ? categories : initialCmsState.categories,
     articles: articles.length ? articles : initialCmsState.articles,
-    regions,
+    regions: regions.length ? regions : initialCmsState.regions,
     menus: menusResult.data?.length ? buildMenuTree(menusResult.data) : initialCmsState.menus,
     media: mediaResult.data?.map(mediaFromRow) ?? [],
     pages: pagesResult.data?.map(pageFromRow) ?? initialCmsState.pages,
