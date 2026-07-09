@@ -184,11 +184,35 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
   const [query, setQuery] = useState("");
   const [articleDraft, setArticleDraft] = useState<CmsArticle>({ ...emptyArticle });
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
+  const [isBootstrapping, setIsBootstrapping] = useState(false);
+  const [bootstrapAttempted, setBootstrapAttempted] = useState(false);
 
   useEffect(() => {
     setCurrentUser(currentUser);
     return () => setCurrentUser(null);
   }, [currentUser, setCurrentUser]);
+
+  useEffect(() => {
+    if (isBootstrapping || bootstrapAttempted) return;
+    if (state.users.length && state.categories.length && state.regions.length) return;
+
+    const bootstrap = async () => {
+      setIsBootstrapping(true);
+      setBootstrapAttempted(true);
+      try {
+        const response = await fetch("/api/admin/bootstrap", { method: "POST" });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ?? "CMS reference data setup failed.");
+        await refreshFromSupabase();
+      } catch (error) {
+        notify("error", error instanceof Error ? error.message : "CMS reference data setup failed.");
+      } finally {
+        setIsBootstrapping(false);
+      }
+    };
+
+    void bootstrap();
+  }, [bootstrapAttempted, isBootstrapping, notify, refreshFromSupabase, state.categories.length, state.regions.length, state.users.length]);
 
   const hasSectionAccess = (area: string) => {
     if (area === "admins") return canManageAdmins(adminSession.role);
@@ -327,7 +351,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
               <h1 className="mt-1 text-3xl font-black text-slate-950">{sections.find((section) => section.id === active)?.label}</h1>
             </div>
             <div className="flex flex-wrap gap-2">
-              {isLoading ? <span className="inline-flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-black text-slate-600">Loading Supabase</span> : null}
+              {isLoading || isBootstrapping ? <span className="inline-flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-black text-slate-600">Loading Supabase</span> : null}
               {error ? <span className="inline-flex min-h-10 items-center rounded-md bg-amber-50 px-3 text-sm font-black text-amber-800">Supabase error</span> : null}
               <Link className={buttonClass} href="/">View site</Link>
               <button className={buttonClass} onClick={() => void refreshFromSupabase()} type="button">Refresh data</button>
