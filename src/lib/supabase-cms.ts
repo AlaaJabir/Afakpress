@@ -44,12 +44,29 @@ function uuidOrNull(value?: string | null) {
   return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) ? value : null;
 }
 
+function publishTimestamp(value?: string | null) {
+  if (!value) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T${new Date().toISOString().slice(11)}` : value;
+}
+
 function findCategorySlug(categories: CmsCategory[], id?: string | null) {
   return categories.find((category) => category.id === id)?.slug ?? "";
 }
 
 function findAuthorName(users: CmsUser[], id?: string | null) {
   return users.find((user) => user.id === id)?.name ?? "";
+}
+
+function findRegionSlug(regions: CmsRegion[], id?: string | null) {
+  return regions.find((region) => region.id === id)?.slug ?? "";
+}
+
+function findProvinceSlug(regions: CmsRegion[], id?: string | null) {
+  return regions.flatMap((region) => region.provinces).find((province) => province.id === id)?.slug ?? "";
+}
+
+function findCommuneSlug(regions: CmsRegion[], id?: string | null) {
+  return regions.flatMap((region) => region.provinces.flatMap((province) => province.communes)).find((commune) => commune.id === id)?.slug ?? "";
 }
 
 function categoryFromRow(row: CategoryRow): CmsCategory {
@@ -79,10 +96,14 @@ function userFromRow(row: ProfileRow): CmsUser {
   };
 }
 
-function articleFromRow(row: ArticleRow, categories: CmsCategory[], users: CmsUser[]): CmsArticle {
+function articleFromRow(row: ArticleRow, categories: CmsCategory[], users: CmsUser[], regions: CmsRegion[]): CmsArticle {
   const category = findCategorySlug(categories, row.category_id);
   const content = row.content ?? "";
-  const publishedAt = row.published_at?.slice(0, 10) ?? "";
+  const publishedAt = row.published_at ?? row.created_at ?? "";
+  const publishDate = publishedAt.slice(0, 10);
+  const region = findRegionSlug(regions, row.region_id);
+  const province = findProvinceSlug(regions, row.province_id);
+  const commune = findCommuneSlug(regions, row.commune_id);
 
   return {
     id: row.id,
@@ -99,18 +120,18 @@ function articleFromRow(row: ArticleRow, categories: CmsCategory[], users: CmsUs
     author: findAuthorName(users, row.author_id),
     categoryId: row.category_id ?? "",
     category,
-    regionId: "",
-    region: "",
-    provinceId: "",
-    province: "",
-    communeId: "",
-    commune: "",
+    regionId: row.region_id ?? "",
+    region,
+    provinceId: row.province_id ?? "",
+    province,
+    communeId: row.commune_id ?? "",
+    commune,
     tags: row.seo_keywords ?? "",
     seoTitle: row.seo_title ?? row.title,
     seoDescription: row.seo_description ?? row.excerpt ?? "",
     canonicalUrl: `/article/${row.slug}`,
     status: articleStatus(row.status),
-    publishDate: publishedAt,
+    publishDate,
     publishedAt,
     readingTime: "3 min",
     featured: Boolean(row.is_featured),
@@ -230,8 +251,8 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
 
   const categories = (categoriesResult.data ?? []).map(categoryFromRow);
   const users = (profilesResult.data ?? []).map(userFromRow);
-  const articles = (articlesResult.data ?? []).map((row) => articleFromRow(row, categories, users));
   const regions = regionsResult.error || provincesResult.error || communesResult.error ? initialCmsState.regions : buildRegionTree(regionsResult.data ?? [], provincesResult.data ?? [], communesResult.data ?? []);
+  const articles = (articlesResult.data ?? []).map((row) => articleFromRow(row, categories, users, regions));
 
   return {
     ...initialCmsState,
@@ -255,6 +276,9 @@ export function articlePayload(article: CmsArticle): Tables["articles"]["Insert"
     featured_image: article.featuredImage || article.image || null,
     category_id: uuidOrNull(article.categoryId),
     author_id: uuidOrNull(article.authorId),
+    region_id: article.regionId || null,
+    province_id: article.provinceId || null,
+    commune_id: article.communeId || null,
     status: dbStatus(article.status),
     is_featured: article.featured,
     allow_comments: true,
@@ -262,7 +286,7 @@ export function articlePayload(article: CmsArticle): Tables["articles"]["Insert"
     seo_title: article.seoTitle,
     seo_description: article.seoDescription,
     seo_keywords: article.tags,
-    published_at: article.publishDate || null,
+    published_at: publishTimestamp(article.publishDate),
   };
 }
 

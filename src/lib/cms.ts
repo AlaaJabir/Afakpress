@@ -380,7 +380,7 @@ export function canAccess(role: Role, area: string) {
 export function getPublishedArticles(state: CmsState) {
   return state.articles
     .filter((article) => article.status === "Published")
-    .sort((a, b) => b.publishDate.localeCompare(a.publishDate));
+    .sort((a, b) => (b.publishedAt || b.publishDate).localeCompare(a.publishedAt || a.publishDate));
 }
 
 export function makeId(prefix: string) {

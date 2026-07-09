@@ -45,6 +45,9 @@ export type Database = {
           featured_image: string | null;
           category_id: string | null;
           author_id: string | null;
+          region_id: string | null;
+          province_id: string | null;
+          commune_id: string | null;
           status: string | null;
           is_featured: boolean | null;
           allow_comments: boolean | null;
@@ -64,6 +67,9 @@ export type Database = {
           featured_image?: string | null;
           category_id?: string | null;
           author_id?: string | null;
+          region_id?: string | null;
+          province_id?: string | null;
+          commune_id?: string | null;
           status?: string | null;
           is_featured?: boolean | null;
           allow_comments?: boolean | null;
@@ -82,6 +88,9 @@ export type Database = {
           featured_image?: string | null;
           category_id?: string | null;
           author_id?: string | null;
+          region_id?: string | null;
+          province_id?: string | null;
+          commune_id?: string | null;
           status?: string | null;
           is_featured?: boolean | null;
           allow_comments?: boolean | null;
