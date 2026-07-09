@@ -40,6 +40,10 @@ function dbStatus(status: ArticleStatus) {
   return status.toLowerCase().replace(/\s+/g, "_");
 }
 
+function uuidOrNull(value?: string | null) {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) ? value : null;
+}
+
 function findCategorySlug(categories: CmsCategory[], id?: string | null) {
   return categories.find((category) => category.id === id)?.slug ?? "";
 }
@@ -249,8 +253,8 @@ export function articlePayload(article: CmsArticle): Tables["articles"]["Insert"
     excerpt: article.excerpt,
     content: article.content,
     featured_image: article.featuredImage || article.image || null,
-    category_id: article.categoryId || null,
-    author_id: article.authorId || null,
+    category_id: uuidOrNull(article.categoryId),
+    author_id: uuidOrNull(article.authorId),
     status: dbStatus(article.status),
     is_featured: article.featured,
     allow_comments: true,
@@ -267,7 +271,7 @@ export function categoryPayload(category: CmsCategory): Tables["categories"]["In
     name: category.name,
     slug: category.slug,
     description: category.description,
-    parent_id: category.parentId || null,
+    parent_id: uuidOrNull(category.parentId),
     order_index: 0,
     is_active: true,
   };
@@ -277,7 +281,7 @@ export function menuPayload(menu: CmsMenuItem, parentId = "", level = 0, orderIn
   return {
     title: menu.label,
     slug: menu.href.replace(/^\//, "") || menu.label.toLowerCase(),
-    parent_id: parentId || null,
+    parent_id: uuidOrNull(parentId),
     level,
     order_index: menu.order ?? orderIndex,
     is_active: menu.active !== false,
@@ -313,7 +317,7 @@ export function pagePayload(page: CmsPage): Tables["pages"]["Insert"] {
 export function breakingPayload(item: CmsBreakingNews): Tables["breaking_news"]["Insert"] {
   return {
     title: item.title,
-    article_id: item.articleId || null,
+    article_id: uuidOrNull(item.articleId),
     url: item.url || null,
     is_active: item.isActive,
     order_index: item.orderIndex,
