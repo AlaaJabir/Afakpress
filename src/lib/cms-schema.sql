@@ -7,7 +7,7 @@ create table roles (
 );
 
 create table users (
-  id text primary key,
+  id uuid primary key default gen_random_uuid(),
   role_id text not null references roles(id),
   name text not null,
   email text not null unique,
@@ -41,8 +41,8 @@ set user_id = excluded.user_id,
     status = 'active';
 
 create table categories (
-  id text primary key,
-  parent_id text references categories(id),
+  id uuid primary key default gen_random_uuid(),
+  parent_id uuid references categories(id),
   name text not null,
   slug text not null unique,
   color text,
@@ -53,28 +53,28 @@ create table categories (
 );
 
 create table regions (
-  id text primary key,
+  id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique
 );
 
 create table provinces (
-  id text primary key,
-  region_id text not null references regions(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  region_id uuid not null references regions(id) on delete cascade,
   name text not null,
   slug text not null
 );
 
 create table communes (
-  id text primary key,
-  province_id text not null references provinces(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  province_id uuid not null references provinces(id) on delete cascade,
   name text not null,
   slug text not null
 );
 
 create table media (
-  id text primary key,
-  owner_id text references users(id),
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references users(id),
   name text not null,
   url text not null,
   type text not null,
@@ -87,18 +87,18 @@ create table media (
 );
 
 create table articles (
-  id text primary key,
-  owner_id text references users(id),
-  author_id text references users(id),
-  category_id text references categories(id),
-  region_id text references regions(id),
-  province_id text references provinces(id),
-  commune_id text references communes(id),
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references users(id),
+  author_id uuid references users(id),
+  category_id uuid references categories(id),
+  region_id uuid references regions(id),
+  province_id uuid references provinces(id),
+  commune_id uuid references communes(id),
   title text not null,
   slug text not null unique,
   excerpt text,
   content text,
-  featured_image_id text references media(id),
+  featured_image_id uuid references media(id),
   gallery jsonb default '[]',
   video_url text,
   tags jsonb default '[]',

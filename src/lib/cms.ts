@@ -1,6 +1,7 @@
 import { articles, categories } from "@/data/articles";
 import { moroccoRegions } from "@/data/morocco-regions";
 import { slugify } from "@/lib/slug";
+import { makeUuid, stableUuid } from "@/lib/uuid";
 
 export type Role = "Super Admin" | "Editor" | "Journalist" | "Moderator";
 export type ArticleStatus = "Draft" | "Pending Review" | "Scheduled" | "Published";
@@ -197,10 +198,10 @@ export const rolePermissions: Record<Role, string[]> = {
 };
 
 const users: CmsUser[] = [
-  { id: "user-super", name: "Alaa Jabir", email: "admin@afakpress.ma", role: "Super Admin", position: "Publisher", bio: "Full platform administrator.", avatar: "", socialLinks: "LinkedIn, X" },
-  { id: "user-editor", name: "Afakpress Editor", email: "editor@afakpress.ma", role: "Editor", position: "Managing Editor", bio: "Coordinates the newsroom desk.", avatar: "", socialLinks: "" },
-  { id: "user-journalist", name: "Regional Bureau", email: "journalist@afakpress.ma", role: "Journalist", position: "Journalist", bio: "Reports from Moroccan regions.", avatar: "", socialLinks: "" },
-  { id: "user-moderator", name: "Review Desk", email: "moderator@afakpress.ma", role: "Moderator", position: "Moderator", bio: "Reviews comments and submitted articles.", avatar: "", socialLinks: "" },
+  { id: stableUuid("user-super"), name: "Alaa Jabir", email: "admin@afakpress.ma", role: "Super Admin", position: "Publisher", bio: "Full platform administrator.", avatar: "", socialLinks: "LinkedIn, X" },
+  { id: stableUuid("user-editor"), name: "Afakpress Editor", email: "editor@afakpress.ma", role: "Editor", position: "Managing Editor", bio: "Coordinates the newsroom desk.", avatar: "", socialLinks: "" },
+  { id: stableUuid("user-journalist"), name: "Regional Bureau", email: "journalist@afakpress.ma", role: "Journalist", position: "Journalist", bio: "Reports from Moroccan regions.", avatar: "", socialLinks: "" },
+  { id: stableUuid("user-moderator"), name: "Review Desk", email: "moderator@afakpress.ma", role: "Moderator", position: "Moderator", bio: "Reviews comments and submitted articles.", avatar: "", socialLinks: "" },
 ];
 
 function section(label: string, order: number): HomepageSection {
@@ -208,7 +209,7 @@ function section(label: string, order: number): HomepageSection {
 }
 
 const cmsCategories = categories.map((category, index): CmsCategory => ({
-  id: `cat-${category.slug}`,
+  id: stableUuid(`category-${category.slug}`),
   name: category.name,
   slug: category.slug,
   parentId: "",
@@ -220,14 +221,14 @@ const cmsCategories = categories.map((category, index): CmsCategory => ({
 }));
 
 const cmsRegions = moroccoRegions.map((region): CmsRegion => ({
-  id: `region-${region.slug}`,
+  id: stableUuid(`region-${region.slug}`),
   name: region.name,
   slug: region.slug,
   provinces: region.provinces.map((province) => ({
-    id: `province-${province.slug}`,
+    id: stableUuid(`province-${region.slug}-${province.slug}`),
     name: province.name,
     slug: province.slug,
-    communes: province.communes.map((commune) => ({ id: `commune-${commune.slug}`, name: commune.name, slug: commune.slug })),
+    communes: province.communes.map((commune) => ({ id: stableUuid(`commune-${region.slug}-${province.slug}-${commune.slug}`), name: commune.name, slug: commune.slug })),
   })),
 }));
 
@@ -239,7 +240,7 @@ const cmsArticles = articles.map((article, index): CmsArticle => {
   const content = article.body.join("\n\n");
 
   return {
-    id: `article-${article.slug}`,
+    id: stableUuid(`article-${article.slug}`),
     title: article.title,
     slug: article.slug,
     excerpt: article.excerpt,
@@ -384,5 +385,6 @@ export function getPublishedArticles(state: CmsState) {
 }
 
 export function makeId(prefix: string) {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  void prefix;
+  return makeUuid();
 }

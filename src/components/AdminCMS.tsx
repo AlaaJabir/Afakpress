@@ -20,6 +20,7 @@ import {
 } from "@/lib/cms";
 import { useCms } from "@/lib/cms-store";
 import { slugify } from "@/lib/slug";
+import { isValidUuid } from "@/lib/uuid";
 import { canManageAdmins, cmsRoleFromAdmin, type AdminRole } from "@/lib/admin-roles";
 import type { AdminSession, AdminUserRecord } from "@/lib/admin-auth";
 import {
@@ -116,6 +117,41 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputClass = "min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-red-700 focus:ring-4 focus:ring-red-100";
 const buttonClass = "inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-black text-slate-900 transition hover:border-red-700 hover:text-red-700";
 const primaryButtonClass = "inline-flex min-h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-400";
+const statusOptions: ArticleStatus[] = ["Draft", "Pending Review", "Scheduled", "Published"];
+
+function validateOptionalUuid(label: string, value: string) {
+  if (!value || isValidUuid(value)) return "";
+  return `${label} must be selected from database records, not a slug or label. Refresh CMS data and select it again.`;
+}
+
+function validateArticleDraft(draft: CmsArticle, state: ReturnType<typeof useCms>["state"]) {
+  const uuidError =
+    validateOptionalUuid("Author", draft.authorId) ||
+    validateOptionalUuid("Category", draft.categoryId) ||
+    validateOptionalUuid("Region", draft.regionId) ||
+    validateOptionalUuid("Province", draft.provinceId) ||
+    validateOptionalUuid("Commune", draft.communeId);
+
+  if (uuidError) return uuidError;
+  if (!draft.title.trim()) return "Article title is required.";
+  if (!draft.slug.trim()) return "Article slug is required.";
+  if (!statusOptions.includes(draft.status)) return "Article status is not valid.";
+  if (draft.publishDate && Number.isNaN(Date.parse(draft.publishDate))) return "Publish date must be a valid date.";
+
+  const region = draft.regionId ? state.regions.find((item) => item.id === draft.regionId) : null;
+  const province = draft.provinceId ? region?.provinces.find((item) => item.id === draft.provinceId) : null;
+  const commune = draft.communeId ? province?.communes.find((item) => item.id === draft.communeId) : null;
+  const category = draft.categoryId ? state.categories.find((item) => item.id === draft.categoryId) : null;
+  const author = draft.authorId ? state.users.find((item) => item.id === draft.authorId) : null;
+
+  if (draft.categoryId && !category) return "Selected category was not found in CMS data.";
+  if (draft.authorId && !author) return "Selected author was not found in CMS data.";
+  if (draft.regionId && !region) return "Selected region was not found in CMS data.";
+  if (draft.provinceId && !province) return "Selected province must belong to the selected region.";
+  if (draft.communeId && !commune) return "Selected commune must belong to the selected province.";
+
+  return "";
+}
 
 async function adminRequest(resource: AdminResource, method: "POST" | "PATCH" | "DELETE", headers: HeadersInit, body?: unknown, id?: string) {
   const url = id ? `/api/admin/${resource}?id=${encodeURIComponent(id)}` : `/api/admin/${resource}`;
@@ -189,10 +225,16 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
   };
 
   const saveArticle = async () => {
-    const category = state.categories.find((item) => item.id === articleDraft.categoryId || item.slug === articleDraft.category);
-    const region = state.regions.find((item) => item.id === articleDraft.regionId || item.slug === articleDraft.region);
-    const province = region?.provinces.find((item) => item.id === articleDraft.provinceId || item.slug === articleDraft.province);
-    const commune = province?.communes.find((item) => item.id === articleDraft.communeId || item.slug === articleDraft.commune);
+    const validationError = validateArticleDraft(articleDraft, state);
+    if (validationError) {
+      notify("error", validationError);
+      return;
+    }
+
+    const category = state.categories.find((item) => item.id === articleDraft.categoryId);
+    const region = state.regions.find((item) => item.id === articleDraft.regionId);
+    const province = region?.provinces.find((item) => item.id === articleDraft.provinceId);
+    const commune = province?.communes.find((item) => item.id === articleDraft.communeId);
     const author = state.users.find((item) => item.id === articleDraft.authorId);
     const slug = articleDraft.slug || slugify(articleDraft.title);
     const nextArticle: CmsArticle = {
@@ -203,15 +245,15 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
       body: articleDraft.content.split(/\n{2,}/).filter(Boolean),
       featuredImage: articleDraft.featuredImage || articleDraft.image,
       image: articleDraft.featuredImage || articleDraft.image,
-      categoryId: category?.id ?? articleDraft.categoryId,
+      categoryId: category?.id ?? "",
       category: category?.slug ?? articleDraft.category,
-      regionId: region?.id ?? articleDraft.regionId,
+      regionId: region?.id ?? "",
       region: region?.slug ?? articleDraft.region,
-      provinceId: province?.id ?? articleDraft.provinceId,
+      provinceId: province?.id ?? "",
       province: province?.slug ?? articleDraft.province,
-      communeId: commune?.id ?? articleDraft.communeId,
+      communeId: commune?.id ?? "",
       commune: commune?.slug ?? articleDraft.commune,
-      authorId: author?.id ?? articleDraft.authorId,
+      authorId: author?.id ?? "",
       author: author?.name ?? articleDraft.author,
       ownerId: articleDraft.ownerId || currentUser.id,
       publishedAt: articleDraft.publishDate,
@@ -383,7 +425,6 @@ function ArticlesPanel({
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const statusOptions: ArticleStatus[] = ["Draft", "Pending Review", "Scheduled", "Published"];
   const provinces = state.regions.find((region) => region.id === draft.regionId)?.provinces ?? [];
   const communes = provinces.find((province) => province.id === draft.provinceId)?.communes ?? [];
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;

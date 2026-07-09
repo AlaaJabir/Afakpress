@@ -6,9 +6,9 @@ export type Database = {
   public: {
     Tables: {
       profiles: {
-        Row: Row<{ id: string; name?: string | null; email?: string | null; role?: string | null; avatar?: string | null }>;
-        Insert: { id?: string; name?: string | null; email?: string | null; role?: string | null; avatar?: string | null };
-        Update: { id?: string; name?: string | null; email?: string | null; role?: string | null; avatar?: string | null };
+        Row: Row<{ id: string; name?: string | null; slug?: string | null; email?: string | null; role?: string | null; avatar?: string | null }>;
+        Insert: { id?: string; name?: string | null; slug?: string | null; email?: string | null; role?: string | null; avatar?: string | null };
+        Update: { id?: string; name?: string | null; slug?: string | null; email?: string | null; role?: string | null; avatar?: string | null };
       };
       admin_users: {
         Row: Row<{ id: string; user_id: string | null; email: string; role: "super_admin" | "admin" | "editor" | "journalist"; status: string; created_at: string | null }>;
