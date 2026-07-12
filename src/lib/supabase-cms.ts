@@ -3,9 +3,11 @@ import type {
   CmsArticle,
   CmsBreakingNews,
   CmsCategory,
+  CmsCommune,
   CmsMedia,
   CmsMenuItem,
   CmsPage,
+  CmsProvince,
   CmsRegion,
   CmsState,
   CmsUser,
@@ -27,7 +29,7 @@ type RegionRow = Tables["regions"]["Row"];
 type ProvinceRow = Tables["provinces"]["Row"];
 type CommuneRow = Tables["communes"]["Row"];
 
-export type AdminResource = "articles" | "categories" | "menus" | "media" | "breaking_news" | "pages" | "settings";
+export type AdminResource = "articles" | "categories" | "menus" | "media" | "breaking_news" | "pages" | "settings" | "profiles" | "regions" | "provinces" | "communes" | "comments";
 
 function articleStatus(status: string | null | undefined): ArticleStatus {
   const normalized = (status ?? "draft").toLowerCase();
@@ -296,6 +298,39 @@ export function categoryPayload(category: CmsCategory): Tables["categories"]["In
     parent_id: nullableUuid(category.parentId),
     order_index: 0,
     is_active: true,
+  };
+}
+
+export function profilePayload(user: CmsUser): Tables["profiles"]["Insert"] {
+  return {
+    name: user.name,
+    slug: user.email.split("@")[0] || user.name.toLowerCase().replace(/\s+/g, "-"),
+    email: user.email,
+    role: user.role,
+    avatar: user.avatar || null,
+  };
+}
+
+export function regionPayload(region: CmsRegion): Tables["regions"]["Insert"] {
+  return {
+    name: region.name,
+    slug: region.slug,
+  };
+}
+
+export function provincePayload(province: CmsProvince, regionId: string): Tables["provinces"]["Insert"] {
+  return {
+    region_id: regionId,
+    name: province.name,
+    slug: province.slug,
+  };
+}
+
+export function communePayload(commune: CmsCommune, provinceId: string): Tables["communes"]["Insert"] {
+  return {
+    province_id: provinceId,
+    name: commune.name,
+    slug: commune.slug,
   };
 }
 

@@ -1,25 +1,19 @@
--- Afakpress CMS normalized database schema draft.
--- Intended for PostgreSQL/Supabase/Neon when persistent multi-user storage is connected.
+-- Afakpress production CMS schema for Supabase/PostgreSQL.
+-- This file matches the application code in src/lib/supabase-cms.ts.
 
-create table roles (
-  id text primary key,
-  name text not null unique
-);
+create extension if not exists pgcrypto;
 
-create table users (
+create table if not exists profiles (
   id uuid primary key default gen_random_uuid(),
-  role_id text not null references roles(id),
-  name text not null,
-  email text not null unique,
-  password_hash text not null,
-  bio text,
+  name text,
+  slug text,
+  email text unique,
+  role text,
   avatar text,
-  social_links jsonb default '[]',
-  position text,
   created_at timestamptz default now()
 );
 
-create table admin_users (
+create table if not exists admin_users (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
   email text unique not null,
@@ -40,137 +34,180 @@ set user_id = excluded.user_id,
     role = 'super_admin',
     status = 'active';
 
-create table categories (
+create table if not exists categories (
   id uuid primary key default gen_random_uuid(),
-  parent_id uuid references categories(id),
   name text not null,
   slug text not null unique,
-  color text,
-  icon text,
   description text,
-  seo_title text,
-  seo_description text
+  parent_id uuid references categories(id),
+  order_index integer default 0,
+  is_active boolean default true,
+  created_at timestamptz default now()
 );
 
-create table regions (
+create table if not exists regions (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  slug text not null unique
+  slug text not null unique,
+  created_at timestamptz default now()
 );
 
-create table provinces (
+create table if not exists provinces (
   id uuid primary key default gen_random_uuid(),
   region_id uuid not null references regions(id) on delete cascade,
   name text not null,
-  slug text not null
+  slug text not null,
+  created_at timestamptz default now()
 );
 
-create table communes (
+create table if not exists communes (
   id uuid primary key default gen_random_uuid(),
   province_id uuid not null references provinces(id) on delete cascade,
   name text not null,
-  slug text not null
+  slug text not null,
+  created_at timestamptz default now()
 );
 
-create table media (
+create table if not exists media (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid references users(id),
-  name text not null,
+  name text,
   url text not null,
-  type text not null,
+  type text,
   folder text,
   alt text,
   caption text,
   copyright text,
-  optimized boolean default false,
+  optimized boolean default true,
   created_at timestamptz default now()
 );
 
-create table articles (
+create table if not exists articles (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid references users(id),
-  author_id uuid references users(id),
-  category_id uuid references categories(id),
-  region_id uuid references regions(id),
-  province_id uuid references provinces(id),
-  commune_id uuid references communes(id),
   title text not null,
   slug text not null unique,
   excerpt text,
   content text,
-  featured_image_id uuid references media(id),
-  gallery jsonb default '[]',
-  video_url text,
-  tags jsonb default '[]',
+  featured_image text,
+  category_id uuid references categories(id),
+  author_id uuid references profiles(id),
+  region_id uuid references regions(id),
+  province_id uuid references provinces(id),
+  commune_id uuid references communes(id),
+  status text default 'draft' check (status in ('draft', 'pending_review', 'scheduled', 'published')),
+  is_featured boolean default false,
+  allow_comments boolean default true,
+  views integer default 0,
   seo_title text,
   seo_description text,
-  canonical_url text,
-  status text not null default 'Draft',
-  publish_date timestamptz,
-  featured boolean default false,
-  breaking boolean default false,
-  homepage_position integer,
+  seo_keywords text,
+  published_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
-create table related_articles (
-  article_id text references articles(id) on delete cascade,
-  related_article_id text references articles(id) on delete cascade,
-  primary key (article_id, related_article_id)
+create table if not exists menus (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  slug text not null,
+  parent_id uuid references menus(id) on delete cascade,
+  level integer default 0,
+  order_index integer default 0,
+  is_active boolean default true,
+  show_header boolean default true,
+  show_footer boolean default false,
+  created_at timestamptz default now()
 );
 
-create table menus (
-  id text primary key,
-  name text not null,
-  location text not null
-);
-
-create table menu_items (
-  id text primary key,
-  menu_id text not null references menus(id) on delete cascade,
-  parent_id text references menu_items(id) on delete cascade,
-  label text not null,
-  href text not null,
-  type text not null,
-  sort_order integer not null default 0
-);
-
-create table pages (
-  id text primary key,
+create table if not exists pages (
+  id uuid primary key default gen_random_uuid(),
   title text not null,
   slug text not null unique,
   content text,
   seo_title text,
   seo_description text,
-  status text not null default 'Draft'
+  status text default 'draft',
+  created_at timestamptz default now()
 );
 
-create table comments (
-  id text primary key,
-  article_id text references articles(id) on delete cascade,
-  author text not null,
+create table if not exists breaking_news (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  article_id uuid references articles(id) on delete set null,
+  url text,
+  is_active boolean default true,
+  order_index integer default 0,
+  created_at timestamptz default now()
+);
+
+create table if not exists comments (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid references articles(id) on delete cascade,
+  author text,
   email text,
   content text not null,
-  status text not null default 'Pending',
+  status text default 'pending',
   created_at timestamptz default now()
 );
 
-create table newsletter_subscribers (
-  id text primary key,
-  email text not null unique,
-  name text,
+create table if not exists settings (
+  id uuid primary key default gen_random_uuid(),
+  key text unique,
+  value jsonb,
   created_at timestamptz default now()
 );
 
-create table homepage_sections (
-  id text primary key,
-  label text not null,
-  enabled boolean default true,
-  sort_order integer not null default 0
-);
+create index if not exists articles_category_id_idx on articles(category_id);
+create index if not exists articles_author_id_idx on articles(author_id);
+create index if not exists articles_region_id_idx on articles(region_id);
+create index if not exists articles_province_id_idx on articles(province_id);
+create index if not exists articles_commune_id_idx on articles(commune_id);
+create index if not exists articles_status_idx on articles(status);
+create index if not exists articles_published_at_idx on articles(published_at desc);
+create index if not exists provinces_region_id_idx on provinces(region_id);
+create index if not exists communes_province_id_idx on communes(province_id);
+create index if not exists menus_parent_id_idx on menus(parent_id);
+create index if not exists breaking_news_article_id_idx on breaking_news(article_id);
 
-create table site_settings (
-  id text primary key default 'global',
-  data jsonb not null default '{}'
-);
+alter table profiles enable row level security;
+alter table admin_users enable row level security;
+alter table categories enable row level security;
+alter table regions enable row level security;
+alter table provinces enable row level security;
+alter table communes enable row level security;
+alter table media enable row level security;
+alter table articles enable row level security;
+alter table menus enable row level security;
+alter table pages enable row level security;
+alter table breaking_news enable row level security;
+alter table comments enable row level security;
+alter table settings enable row level security;
+
+drop policy if exists "Public read profiles" on profiles;
+create policy "Public read profiles" on profiles for select using (true);
+
+drop policy if exists "Public read categories" on categories;
+create policy "Public read categories" on categories for select using (true);
+
+drop policy if exists "Public read regions" on regions;
+create policy "Public read regions" on regions for select using (true);
+
+drop policy if exists "Public read provinces" on provinces;
+create policy "Public read provinces" on provinces for select using (true);
+
+drop policy if exists "Public read communes" on communes;
+create policy "Public read communes" on communes for select using (true);
+
+drop policy if exists "Public read media" on media;
+create policy "Public read media" on media for select using (true);
+
+drop policy if exists "Public read articles" on articles;
+create policy "Public read articles" on articles for select using (true);
+
+drop policy if exists "Public read menus" on menus;
+create policy "Public read menus" on menus for select using (is_active is not false);
+
+drop policy if exists "Public read pages" on pages;
+create policy "Public read pages" on pages for select using (status = 'published');
+
+drop policy if exists "Public read breaking news" on breaking_news;
+create policy "Public read breaking news" on breaking_news for select using (is_active is not false);

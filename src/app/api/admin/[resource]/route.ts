@@ -1,11 +1,27 @@
 import { getAdminSessionFromRequest } from "@/lib/admin-auth";
+import { cmsRoleFromAdmin } from "@/lib/admin-roles";
+import { canAccess } from "@/lib/cms";
 import { createServiceSupabaseAdminClient } from "@/lib/supabase";
 import type { AdminResource } from "@/lib/supabase-cms";
 import { isValidUuid } from "@/lib/uuid";
 
 export const dynamic = "force-dynamic";
 
-const resources: AdminResource[] = ["articles", "categories", "menus", "media", "breaking_news", "pages", "settings"];
+const resources: AdminResource[] = ["articles", "categories", "menus", "media", "breaking_news", "pages", "settings", "profiles", "regions", "provinces", "communes", "comments"];
+const resourcePermission: Record<AdminResource, string> = {
+  articles: "articles",
+  categories: "categories",
+  menus: "menus",
+  media: "media",
+  breaking_news: "breaking",
+  pages: "pages",
+  settings: "settings",
+  profiles: "authors",
+  regions: "regions",
+  provinces: "regions",
+  communes: "regions",
+  comments: "comments",
+};
 
 function unauthorized() {
   return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,7 +29,16 @@ function unauthorized() {
 
 async function isAuthorized(request: Request) {
   const session = await getAdminSessionFromRequest(request);
-  return Boolean(session);
+  return session;
+}
+
+async function authorizeResource(request: Request, table: AdminResource) {
+  const session = await isAuthorized(request);
+  if (!session) return { response: unauthorized() };
+  if (!canAccess(cmsRoleFromAdmin(session.role), resourcePermission[table])) {
+    return { response: Response.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { session };
 }
 
 function tableName(resource: string): AdminResource | null {
@@ -57,13 +82,14 @@ function normalizeArticlePayload(payload: Record<string, unknown>) {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ resource: string }> }) {
-  if (!(await isAuthorized(request))) return unauthorized();
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
   const { resource } = await context.params;
   const table = tableName(resource);
   if (!table) return Response.json({ error: "Unknown admin resource." }, { status: 404 });
+  const authorization = await authorizeResource(request, table);
+  if (authorization.response) return authorization.response;
 
   const payload = await request.json();
   if (table === "articles") {
@@ -80,13 +106,14 @@ export async function POST(request: Request, context: { params: Promise<{ resour
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ resource: string }> }) {
-  if (!(await isAuthorized(request))) return unauthorized();
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
   const { resource } = await context.params;
   const table = tableName(resource);
   if (!table) return Response.json({ error: "Unknown admin resource." }, { status: 404 });
+  const authorization = await authorizeResource(request, table);
+  if (authorization.response) return authorization.response;
 
   const { id, ...payload } = await request.json();
   if (!id) return Response.json({ error: "Missing id." }, { status: 400 });
@@ -106,13 +133,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ resource: string }> }) {
-  if (!(await isAuthorized(request))) return unauthorized();
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
   const { resource } = await context.params;
   const table = tableName(resource);
   if (!table) return Response.json({ error: "Unknown admin resource." }, { status: 404 });
+  const authorization = await authorizeResource(request, table);
+  if (authorization.response) return authorization.response;
 
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return Response.json({ error: "Missing id." }, { status: 400 });

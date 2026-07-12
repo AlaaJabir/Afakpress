@@ -30,6 +30,10 @@ import {
   mediaPayload,
   menuPayload,
   pagePayload,
+  profilePayload,
+  communePayload,
+  provincePayload,
+  regionPayload,
   type AdminResource,
 } from "@/lib/supabase-cms";
 
@@ -749,7 +753,7 @@ function BreakingNewsPanel() {
 }
 
 function RegionsPanel() {
-  const { state, setState, notify } = useCms();
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [activeRegionId, setActiveRegionId] = useState(state.regions[0]?.id ?? "");
   const [activeProvinceId, setActiveProvinceId] = useState(state.regions[0]?.provinces[0]?.id ?? "");
   const activeRegion = state.regions.find((region) => region.id === activeRegionId) ?? state.regions[0];
@@ -765,23 +769,101 @@ function RegionsPanel() {
   const updateRegion = (region: CmsRegion) => setState((current) => ({ ...current, regions: current.regions.map((item) => item.id === region.id ? region : item) }));
   const updateProvince = (region: CmsRegion, province: CmsProvince) => updateRegion({ ...region, provinces: region.provinces.map((item) => item.id === province.id ? province : item) });
   const updateCommune = (region: CmsRegion, province: CmsProvince, commune: CmsCommune) => updateProvince(region, { ...province, communes: province.communes.map((item) => item.id === commune.id ? commune : item) });
-  const addRegion = () => {
+  const saveRegion = async (region: CmsRegion) => {
+    try {
+      await adminRequest("regions", "PATCH", adminHeaders(), { id: region.id, ...regionPayload(region) });
+      await refreshFromSupabase();
+      notify("success", "Region saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Region save failed.");
+    }
+  };
+  const deleteRegion = async (region: CmsRegion) => {
+    try {
+      await adminRequest("regions", "DELETE", adminHeaders(), undefined, region.id);
+      setState((current) => ({ ...current, regions: current.regions.filter((item) => item.id !== region.id) }));
+      setActiveRegionId(state.regions.find((item) => item.id !== region.id)?.id ?? "");
+      setActiveProvinceId("");
+      await refreshFromSupabase();
+      notify("warning", "Region deleted from Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Region delete failed.");
+    }
+  };
+  const saveProvince = async (region: CmsRegion, province: CmsProvince) => {
+    try {
+      await adminRequest("provinces", "PATCH", adminHeaders(), { id: province.id, ...provincePayload(province, region.id) });
+      await refreshFromSupabase();
+      notify("success", "Province saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Province save failed.");
+    }
+  };
+  const deleteProvince = async (region: CmsRegion, province: CmsProvince) => {
+    try {
+      await adminRequest("provinces", "DELETE", adminHeaders(), undefined, province.id);
+      updateRegion({ ...region, provinces: region.provinces.filter((item) => item.id !== province.id) });
+      setActiveProvinceId(region.provinces.find((item) => item.id !== province.id)?.id ?? "");
+      await refreshFromSupabase();
+      notify("warning", "Province deleted from Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Province delete failed.");
+    }
+  };
+  const saveCommune = async (province: CmsProvince, commune: CmsCommune) => {
+    try {
+      await adminRequest("communes", "PATCH", adminHeaders(), { id: commune.id, ...communePayload(commune, province.id) });
+      await refreshFromSupabase();
+      notify("success", "Commune saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Commune save failed.");
+    }
+  };
+  const deleteCommune = async (region: CmsRegion, province: CmsProvince, commune: CmsCommune) => {
+    try {
+      await adminRequest("communes", "DELETE", adminHeaders(), undefined, commune.id);
+      updateProvince(region, { ...province, communes: province.communes.filter((item) => item.id !== commune.id) });
+      await refreshFromSupabase();
+      notify("warning", "Commune deleted from Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Commune delete failed.");
+    }
+  };
+  const addRegion = async () => {
     const region = { id: makeId("region"), name: "New Region", slug: "new-region", provinces: [] };
-    setState((current) => ({ ...current, regions: [...current.regions, region] }));
-    setActiveRegionId(region.id);
-    setActiveProvinceId("");
-    notify("success", "Region added.");
+    try {
+      await adminRequest("regions", "POST", adminHeaders(), { id: region.id, ...regionPayload(region) });
+      setState((current) => ({ ...current, regions: [...current.regions, region] }));
+      setActiveRegionId(region.id);
+      setActiveProvinceId("");
+      await refreshFromSupabase();
+      notify("success", "Region added.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Region add failed.");
+    }
   };
-  const addProvince = (region: CmsRegion) => {
+  const addProvince = async (region: CmsRegion) => {
     const province = { id: makeId("province"), name: "New Province", slug: "new-province", communes: [] };
-    updateRegion({ ...region, provinces: [...region.provinces, province] });
-    setActiveProvinceId(province.id);
-    notify("success", "Province added.");
+    try {
+      await adminRequest("provinces", "POST", adminHeaders(), { id: province.id, ...provincePayload(province, region.id) });
+      updateRegion({ ...region, provinces: [...region.provinces, province] });
+      setActiveProvinceId(province.id);
+      await refreshFromSupabase();
+      notify("success", "Province added.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Province add failed.");
+    }
   };
-  const addCommune = (region: CmsRegion, province: CmsProvince) => {
+  const addCommune = async (region: CmsRegion, province: CmsProvince) => {
     const commune = { id: makeId("commune"), name: "New Commune", slug: "new-commune" };
-    updateProvince(region, { ...province, communes: [...province.communes, commune] });
-    notify("success", "Commune added.");
+    try {
+      await adminRequest("communes", "POST", adminHeaders(), { id: commune.id, ...communePayload(commune, province.id) });
+      updateProvince(region, { ...province, communes: [...province.communes, commune] });
+      await refreshFromSupabase();
+      notify("success", "Commune added.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Commune add failed.");
+    }
   };
 
   return (
@@ -792,7 +874,7 @@ function RegionsPanel() {
             <h2 className="text-xl font-black text-slate-950">Region tree</h2>
             <p className="mt-1 text-xs font-bold uppercase text-slate-500">{state.regions.length} regions / {totals.provinces} provinces / {totals.communes} communes</p>
           </div>
-          <button className={primaryButtonClass} onClick={addRegion} type="button">Add</button>
+          <button className={primaryButtonClass} onClick={() => void addRegion()} type="button">Add</button>
         </div>
         <div className="mt-5 max-h-[70vh] space-y-2 overflow-y-auto pr-1">
           {state.regions.map((region) => (
@@ -806,11 +888,12 @@ function RegionsPanel() {
 
       {activeRegion ? (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto_auto]">
             <Field label="Region name"><input dir="auto" className={inputClass} value={activeRegion.name} onChange={(event) => updateRegion({ ...activeRegion, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
             <Field label="Slug"><input className={inputClass} value={activeRegion.slug} onChange={(event) => updateRegion({ ...activeRegion, slug: event.target.value })} /></Field>
-            <button className={`${buttonClass} self-end`} onClick={() => addProvince(activeRegion)} type="button">Add Province</button>
-            <button className={`${buttonClass} self-end`} onClick={() => { setState((current) => ({ ...current, regions: current.regions.filter((item) => item.id !== activeRegion.id) })); setActiveRegionId(state.regions.find((item) => item.id !== activeRegion.id)?.id ?? ""); notify("warning", "Region deleted."); }} type="button">Delete Region</button>
+            <button className={`${primaryButtonClass} self-end`} onClick={() => void saveRegion(activeRegion)} type="button">Save Region</button>
+            <button className={`${buttonClass} self-end`} onClick={() => void addProvince(activeRegion)} type="button">Add Province</button>
+            <button className={`${buttonClass} self-end`} onClick={() => void deleteRegion(activeRegion)} type="button">Delete Region</button>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -828,20 +911,22 @@ function RegionsPanel() {
 
             {activeProvince ? (
               <div className="min-w-0">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto_auto]">
                   <Field label="Province / Prefecture name"><input dir="auto" className={inputClass} value={activeProvince.name} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
                   <Field label="Slug"><input className={inputClass} value={activeProvince.slug} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, slug: event.target.value })} /></Field>
-                  <button className={`${buttonClass} self-end`} onClick={() => addCommune(activeRegion, activeProvince)} type="button">Add Commune</button>
-                  <button className={`${buttonClass} self-end`} onClick={() => { updateRegion({ ...activeRegion, provinces: activeRegion.provinces.filter((item) => item.id !== activeProvince.id) }); setActiveProvinceId(activeRegion.provinces.find((item) => item.id !== activeProvince.id)?.id ?? ""); notify("warning", "Province deleted."); }} type="button">Delete Province</button>
+                  <button className={`${primaryButtonClass} self-end`} onClick={() => void saveProvince(activeRegion, activeProvince)} type="button">Save Province</button>
+                  <button className={`${buttonClass} self-end`} onClick={() => void addCommune(activeRegion, activeProvince)} type="button">Add Commune</button>
+                  <button className={`${buttonClass} self-end`} onClick={() => void deleteProvince(activeRegion, activeProvince)} type="button">Delete Province</button>
                 </div>
                 <div className="mt-5 max-h-[52vh] overflow-y-auto pr-1">
                   <div className="grid gap-2 md:grid-cols-2">
                     {activeProvince.communes.map((commune) => (
                       <div key={commune.id} className="grid gap-2 rounded-md border border-slate-200 p-3">
                         <input dir="auto" className={inputClass} value={commune.name} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, name: event.target.value, slug: slugify(event.target.value) })} />
-                        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                           <input className={inputClass} value={commune.slug} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, slug: event.target.value })} />
-                          <button className={buttonClass} onClick={() => updateProvince(activeRegion, { ...activeProvince, communes: activeProvince.communes.filter((item) => item.id !== commune.id) })} type="button">Delete</button>
+                          <button className={primaryButtonClass} onClick={() => void saveCommune(activeProvince, commune)} type="button">Save</button>
+                          <button className={buttonClass} onClick={() => void deleteCommune(activeRegion, activeProvince, commune)} type="button">Delete</button>
                         </div>
                       </div>
                     ))}
@@ -976,15 +1061,26 @@ function AdminsPanel({ currentRole }: { currentRole: AdminRole }) {
 }
 
 function AuthorsPanel() {
-  const { state, setState, notify } = useCms();
+  const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [draft, setDraft] = useState<CmsUser>({ id: "", name: "", email: "", role: "Journalist", position: "", bio: "", avatar: "", socialLinks: "" });
-  const save = () => {
+  const save = async () => {
     const item = { ...draft, id: draft.id || makeId("user") };
-    setState((current) => ({ ...current, users: current.users.some((user) => user.id === item.id) ? current.users.map((user) => user.id === item.id ? item : user) : [...current.users, item] }));
-    setDraft({ id: "", name: "", email: "", role: "Journalist", position: "", bio: "", avatar: "", socialLinks: "" });
-    notify("success", "Author saved.");
+    try {
+      const payload = profilePayload(item);
+      if (draft.id) {
+        await adminRequest("profiles", "PATCH", adminHeaders(), { id: draft.id, ...payload });
+      } else {
+        await adminRequest("profiles", "POST", adminHeaders(), { id: item.id, ...payload });
+      }
+      setState((current) => ({ ...current, users: current.users.some((user) => user.id === item.id) ? current.users.map((user) => user.id === item.id ? item : user) : [...current.users, item] }));
+      await refreshFromSupabase();
+      setDraft({ id: "", name: "", email: "", role: "Journalist", position: "", bio: "", avatar: "", socialLinks: "" });
+      notify("success", "Author saved to Supabase.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Author save failed.");
+    }
   };
-  return <CrudShell title="Authors" aside={<div className="grid gap-4"><Field label="Name"><input className={inputClass} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></Field><Field label="Email"><input className={inputClass} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} /></Field><Field label="Role"><select className={inputClass} value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value as CmsUser["role"] })}><option>Super Admin</option><option>Editor</option><option>Journalist</option><option>Moderator</option></select></Field><Field label="Position"><input className={inputClass} value={draft.position} onChange={(event) => setDraft({ ...draft, position: event.target.value })} /></Field><Field label="Avatar"><input className={inputClass} value={draft.avatar} onChange={(event) => setDraft({ ...draft, avatar: event.target.value })} /></Field><Field label="Bio"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.bio} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /></Field><Field label="Social links"><input className={inputClass} value={draft.socialLinks} onChange={(event) => setDraft({ ...draft, socialLinks: event.target.value })} /></Field><button className={primaryButtonClass} onClick={save} type="button">Save author</button></div>}>{state.users.map((user) => <Row key={user.id} title={user.name} meta={`${user.role} / ${user.email}`} actions={<button className={buttonClass} onClick={() => setDraft(user)} type="button">Edit</button>} />)}</CrudShell>;
+  return <CrudShell title="Authors" aside={<div className="grid gap-4"><Field label="Name"><input className={inputClass} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></Field><Field label="Email"><input className={inputClass} value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} /></Field><Field label="Role"><select className={inputClass} value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value as CmsUser["role"] })}><option>Super Admin</option><option>Editor</option><option>Journalist</option><option>Moderator</option></select></Field><Field label="Position"><input className={inputClass} value={draft.position} onChange={(event) => setDraft({ ...draft, position: event.target.value })} /></Field><Field label="Avatar"><input className={inputClass} value={draft.avatar} onChange={(event) => setDraft({ ...draft, avatar: event.target.value })} /></Field><Field label="Bio"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.bio} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /></Field><Field label="Social links"><input className={inputClass} value={draft.socialLinks} onChange={(event) => setDraft({ ...draft, socialLinks: event.target.value })} /></Field><button className={primaryButtonClass} onClick={() => void save()} type="button">Save author</button></div>}>{state.users.map((user) => <Row key={user.id} title={user.name} meta={`${user.role} / ${user.email}`} actions={<button className={buttonClass} onClick={() => setDraft(user)} type="button">Edit</button>} />)}</CrudShell>;
 }
 
 function PagesPanel() {
