@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CmsRegion } from "@/lib/cms";
 import type { MoroccoRegion } from "@/data/morocco-regions";
 
@@ -97,6 +97,17 @@ export function MegaMenu({
 
   const activeRegion = regionItems.find((region) => region.id === activeRegionId) ?? null;
   const activeProvince = activeRegion?.children.find((province) => province.id === activeProvinceId) ?? activeRegion?.children[0] ?? null;
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
 
   const openRegion = (region: MenuNode) => {
     setActiveRegionId(region.id);
@@ -229,7 +240,10 @@ export function MegaMenu({
           <span aria-hidden="true" className="text-xl text-red-700">{mobileOpen ? "-" : "+"}</span>
         </button>
         {mobileOpen ? (
-          <ul className="grid gap-1 py-2">
+          <ul
+            className="-mx-4 grid max-h-[calc(100dvh-12rem)] gap-1 overflow-y-auto overscroll-contain border-b border-slate-200 bg-white px-4 py-2 shadow-lg sm:-mx-6 sm:px-6"
+            role="menu"
+          >
             {regionItems.map((item) => (
               <MobileBranch key={item.id} node={item} depth={0} />
             ))}
