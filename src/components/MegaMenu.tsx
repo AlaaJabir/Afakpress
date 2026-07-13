@@ -153,14 +153,14 @@ export function MegaMenu({
 
       {activeRegion ? (
         <div
-          className="absolute left-0 right-0 top-full z-[1000] hidden overflow-hidden border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[320px_minmax(0,1fr)]"
+          className="absolute left-0 right-0 top-full z-[1000] hidden overflow-hidden border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[340px_minmax(0,1fr)]"
           onMouseEnter={() => {
             setActiveRegionId(activeRegion.id);
             setActiveProvinceId(activeProvince?.id ?? activeRegion.children[0]?.id ?? "");
           }}
           role="menu"
         >
-          <div className="max-h-[72vh] overflow-y-auto border-r border-slate-200 bg-slate-50 p-2">
+          <div className="max-h-[78vh] overflow-y-auto border-r border-slate-200 bg-slate-50 p-2">
             <Link
               dir="auto"
               href={activeRegion.href}
@@ -199,32 +199,35 @@ export function MegaMenu({
             </ul>
           </div>
 
-          <div className="max-h-[72vh] overflow-y-auto p-5">
-            {activeProvince ? (
-              <>
-                <Link
-                  dir="auto"
-                  href={activeProvince.href}
-                  className="text-xl font-black text-slate-950 transition hover:text-red-700 focus:text-red-700 focus:outline-none"
+          <div className="max-h-[78vh] overflow-y-auto p-5">
+            <div className="grid gap-5 xl:grid-cols-2">
+              {activeRegion.children.map((province) => (
+                <section
+                  key={province.id}
+                  className={`rounded-md border p-3 ${activeProvince?.id === province.id ? "border-red-200 bg-red-50/60" : "border-slate-200 bg-white"}`}
                 >
-                  {activeProvince.label}
-                </Link>
-                <div className="mt-4 grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
-                  {activeProvince.children.map((commune) => (
-                    <Link
-                      key={commune.id}
-                      dir="auto"
-                      href={commune.href}
-                      className="rounded-md px-3 py-2 text-sm font-bold leading-5 text-slate-700 transition hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 focus:outline-none"
-                    >
-                      {commune.label}
-                    </Link>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-sm font-bold text-slate-500">No provinces are available for this region.</p>
-            )}
+                  <Link
+                    dir="auto"
+                    href={province.href}
+                    className="block text-base font-black text-slate-950 transition hover:text-red-700 focus:text-red-700 focus:outline-none"
+                  >
+                    {province.label}
+                  </Link>
+                  <div className="mt-3 grid gap-1 sm:grid-cols-2">
+                    {province.children.map((commune) => (
+                      <Link
+                        key={commune.id}
+                        dir="auto"
+                        href={commune.href}
+                        className="rounded-md px-2 py-1.5 text-sm font-bold leading-5 text-slate-700 transition hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 focus:outline-none"
+                      >
+                        {commune.label}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}
