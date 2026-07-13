@@ -72,6 +72,9 @@ const sections: { id: Section; label: string }[] = [
   { id: "settings", label: "Settings" },
 ];
 
+const defaultArticleAuthor = "Afakpress";
+const maxFeaturedImageSize = 2 * 1024 * 1024;
+
 const emptyArticle: CmsArticle = {
   id: "",
   title: "",
@@ -84,7 +87,7 @@ const emptyArticle: CmsArticle = {
   gallery: "",
   videoUrl: "",
   authorId: "",
-  author: "",
+  author: defaultArticleAuthor,
   categoryId: "",
   category: "",
   regionId: "",
@@ -338,7 +341,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
       communeId: commune?.id ?? "",
       commune: commune?.slug ?? articleDraft.commune,
       authorId: author?.id ?? "",
-      author: author?.name ?? articleDraft.author,
+      author: (author?.name ?? articleDraft.author) || defaultArticleAuthor,
       ownerId: articleDraft.ownerId || currentUser.id,
       publishedAt: articleDraft.publishDate,
       canonicalUrl: articleDraft.canonicalUrl || `/article/${slug}`,
@@ -524,6 +527,29 @@ function ArticlesPanel({
   const provinceOptions = useMemo(() => provinces.map((province) => ({ value: province.id, label: province.name || province.slug || province.id })), [provinces]);
   const communeOptions = useMemo(() => communes.map((commune) => ({ value: commune.id, label: commune.name || commune.slug || commune.id })), [communes]);
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;
+  const setFeaturedImageFromFile = (file: File | null) => {
+    if (!file) return;
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      notify("error", "Featured image must be a PNG or JPEG file.");
+      return;
+    }
+    if (file.size > maxFeaturedImageSize) {
+      notify("error", "Featured image must be 2MB or smaller.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = typeof reader.result === "string" ? reader.result : "";
+      if (!image) {
+        notify("error", "Featured image upload failed.");
+        return;
+      }
+      setDraft({ ...draft, featuredImage: image, image });
+    };
+    reader.onerror = () => notify("error", "Featured image upload failed.");
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
@@ -591,9 +617,19 @@ function ArticlesPanel({
           <Field label="Slug"><input className={inputClass} value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} /></Field>
           <Field label="Excerpt"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value, seoDescription: event.target.value })} /></Field>
           <Field label="Full Content"><textarea className={`${inputClass} min-h-40 py-3`} value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} /></Field>
-          <Field label="Featured Image URL"><input className={inputClass} value={draft.featuredImage} onChange={(event) => setDraft({ ...draft, featuredImage: event.target.value, image: event.target.value })} /></Field>
+          <Field label="Featured Image">
+            <div className="grid gap-3">
+              <input className={`${inputClass} py-2`} accept="image/png,image/jpeg" onChange={(event) => setFeaturedImageFromFile(event.target.files?.[0] ?? null)} type="file" />
+              {draft.featuredImage ? (
+                <div className="grid gap-2">
+                  <div className="h-40 rounded-md border border-slate-200 bg-slate-100 bg-cover bg-center" style={{ backgroundImage: `url(${draft.featuredImage})` }} />
+                  <button className={buttonClass} onClick={() => setDraft({ ...draft, featuredImage: "", image: "" })} type="button">Remove image</button>
+                </div>
+              ) : null}
+            </div>
+          </Field>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Author"><SearchableSelect value={draft.authorId} onChange={(authorId) => setDraft({ ...draft, authorId })} options={authorOptions} /></Field>
+            <Field label="Author"><SearchableSelect value={draft.authorId} onChange={(authorId) => setDraft({ ...draft, authorId, author: authorId ? draft.author : defaultArticleAuthor })} options={authorOptions} placeholder={defaultArticleAuthor} /></Field>
             <Field label="Category"><SearchableSelect value={draft.categoryId} onChange={(categoryId) => setDraft({ ...draft, categoryId })} options={categoryOptions} /></Field>
             <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => setDraft({ ...draft, regionId, provinceId: "", communeId: "" })} options={regionOptions} /></Field>
             <Field label="Province / Prefecture"><SearchableSelect value={draft.provinceId} onChange={(provinceId) => setDraft({ ...draft, provinceId, communeId: "" })} options={provinceOptions} disabled={!draft.regionId} /></Field>

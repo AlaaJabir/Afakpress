@@ -56,7 +56,8 @@ function findCategorySlug(categories: CmsCategory[], id?: string | null) {
 }
 
 function findAuthorName(users: CmsUser[], id?: string | null) {
-  return users.find((user) => user.id === id)?.name ?? "";
+  if (!id) return "Afakpress";
+  return users.find((user) => user.id === id)?.name ?? "Afakpress";
 }
 
 function findRegionSlug(regions: CmsRegion[], id?: string | null) {
