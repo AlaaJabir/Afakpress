@@ -313,6 +313,7 @@ export function categoryPayload(category: CmsCategory): Tables["categories"]["In
 
 export function profilePayload(user: CmsUser): Tables["profiles"]["Insert"] {
   return {
+    id: user.id,
     name: user.name,
     slug: user.email.split("@")[0] || user.name.toLowerCase().replace(/\s+/g, "-"),
     email: user.email,

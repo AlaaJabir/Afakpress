@@ -18,6 +18,7 @@ No live Supabase environment variables were available in this local workspace, s
 ## Naming Decisions
 
 - Authors are represented by `public.profiles`. The application does not use a separate `authors` table.
+- `profiles.id` must be the matching `auth.users.id`. The migration and API must never insert profile rows with generated seed UUIDs.
 - The chosen avatar column is `profiles.avatar`.
 - If an older `profiles.avatar_url` column exists, the migration copies existing values into `profiles.avatar` without dropping `avatar_url`.
 - Public URLs use slugs. Foreign key columns use UUIDs only.
@@ -73,7 +74,7 @@ The migration:
 - Adds foreign keys as `NOT VALID` so existing production orphan records do not block deployment, while new writes are enforced.
 - Enables RLS.
 - Adds public read policies required by the current browser Supabase read architecture.
-- Seeds default categories, initial profiles/admin, and minimum region/province/commune lookup data.
+- Seeds default categories, the initial admin profile only when the matching `auth.users` row exists, and minimum region/province/commune lookup data.
 
 ## Health Check
 

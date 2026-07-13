@@ -47,6 +47,13 @@ function tableName(resource: string): AdminResource | null {
   return resources.includes(resource as AdminResource) ? (resource as AdminResource) : null;
 }
 
+async function validateProfileAuthUser(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, id: unknown) {
+  if (!isValidUuid(id)) return "Profile id must be an existing Supabase Auth user UUID.";
+  const { data, error } = await supabase.auth.admin.getUserById(id);
+  if (error || !data?.user) return "Create the user in Supabase Auth before saving an author profile.";
+  return "";
+}
+
 async function prepareArticlePayload(
   supabase: NonNullable<ReturnType<typeof createServiceSupabaseClient>>,
   session: NonNullable<Awaited<ReturnType<typeof getAdminSessionFromRequest>>>,
@@ -106,6 +113,10 @@ export async function POST(request: Request, context: { params: Promise<{ resour
     const { data: existing } = await supabase.from(table).select("id").eq("slug", payload.slug).maybeSingle();
     if (existing) return Response.json({ error: "Article slug already exists." }, { status: 409 });
   }
+  if (table === "profiles") {
+    const error = await validateProfileAuthUser(supabase, payload.id);
+    if (error) return Response.json({ error }, { status: 400 });
+  }
 
   const { data, error } = await supabase.from(table).insert(payload).select("*").single();
   if (error) return Response.json({ error: error.message }, { status: 400 });
@@ -125,6 +136,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
 
   const { id, ...payload } = await request.json();
   if (!id) return Response.json({ error: "Missing id." }, { status: 400 });
+  if (table === "profiles") {
+    const error = await validateProfileAuthUser(supabase, id);
+    if (error) return Response.json({ error }, { status: 400 });
+  }
   if (table === "articles") {
     if (!isValidUuid(id)) return Response.json({ error: "Article id must be a valid UUID." }, { status: 400 });
 

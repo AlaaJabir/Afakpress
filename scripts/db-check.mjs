@@ -160,6 +160,12 @@ for (const article of articleRows) {
 
 const profileProbe = await fetchRows("profiles", "id,avatar");
 if (profileProbe.length === 0) warning("profiles is present but has no rows visible to the service role.");
+for (const profile of profileProbe) {
+  const { data, error } = await supabase.auth.admin.getUserById(profile.id);
+  if (error || !data?.user) {
+    problem(`profiles.id ${profile.id} has no matching auth.users row.`);
+  }
+}
 
 if (warnings.length) {
   console.log("Afakpress DB warnings:");

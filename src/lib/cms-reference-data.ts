@@ -89,7 +89,6 @@ export async function seedDefaultCmsReferences(
   return (
     (await upsertRows(supabase, "categories", defaultCategoryRows())) ||
     (await upsertRows(supabase, "regions", defaultRegionRows())) ||
-    (await upsertRows(supabase, "profiles", defaultProfileRows())) ||
     (await upsertRows(supabase, "provinces", defaultProvinceRows())) ||
     (await upsertRows(supabase, "communes", defaultCommuneRows()))
   );

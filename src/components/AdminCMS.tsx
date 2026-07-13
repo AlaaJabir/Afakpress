@@ -1036,13 +1036,17 @@ function AuthorsPanel() {
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [draft, setDraft] = useState<CmsUser>({ id: "", name: "", email: "", role: "Journalist", position: "", bio: "", avatar: "", socialLinks: "" });
   const save = async () => {
-    const item = { ...draft, id: draft.id || makeId("user") };
+    if (!draft.id) {
+      notify("error", "Create the user in Supabase Auth first, then refresh CMS data to edit their author profile.");
+      return;
+    }
+    const item = { ...draft, id: draft.id };
     try {
       const payload = profilePayload(item);
       if (draft.id) {
-        await adminRequest("profiles", "PATCH", adminHeaders(), { id: draft.id, ...payload });
+        await adminRequest("profiles", "PATCH", adminHeaders(), payload);
       } else {
-        await adminRequest("profiles", "POST", adminHeaders(), { id: item.id, ...payload });
+        await adminRequest("profiles", "POST", adminHeaders(), payload);
       }
       setState((current) => ({ ...current, users: current.users.some((user) => user.id === item.id) ? current.users.map((user) => user.id === item.id ? item : user) : [...current.users, item] }));
       await refreshFromSupabase();

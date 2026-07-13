@@ -7,7 +7,7 @@ export type Database = {
     Tables: {
       profiles: {
         Row: Row<{ id: string; name: string | null; slug: string | null; email: string | null; role: string | null; avatar: string | null; created_at: string | null; updated_at: string | null }>;
-        Insert: { id?: string; name?: string | null; slug?: string | null; email?: string | null; role?: string | null; avatar?: string | null; created_at?: string | null; updated_at?: string | null };
+        Insert: { id: string; name?: string | null; slug?: string | null; email?: string | null; role?: string | null; avatar?: string | null; created_at?: string | null; updated_at?: string | null };
         Update: { id?: string; name?: string | null; slug?: string | null; email?: string | null; role?: string | null; avatar?: string | null; created_at?: string | null; updated_at?: string | null };
       };
       admin_users: {

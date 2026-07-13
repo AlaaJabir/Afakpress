@@ -113,7 +113,7 @@ end;
 $$;
 
 create table if not exists public.profiles (
-  id uuid primary key default gen_random_uuid()
+  id uuid primary key
 );
 
 create table if not exists public.admin_users (
@@ -203,6 +203,7 @@ select public.afakpress_try_uuid_column('breaking_news', 'article_id');
 select public.afakpress_try_uuid_column('settings', 'id');
 
 alter table public.profiles
+  alter column id drop default,
   add column if not exists name text,
   add column if not exists slug text,
   add column if not exists email text,
@@ -220,6 +221,60 @@ begin
     update public.profiles
     set avatar = coalesce(avatar, avatar_url)
     where avatar is null;
+  end if;
+end $$;
+
+do $$
+declare
+  existing_target text;
+  wrong_constraint record;
+begin
+  for wrong_constraint in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.profiles'::regclass
+      and contype = 'f'
+      and conkey = array[
+        (
+          select attnum
+          from pg_attribute
+          where attrelid = 'public.profiles'::regclass
+            and attname = 'id'
+        )
+      ]::smallint[]
+      and confrelid <> 'auth.users'::regclass
+  loop
+    execute format('alter table public.profiles drop constraint %I', wrong_constraint.conname);
+  end loop;
+
+  select confrelid::regclass::text
+  into existing_target
+  from pg_constraint
+  where conrelid = 'public.profiles'::regclass
+    and conname = 'profiles_id_fkey';
+
+  if existing_target is not null and existing_target <> 'auth.users' then
+    alter table public.profiles drop constraint profiles_id_fkey;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.profiles'::regclass
+      and contype = 'f'
+      and confrelid = 'auth.users'::regclass
+      and conkey = array[
+        (
+          select attnum
+          from pg_attribute
+          where attrelid = 'public.profiles'::regclass
+            and attname = 'id'
+        )
+      ]::smallint[]
+  ) then
+    alter table public.profiles
+      add constraint profiles_id_fkey
+      foreign key (id) references auth.users(id) on delete cascade not valid;
   end if;
 end $$;
 
@@ -469,9 +524,15 @@ drop policy if exists "Public read breaking news" on public.breaking_news;
 create policy "Public read breaking news" on public.breaking_news for select using (is_active is not false);
 
 insert into public.profiles (id, name, slug, email, role, avatar)
-values
-  (public.afakpress_seed_uuid('profile-admin'), 'Alaa Jabir', 'alaa-jabir', 'professionnal.a@gmail.com', 'Super Admin', null),
-  (public.afakpress_seed_uuid('profile-editor'), 'Afakpress Editor', 'afakpress-editor', 'editor@afakpress.ma', 'Editor', null)
+select
+  auth_users.id,
+  coalesce(auth_users.raw_user_meta_data->>'name', 'Alaa Jabir') as name,
+  'alaa-jabir' as slug,
+  auth_users.email,
+  'Super Admin' as role,
+  null as avatar
+from auth.users auth_users
+where lower(auth_users.email) = 'professionnal.a@gmail.com'
 on conflict (id) do update
 set name = excluded.name,
     slug = excluded.slug,
