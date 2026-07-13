@@ -39,8 +39,11 @@ function articleStatus(status: string | null | undefined): ArticleStatus {
   return "Draft";
 }
 
-function dbStatus(status: ArticleStatus) {
-  return status.toLowerCase().replace(/\s+/g, "_");
+function dbStatus(status: ArticleStatus): "draft" | "pending_review" | "scheduled" | "published" {
+  if (status === "Published") return "published";
+  if (status === "Scheduled") return "scheduled";
+  if (status === "Pending Review") return "pending_review";
+  return "draft";
 }
 
 function publishTimestamp(value?: string | null) {
@@ -69,15 +72,17 @@ function findCommuneSlug(regions: CmsRegion[], id?: string | null) {
 }
 
 function categoryFromRow(row: CategoryRow): CmsCategory {
+  const name = row.name ?? "Untitled category";
+  const slug = row.slug ?? row.id;
   return {
     id: row.id,
-    name: row.name,
-    slug: row.slug,
+    name,
+    slug,
     parentId: row.parent_id ?? "",
     color: "#b91c1c",
-    icon: row.name.slice(0, 1),
+    icon: name.slice(0, 1),
     description: row.description ?? "",
-    seoTitle: `${row.name} | Afakpress`,
+    seoTitle: `${name} | Afakpress`,
     seoDescription: row.description ?? "",
   };
 }
@@ -103,11 +108,13 @@ function articleFromRow(row: ArticleRow, categories: CmsCategory[], users: CmsUs
   const region = findRegionSlug(regions, row.region_id);
   const province = findProvinceSlug(regions, row.province_id);
   const commune = findCommuneSlug(regions, row.commune_id);
+  const title = row.title ?? "Untitled article";
+  const slug = row.slug ?? row.id;
 
   return {
     id: row.id,
-    title: row.title,
-    slug: row.slug,
+    title,
+    slug,
     excerpt: row.excerpt ?? "",
     content,
     body: content.split(/\n{2,}/).filter(Boolean),
@@ -126,9 +133,9 @@ function articleFromRow(row: ArticleRow, categories: CmsCategory[], users: CmsUs
     communeId: row.commune_id ?? "",
     commune,
     tags: row.seo_keywords ?? "",
-    seoTitle: row.seo_title ?? row.title,
+    seoTitle: row.seo_title ?? title,
     seoDescription: row.seo_description ?? row.excerpt ?? "",
-    canonicalUrl: `/article/${row.slug}`,
+    canonicalUrl: `/article/${slug}`,
     status: articleStatus(row.status),
     publishDate,
     publishedAt,
@@ -143,13 +150,14 @@ function articleFromRow(row: ArticleRow, categories: CmsCategory[], users: CmsUs
 }
 
 function menuHref(row: MenuRow) {
-  return row.level === 0 ? `/${row.slug}` : row.slug.startsWith("/") ? row.slug : `/${row.slug}`;
+  const slug = row.slug ?? row.id;
+  return row.level === 0 ? `/${slug}` : slug.startsWith("/") ? slug : `/${slug}`;
 }
 
 function menuFromRow(row: MenuRow, children: CmsMenuItem[]): CmsMenuItem {
   return {
     id: row.id,
-    label: row.title,
+    label: row.title ?? "Untitled menu",
     href: menuHref(row),
     type: "Custom",
     active: row.is_active !== false,
@@ -168,10 +176,11 @@ function buildMenuTree(rows: MenuRow[], parentId: string | null = null): CmsMenu
 }
 
 function mediaFromRow(row: MediaRow): CmsMedia {
+  const url = row.url ?? "";
   return {
     id: row.id,
-    name: row.name ?? row.url.split("/").pop() ?? "Media",
-    url: row.url,
+    name: row.name ?? url.split("/").pop() ?? "Media",
+    url,
     type: row.type === "Video" || row.type === "PDF" ? row.type : "Image",
     folder: row.folder ?? "Newsroom",
     alt: row.alt ?? "",
@@ -182,21 +191,22 @@ function mediaFromRow(row: MediaRow): CmsMedia {
 }
 
 function pageFromRow(row: PageRow): CmsPage {
+  const title = row.title ?? "Untitled page";
   return {
     id: row.id,
-    title: row.title,
-    slug: row.slug,
+    title,
+    slug: row.slug ?? row.id,
     content: row.content ?? "",
-    seoTitle: row.seo_title ?? row.title,
+    seoTitle: row.seo_title ?? title,
     seoDescription: row.seo_description ?? "",
-    status: row.status === "Published" || row.status === "published" ? "Published" : "Draft",
+    status: row.status === "published" ? "Published" : "Draft",
   };
 }
 
 function breakingFromRow(row: BreakingRow): CmsBreakingNews {
   return {
     id: row.id,
-    title: row.title,
+    title: row.title ?? "Untitled breaking news",
     articleId: row.article_id ?? "",
     url: row.url ?? "",
     isActive: row.is_active !== false,
@@ -207,20 +217,20 @@ function breakingFromRow(row: BreakingRow): CmsBreakingNews {
 function buildRegionTree(regionRows: RegionRow[], provinceRows: ProvinceRow[], communeRows: CommuneRow[]): CmsRegion[] {
   return regionRows.map((region) => ({
     id: region.id,
-    name: region.name,
-    slug: region.slug,
+    name: region.name ?? "Untitled region",
+    slug: region.slug ?? region.id,
     provinces: provinceRows
       .filter((province) => province.region_id === region.id)
       .map((province) => ({
         id: province.id,
-        name: province.name,
-        slug: province.slug,
+        name: province.name ?? "Untitled province",
+        slug: province.slug ?? province.id,
         communes: communeRows
           .filter((commune) => commune.province_id === province.id)
           .map((commune) => ({
             id: commune.id,
-            name: commune.name,
-            slug: commune.slug,
+            name: commune.name ?? "Untitled commune",
+            slug: commune.slug ?? commune.id,
           })),
       })),
   }));
@@ -367,7 +377,7 @@ export function pagePayload(page: CmsPage): Tables["pages"]["Insert"] {
     content: page.content,
     seo_title: page.seoTitle,
     seo_description: page.seoDescription,
-    status: page.status.toLowerCase(),
+    status: page.status === "Published" ? "published" : "draft",
   };
 }
 
