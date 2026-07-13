@@ -25,7 +25,10 @@ function Chrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
-          <div className="flex flex-col items-start justify-center gap-3 py-2 md:flex-row md:items-center md:justify-start lg:py-3">
+          <div className="flex flex-col justify-center gap-3 py-2 md:flex-row md:items-center md:justify-between lg:py-3">
+            <Link href="/" className="block h-[58px] w-[108px] md:h-[66px] md:w-[122px] lg:h-[74px] lg:w-[138px]" aria-label="Afakpress">
+              <Image src="/afakpress-logo.png" alt="Afakpress" width={138} height={74} priority className="h-full w-full object-contain" />
+            </Link>
             <div className="flex flex-wrap items-center gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-600 md:gap-2">
               <Link href="/category/national" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">
                 À la une
@@ -34,9 +37,6 @@ function Chrome({ children }: { children: React.ReactNode }) {
                 Newsletter
               </Link>
             </div>
-            <Link href="/" className="block h-[58px] w-[108px] md:h-[66px] md:w-[122px] lg:h-[74px] lg:w-[138px]" aria-label="Afakpress">
-              <Image src="/afakpress-logo.png" alt="Afakpress" width={138} height={74} priority className="h-full w-full object-contain" />
-            </Link>
           </div>
         </div>
         <div className="w-full border-t border-slate-200 bg-white">

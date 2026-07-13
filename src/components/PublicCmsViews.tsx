@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCms } from "@/lib/cms-store";
-import { getPublishedArticles, type CmsArticle } from "@/lib/cms";
+import { getPublishedArticles, initialCmsState, type CmsArticle } from "@/lib/cms";
 
 function imageFor(article: CmsArticle) {
   return article.featuredImage || article.image || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
@@ -48,13 +48,15 @@ function SectionBlock({ title, href, articles }: { title: string; href: string; 
 export function CmsHomePage() {
   const { state, isLoading, error } = useCms();
   const published = getPublishedArticles(state);
+  const homepageArticles = published.length ? published : getPublishedArticles(initialCmsState);
+  const homepageCategories = published.length ? state.categories : initialCmsState.categories;
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
-  const featured = published.find((article) => article.featured) ?? published[0];
-  const mostRead = published.filter((article) => article.mostRead).slice(0, 5);
-  const regionalArticles = published.filter((article) => article.category === "regions");
-  const economyArticles = published.filter((article) => article.category === "economy");
-  const opinionArticles = published.filter((article) => article.category === "opinion");
+  const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
+  const mostRead = homepageArticles.filter((article) => article.mostRead).slice(0, 5);
+  const regionalArticles = homepageArticles.filter((article) => article.category === "regions");
+  const economyArticles = homepageArticles.filter((article) => article.category === "economy");
+  const opinionArticles = homepageArticles.filter((article) => article.category === "opinion");
 
   if (!featured) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">No published articles yet.</p>;
@@ -84,7 +86,7 @@ export function CmsHomePage() {
         </div>
         </article>
         <aside className="grid gap-4">
-          {published.slice(1, 4).map((article) => (
+          {homepageArticles.slice(1, 4).map((article) => (
             <Link key={article.id} href={`/article/${article.slug}`} className="grid min-h-40 grid-cols-[140px_1fr] overflow-hidden border border-slate-200 bg-white transition hover:border-red-700">
               <span className="relative block bg-slate-200">
                 <Image src={imageFor(article)} alt="" fill sizes="140px" className="object-cover" />
@@ -100,7 +102,7 @@ export function CmsHomePage() {
       </section> : null}
 
       {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <SectionBlock title="Latest news" href="/category/national" articles={published.slice(1, 5)} />
+        <SectionBlock title="Latest news" href="/category/national" articles={homepageArticles.slice(1, 5)} />
         <aside className="border border-slate-200 bg-white p-6">
           <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Most read</h2>
           <ol className="mt-5 space-y-5">
@@ -134,8 +136,8 @@ export function CmsHomePage() {
       </section> : null}
 
       <section className="grid gap-6 lg:grid-cols-3">
-        {state.categories.slice(0, 3).map((category) => {
-          const categoryArticles = published.filter((article) => article.category === category.slug).slice(0, 2);
+        {homepageCategories.slice(0, 3).map((category) => {
+          const categoryArticles = homepageArticles.filter((article) => article.category === category.slug).slice(0, 2);
           return (
             <div key={category.id} className="border border-slate-200 bg-white p-6">
               <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">{category.name}</h2>
