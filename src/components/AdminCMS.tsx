@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -111,10 +111,101 @@ const emptyArticle: CmsArticle = {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="grid gap-2 text-sm font-bold text-slate-700">
+    <div className="grid gap-2 text-sm font-bold text-slate-700">
       <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
       {children}
-    </label>
+    </div>
+  );
+}
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
+
+function SearchableSelect({
+  value,
+  options,
+  onChange,
+  placeholder = "Select",
+  disabled = false,
+}: {
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value);
+  const filteredOptions = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return options;
+    return options.filter((option) => option.label.toLowerCase().includes(term));
+  }, [options, search]);
+
+  useEffect(() => {
+    const close = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    window.addEventListener("pointerdown", close);
+    return () => window.removeEventListener("pointerdown", close);
+  }, []);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        className={`${inputClass} flex items-center justify-between gap-3 text-left font-black disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
+        disabled={disabled}
+        onClick={() => {
+          setOpen((current) => !current);
+          setSearch("");
+        }}
+        type="button"
+      >
+        <span dir="auto" className="min-w-0 truncate">{selected?.label ?? placeholder}</span>
+        <span className="shrink-0 text-slate-500">v</span>
+      </button>
+      {open ? (
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-md border border-slate-300 bg-white shadow-xl">
+          <input
+            autoFocus
+            className="min-h-10 w-full border-b border-slate-200 px-3 text-sm text-slate-950 outline-none focus:bg-slate-50"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search"
+            value={search}
+          />
+          <div className="max-h-72 overflow-y-auto py-1">
+            <button
+              className={`block w-full px-3 py-2 text-left text-sm font-black ${value ? "text-slate-700 hover:bg-slate-100" : "bg-red-50 text-red-800"}`}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {placeholder}
+            </button>
+            {filteredOptions.map((option) => (
+              <button
+                key={option.value}
+                className={`block w-full px-3 py-2 text-left text-sm font-black hover:bg-slate-100 ${option.value === value ? "bg-red-700 text-white hover:bg-red-700" : "text-slate-800"}`}
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                type="button"
+              >
+                <span dir="auto" className="block truncate">{option.label}</span>
+              </button>
+            ))}
+            {filteredOptions.length === 0 ? <div className="px-3 py-3 text-sm font-bold text-slate-500">No results</div> : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -425,8 +516,13 @@ function ArticlesPanel({
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const provinces = state.regions.find((region) => region.id === draft.regionId)?.provinces ?? [];
-  const communes = provinces.find((province) => province.id === draft.provinceId)?.communes ?? [];
+  const provinces = useMemo(() => state.regions.find((region) => region.id === draft.regionId)?.provinces ?? [], [draft.regionId, state.regions]);
+  const communes = useMemo(() => provinces.find((province) => province.id === draft.provinceId)?.communes ?? [], [draft.provinceId, provinces]);
+  const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
+  const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
+  const regionOptions = useMemo(() => state.regions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [state.regions]);
+  const provinceOptions = useMemo(() => provinces.map((province) => ({ value: province.id, label: province.name || province.slug || province.id })), [provinces]);
+  const communeOptions = useMemo(() => communes.map((commune) => ({ value: commune.id, label: commune.name || commune.slug || commune.id })), [communes]);
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;
 
   return (
@@ -497,11 +593,11 @@ function ArticlesPanel({
           <Field label="Full Content"><textarea className={`${inputClass} min-h-40 py-3`} value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} /></Field>
           <Field label="Featured Image URL"><input className={inputClass} value={draft.featuredImage} onChange={(event) => setDraft({ ...draft, featuredImage: event.target.value, image: event.target.value })} /></Field>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Author"><select className={inputClass} value={draft.authorId} onChange={(event) => setDraft({ ...draft, authorId: event.target.value })}><option value="">Select</option>{state.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></Field>
-            <Field label="Category"><select className={inputClass} value={draft.categoryId} onChange={(event) => setDraft({ ...draft, categoryId: event.target.value })}><option value="">Select</option>{state.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field>
-            <Field label="Region"><select className={inputClass} value={draft.regionId} onChange={(event) => setDraft({ ...draft, regionId: event.target.value, provinceId: "", communeId: "" })}><option value="">Select</option>{state.regions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></Field>
-            <Field label="Province / Prefecture"><select className={inputClass} value={draft.provinceId} onChange={(event) => setDraft({ ...draft, provinceId: event.target.value, communeId: "" })}><option value="">Select</option>{provinces.map((province) => <option key={province.id} value={province.id}>{province.name}</option>)}</select></Field>
-            <Field label="Commune"><select className={inputClass} value={draft.communeId} onChange={(event) => setDraft({ ...draft, communeId: event.target.value })}><option value="">Select</option>{communes.map((commune) => <option key={commune.id} value={commune.id}>{commune.name}</option>)}</select></Field>
+            <Field label="Author"><SearchableSelect value={draft.authorId} onChange={(authorId) => setDraft({ ...draft, authorId })} options={authorOptions} /></Field>
+            <Field label="Category"><SearchableSelect value={draft.categoryId} onChange={(categoryId) => setDraft({ ...draft, categoryId })} options={categoryOptions} /></Field>
+            <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => setDraft({ ...draft, regionId, provinceId: "", communeId: "" })} options={regionOptions} /></Field>
+            <Field label="Province / Prefecture"><SearchableSelect value={draft.provinceId} onChange={(provinceId) => setDraft({ ...draft, provinceId, communeId: "" })} options={provinceOptions} disabled={!draft.regionId} /></Field>
+            <Field label="Commune"><SearchableSelect value={draft.communeId} onChange={(communeId) => setDraft({ ...draft, communeId })} options={communeOptions} disabled={!draft.provinceId} /></Field>
             <Field label="Status"><select className={inputClass} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as ArticleStatus })}>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></Field>
             <Field label="Publish Date"><input className={inputClass} value={draft.publishDate} onChange={(event) => setDraft({ ...draft, publishDate: event.target.value })} type="date" /></Field>
             <Field label="Homepage Position"><input className={inputClass} value={draft.homepagePosition} onChange={(event) => setDraft({ ...draft, homepagePosition: Number(event.target.value) })} type="number" /></Field>
