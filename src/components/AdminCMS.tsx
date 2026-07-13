@@ -97,7 +97,7 @@ const emptyArticle: CmsArticle = {
   seoTitle: "",
   seoDescription: "",
   canonicalUrl: "",
-  status: "Draft",
+  status: "Published",
   publishDate: new Date().toISOString().slice(0, 10),
   publishedAt: new Date().toISOString().slice(0, 10),
   readingTime: "3 min",

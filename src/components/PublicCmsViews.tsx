@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCms } from "@/lib/cms-store";
 import { getPublishedArticles, initialCmsState, type CmsArticle } from "@/lib/cms";
+import { moroccoRegions } from "@/data/morocco-regions";
 
 function imageFor(article: CmsArticle) {
   return article.featuredImage || article.image || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
@@ -50,6 +51,7 @@ export function CmsHomePage() {
   const published = getPublishedArticles(state);
   const homepageArticles = published.length ? published : getPublishedArticles(initialCmsState);
   const homepageCategories = published.length ? state.categories : initialCmsState.categories;
+  const homepageRegions = state.regions.length >= 12 ? state.regions : moroccoRegions;
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
   const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
@@ -126,8 +128,8 @@ export function CmsHomePage() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
-          {state.regions.slice(0, 8).map((region) => (
-            <Link key={region.id} href={`/region/${region.slug}`} className="border border-slate-200 bg-white p-5 transition hover:border-red-700">
+          {homepageRegions.slice(0, 8).map((region) => (
+            <Link key={region.slug} href={`/region/${region.slug}`} className="border border-slate-200 bg-white p-5 transition hover:border-red-700">
               <span className="block text-lg font-black text-slate-950">{region.name}</span>
               <span className="mt-3 block text-sm leading-6 text-slate-600">{region.provinces.map((province) => province.name).join(" / ")}</span>
             </Link>
@@ -226,8 +228,10 @@ export function CmsCategoryPage({ slug }: { slug: string }) {
 
 export function CmsRegionPage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const region = state.regions.find((item) => item.slug === slug);
-  const regionArticles = getPublishedArticles(state).filter((article) => article.region === slug);
+  const region = moroccoRegions.find((item) => item.slug === slug);
+  const provinceSlugs = new Set(region?.provinces.map((province) => province.slug) ?? []);
+  const communeSlugs = new Set(region?.provinces.flatMap((province) => province.communes.map((commune) => commune.slug)) ?? []);
+  const regionArticles = getPublishedArticles(state).filter((article) => article.region === slug || provinceSlugs.has(article.province) || communeSlugs.has(article.commune));
 
   if (!region) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Region not found.</p>;
@@ -247,7 +251,7 @@ export function CmsRegionPage({ slug }: { slug: string }) {
         <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Local structure</h2>
         <div className="mt-5 space-y-5">
           {region.provinces.map((province) => (
-            <div key={province.id}>
+            <div key={province.slug}>
               <Link href={`/province/${province.slug}`} className="font-black text-slate-950 hover:text-red-700">{province.name}</Link>
               <p className="mt-2 text-sm leading-6 text-slate-600">{province.communes.map((commune) => commune.name).join(", ")}</p>
             </div>
@@ -260,8 +264,9 @@ export function CmsRegionPage({ slug }: { slug: string }) {
 
 export function CmsProvincePage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const match = state.regions.flatMap((region) => region.provinces.map((province) => ({ region, province }))).find((item) => item.province.slug === slug);
-  const provinceArticles = getPublishedArticles(state).filter((article) => article.province === slug);
+  const match = moroccoRegions.flatMap((region) => region.provinces.map((province) => ({ region, province }))).find((item) => item.province.slug === slug);
+  const communeSlugs = new Set(match?.province.communes.map((commune) => commune.slug) ?? []);
+  const provinceArticles = getPublishedArticles(state).filter((article) => article.province === slug || communeSlugs.has(article.commune));
 
   if (!match) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Province or prefecture not found.</p>;
@@ -283,7 +288,7 @@ export function CmsProvincePage({ slug }: { slug: string }) {
         <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Communes</h2>
         <div className="mt-5 grid gap-2">
           {match.province.communes.map((commune) => (
-            <Link key={commune.id} href={`/commune/${commune.slug}`} className="rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-700">
+            <Link key={commune.slug} href={`/commune/${commune.slug}`} className="rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-700">
               {commune.name}
             </Link>
           ))}
@@ -295,7 +300,7 @@ export function CmsProvincePage({ slug }: { slug: string }) {
 
 export function CmsCommunePage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const match = state.regions
+  const match = moroccoRegions
     .flatMap((region) => region.provinces.flatMap((province) => province.communes.map((commune) => ({ region, province, commune }))))
     .find((item) => item.commune.slug === slug);
   const communeArticles = getPublishedArticles(state).filter((article) => article.commune === slug);
