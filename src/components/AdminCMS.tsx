@@ -180,6 +180,9 @@ function SearchableSelect({
             placeholder="Search"
             value={search}
           />
+          <div className="border-b border-slate-100 px-3 py-2 text-xs font-black uppercase text-slate-500">
+            {filteredOptions.length} options
+          </div>
           <div className="max-h-72 overflow-y-auto py-1">
             <button
               className={`block w-full px-3 py-2 text-left text-sm font-black ${value ? "text-slate-700 hover:bg-slate-100" : "bg-red-50 text-red-800"}`}
@@ -519,13 +522,24 @@ function ArticlesPanel({
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const provinces = useMemo(() => state.regions.find((region) => region.id === draft.regionId)?.provinces ?? [], [draft.regionId, state.regions]);
-  const communes = useMemo(() => provinces.find((province) => province.id === draft.provinceId)?.communes ?? [], [draft.provinceId, provinces]);
+  const provinceRecords = useMemo(() => state.regions.flatMap((region) => region.provinces.map((province) => ({ region, province }))), [state.regions]);
+  const communeRecords = useMemo(
+    () => provinceRecords.flatMap(({ region, province }) => province.communes.map((commune) => ({ region, province, commune }))),
+    [provinceRecords],
+  );
   const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
   const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
   const regionOptions = useMemo(() => state.regions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [state.regions]);
-  const provinceOptions = useMemo(() => provinces.map((province) => ({ value: province.id, label: province.name || province.slug || province.id })), [provinces]);
-  const communeOptions = useMemo(() => communes.map((commune) => ({ value: commune.id, label: commune.name || commune.slug || commune.id })), [communes]);
+  const provinceOptions = useMemo(
+    () => provinceRecords.map(({ region, province }) => ({ value: province.id, label: `${province.name || province.slug || province.id} / ${region.name || region.slug}` })),
+    [provinceRecords],
+  );
+  const communeOptions = useMemo(
+    () => communeRecords
+      .filter(({ province }) => !draft.provinceId || province.id === draft.provinceId)
+      .map(({ province, commune }) => ({ value: commune.id, label: `${commune.name || commune.slug || commune.id} / ${province.name || province.slug}` })),
+    [communeRecords, draft.provinceId],
+  );
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;
   const setFeaturedImageFromFile = (file: File | null) => {
     if (!file) return;
@@ -619,10 +633,15 @@ function ArticlesPanel({
           <Field label="Full Content"><textarea className={`${inputClass} min-h-40 py-3`} value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} /></Field>
           <Field label="Featured Image">
             <div className="grid gap-3">
-              <input className={`${inputClass} py-2`} accept="image/png,image/jpeg" onChange={(event) => setFeaturedImageFromFile(event.target.files?.[0] ?? null)} type="file" />
+              <label className={`${buttonClass} cursor-pointer`}>
+                Choose PNG/JPEG image
+                <input className="sr-only" accept="image/png,image/jpeg" onChange={(event) => setFeaturedImageFromFile(event.target.files?.[0] ?? null)} type="file" />
+              </label>
               {draft.featuredImage ? (
                 <div className="grid gap-2">
-                  <div className="h-40 rounded-md border border-slate-200 bg-slate-100 bg-cover bg-center" style={{ backgroundImage: `url(${draft.featuredImage})` }} />
+                  <div className="relative h-40 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${draft.featuredImage})` }} />
+                  </div>
                   <button className={buttonClass} onClick={() => setDraft({ ...draft, featuredImage: "", image: "" })} type="button">Remove image</button>
                 </div>
               ) : null}
@@ -632,8 +651,31 @@ function ArticlesPanel({
             <Field label="Author"><SearchableSelect value={draft.authorId} onChange={(authorId) => setDraft({ ...draft, authorId, author: authorId ? draft.author : defaultArticleAuthor })} options={authorOptions} placeholder={defaultArticleAuthor} /></Field>
             <Field label="Category"><SearchableSelect value={draft.categoryId} onChange={(categoryId) => setDraft({ ...draft, categoryId })} options={categoryOptions} /></Field>
             <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => setDraft({ ...draft, regionId, provinceId: "", communeId: "" })} options={regionOptions} /></Field>
-            <Field label="Province / Prefecture"><SearchableSelect value={draft.provinceId} onChange={(provinceId) => setDraft({ ...draft, provinceId, communeId: "" })} options={provinceOptions} disabled={!draft.regionId} /></Field>
-            <Field label="Commune"><SearchableSelect value={draft.communeId} onChange={(communeId) => setDraft({ ...draft, communeId })} options={communeOptions} disabled={!draft.provinceId} /></Field>
+            <Field label="Province / Prefecture">
+              <SearchableSelect
+                value={draft.provinceId}
+                onChange={(provinceId) => {
+                  const selectedProvince = provinceRecords.find((record) => record.province.id === provinceId);
+                  setDraft({ ...draft, regionId: selectedProvince?.region.id ?? draft.regionId, provinceId, communeId: "" });
+                }}
+                options={provinceOptions}
+              />
+            </Field>
+            <Field label="Commune">
+              <SearchableSelect
+                value={draft.communeId}
+                onChange={(communeId) => {
+                  const selectedCommune = communeRecords.find((record) => record.commune.id === communeId);
+                  setDraft({
+                    ...draft,
+                    regionId: selectedCommune?.region.id ?? draft.regionId,
+                    provinceId: selectedCommune?.province.id ?? draft.provinceId,
+                    communeId,
+                  });
+                }}
+                options={communeOptions}
+              />
+            </Field>
             <Field label="Status"><select className={inputClass} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as ArticleStatus })}>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></Field>
             <Field label="Publish Date"><input className={inputClass} value={draft.publishDate} onChange={(event) => setDraft({ ...draft, publishDate: event.target.value })} type="date" /></Field>
             <Field label="Homepage Position"><input className={inputClass} value={draft.homepagePosition} onChange={(event) => setDraft({ ...draft, homepagePosition: Number(event.target.value) })} type="number" /></Field>
