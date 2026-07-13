@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { CmsProvider, useCms } from "@/lib/cms-store";
 import { getPublishedArticles } from "@/lib/cms";
 import { MegaMenu } from "@/components/MegaMenu";
+import { moroccoRegions } from "@/data/morocco-regions";
 
 function Chrome({ children }: { children: React.ReactNode }) {
   const { state } = useCms();
@@ -41,7 +42,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
         </div>
         <div className="w-full border-t border-slate-200 bg-white">
           <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
-            <MegaMenu regions={state.regions} />
+            <MegaMenu regions={moroccoRegions} />
           </div>
         </div>
       </header>

@@ -122,7 +122,7 @@ export function MegaMenu({
   return (
     <div className="relative z-[100] w-full" onMouseLeave={closeMenu}>
       <nav className="hidden w-full lg:block" aria-label="Primary regional navigation">
-        <div className="flex w-full items-stretch overflow-x-auto border-x border-slate-100 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="grid w-full grid-cols-12 items-stretch divide-x divide-slate-100 border-x border-slate-100">
           {regionItems.map((region) => (
             <Link
               key={region.id}
@@ -139,7 +139,7 @@ export function MegaMenu({
                   openRegion(region);
                 }
               }}
-              className={`flex min-h-[52px] shrink-0 basis-[12.5rem] items-center justify-center border-b-2 border-r border-slate-100 px-3 text-center text-xs font-black leading-4 text-slate-800 transition focus:outline-none xl:basis-[13.5rem] ${
+              className={`flex min-h-[52px] items-center justify-center border-b-2 px-1.5 text-center text-[11px] font-black leading-4 text-slate-800 transition focus:outline-none xl:px-2 xl:text-xs ${
                 activeRegionId === region.id
                   ? "border-red-700 bg-red-50 text-red-700"
                   : "border-transparent hover:border-red-700 hover:bg-slate-50 hover:text-red-700 focus:border-red-700 focus:text-red-700"
