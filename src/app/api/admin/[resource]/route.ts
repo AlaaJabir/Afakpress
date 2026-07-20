@@ -6,6 +6,7 @@ import { resolveArticleReferences, seedDefaultCmsReferences } from "@/lib/cms-re
 import { createServiceSupabaseAdminClient, createServiceSupabaseClient } from "@/lib/supabase";
 import type { AdminResource } from "@/lib/supabase-cms";
 import { isValidUuid } from "@/lib/uuid";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,85 @@ function tableName(resource: string): AdminResource | null {
   return resources.includes(resource as AdminResource) ? (resource as AdminResource) : null;
 }
 
+type ArticleCacheRow = {
+  slug?: string | null;
+  status?: string | null;
+  category_id?: string | null;
+  region_id?: string | null;
+  province_id?: string | null;
+  commune_id?: string | null;
+};
+
+type ArticleCacheRefs = {
+  categorySlug?: string;
+  regionSlug?: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+};
+
+async function resolveArticleCacheRefs(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, article: ArticleCacheRow): Promise<ArticleCacheRefs> {
+  const [category, region, province, commune] = await Promise.all([
+    article.category_id ? supabase.from("categories").select("slug").eq("id", article.category_id).maybeSingle() : Promise.resolve({ data: null }),
+    article.region_id ? supabase.from("regions").select("slug").eq("id", article.region_id).maybeSingle() : Promise.resolve({ data: null }),
+    article.province_id ? supabase.from("provinces").select("slug").eq("id", article.province_id).maybeSingle() : Promise.resolve({ data: null }),
+    article.commune_id ? supabase.from("communes").select("slug").eq("id", article.commune_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+
+  return {
+    categorySlug: category.data?.slug ?? undefined,
+    regionSlug: region.data?.slug ?? undefined,
+    provinceSlug: province.data?.slug ?? undefined,
+    communeSlug: commune.data?.slug ?? undefined,
+  };
+}
+
+async function validateArticleHierarchy(supabase: NonNullable<ReturnType<typeof createServiceSupabaseClient>>, payload: Record<string, unknown>) {
+  const regionId = typeof payload.region_id === "string" ? payload.region_id : null;
+  const provinceId = typeof payload.province_id === "string" ? payload.province_id : null;
+  const communeId = typeof payload.commune_id === "string" ? payload.commune_id : null;
+
+  if (provinceId) {
+    if (!regionId) return "Selected province requires a selected region.";
+    const { data, error } = await supabase.from("provinces").select("id").eq("id", provinceId).eq("region_id", regionId).maybeSingle();
+    if (error) return error.message;
+    if (!data) return "Selected province must belong to the selected region.";
+  }
+
+  if (communeId) {
+    if (!provinceId) return "Selected commune requires a selected province.";
+    const { data, error } = await supabase.from("communes").select("id").eq("id", communeId).eq("province_id", provinceId).maybeSingle();
+    if (error) return error.message;
+    if (!data) return "Selected commune must belong to the selected province.";
+  }
+
+  return "";
+}
+
+function articlePaths(article: ArticleCacheRow, refs: ArticleCacheRefs) {
+  const paths = new Set<string>(["/"]);
+  if (article.slug) paths.add(`/article/${article.slug}`);
+  if (refs.categorySlug) paths.add(`/category/${refs.categorySlug}`);
+  if (refs.regionSlug) paths.add(`/region/${refs.regionSlug}`);
+  if (refs.provinceSlug) paths.add(`/province/${refs.provinceSlug}`);
+  if (refs.communeSlug) paths.add(`/commune/${refs.communeSlug}`);
+  return paths;
+}
+
+async function revalidateArticlePublishScope(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, ...articles: (ArticleCacheRow | null | undefined)[]) {
+  const publishedArticles = articles.filter((article): article is ArticleCacheRow => article?.status === "published");
+  if (!publishedArticles.length) return [];
+
+  const paths = new Set<string>();
+  for (const article of publishedArticles) {
+    const refs = await resolveArticleCacheRefs(supabase, article);
+    for (const path of articlePaths(article, refs)) paths.add(path);
+  }
+
+  for (const path of paths) revalidatePath(path);
+  revalidateTag("cms:articles", { expire: 0 });
+  return [...paths];
+}
+
 async function validateProfileAuthUser(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, id: unknown) {
   if (!isValidUuid(id)) return "Profile id must be an existing Supabase Auth user UUID.";
   const { data, error } = await supabase.auth.admin.getUserById(id);
@@ -82,6 +162,9 @@ async function prepareArticlePayload(
 
   const relationError = await resolveArticleReferences(supabase, payload);
   if (relationError) return relationError;
+
+  const hierarchyError = await validateArticleHierarchy(supabase, payload);
+  if (hierarchyError) return hierarchyError;
 
   console.info("[admin/articles] payload after FK validation", {
     category_id: payload.category_id,
@@ -120,7 +203,8 @@ export async function POST(request: Request, context: { params: Promise<{ resour
 
   const { data, error } = await supabase.from(table).insert(payload).select("*").single();
   if (error) return Response.json({ error: error.message }, { status: 400 });
-  return Response.json({ data });
+  const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, data as ArticleCacheRow) : [];
+  return Response.json({ data, revalidatedPaths });
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ resource: string }> }) {
@@ -140,8 +224,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
     const error = await validateProfileAuthUser(supabase, id);
     if (error) return Response.json({ error }, { status: 400 });
   }
+  let previousArticle: ArticleCacheRow | null = null;
   if (table === "articles") {
     if (!isValidUuid(id)) return Response.json({ error: "Article id must be a valid UUID." }, { status: 400 });
+
+    const { data: existingArticle, error: existingArticleError } = await supabase
+      .from(table)
+      .select("slug,status,category_id,region_id,province_id,commune_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (existingArticleError) return Response.json({ error: existingArticleError.message }, { status: 400 });
+    previousArticle = existingArticle as ArticleCacheRow | null;
 
     const error = await prepareArticlePayload(typedSupabase, authorization.session, payload);
     if (error) return Response.json({ error }, { status: 400 });
@@ -152,7 +245,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
 
   const { data, error } = await supabase.from(table).update(payload).eq("id", id).select("*").single();
   if (error) return Response.json({ error: error.message }, { status: 400 });
-  return Response.json({ data });
+  const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, previousArticle, data as ArticleCacheRow) : [];
+  return Response.json({ data, revalidatedPaths });
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ resource: string }> }) {
@@ -168,7 +262,12 @@ export async function DELETE(request: Request, context: { params: Promise<{ reso
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return Response.json({ error: "Missing id." }, { status: 400 });
 
+  const { data: previousArticle } = table === "articles"
+    ? await supabase.from(table).select("slug,status,category_id,region_id,province_id,commune_id").eq("id", id).maybeSingle()
+    : { data: null };
+
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error) return Response.json({ error: error.message }, { status: 400 });
-  return Response.json({ ok: true });
+  const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, previousArticle as ArticleCacheRow | null) : [];
+  return Response.json({ ok: true, revalidatedPaths });
 }

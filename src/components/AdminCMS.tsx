@@ -522,25 +522,34 @@ function ArticlesPanel({
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const provinceRecords = useMemo(() => state.regions.flatMap((region) => region.provinces.map((province) => ({ region, province }))), [state.regions]);
-  const communeRecords = useMemo(
-    () => provinceRecords.flatMap(({ region, province }) => province.communes.map((commune) => ({ region, province, commune }))),
-    [provinceRecords],
-  );
   const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
   const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
   const regionOptions = useMemo(() => state.regions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [state.regions]);
+  const selectedRegion = useMemo(() => state.regions.find((region) => region.id === draft.regionId), [draft.regionId, state.regions]);
+  const selectedProvince = useMemo(() => selectedRegion?.provinces.find((province) => province.id === draft.provinceId), [draft.provinceId, selectedRegion]);
   const provinceOptions = useMemo(
-    () => provinceRecords.map(({ region, province }) => ({ value: province.id, label: `${province.name || province.slug || province.id} / ${region.name || region.slug}` })),
-    [provinceRecords],
+    () => (selectedRegion?.provinces ?? []).map((province) => ({ value: province.id, label: province.name || province.slug || province.id })),
+    [selectedRegion],
   );
   const communeOptions = useMemo(
-    () => communeRecords
-      .filter(({ province }) => !draft.provinceId || province.id === draft.provinceId)
-      .map(({ province, commune }) => ({ value: commune.id, label: `${commune.name || commune.slug || commune.id} / ${province.name || province.slug}` })),
-    [communeRecords, draft.provinceId],
+    () => (selectedProvince?.communes ?? []).map((commune) => ({ value: commune.id, label: commune.name || commune.slug || commune.id })),
+    [selectedProvince],
   );
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;
+
+  useEffect(() => {
+    const provinceBelongsToRegion = Boolean(selectedRegion?.provinces.some((province) => province.id === draft.provinceId));
+    const communeBelongsToProvince = Boolean(selectedProvince?.communes.some((commune) => commune.id === draft.communeId));
+
+    if (draft.provinceId && !provinceBelongsToRegion) {
+      setDraft({ ...draft, provinceId: "", province: "", communeId: "", commune: "" });
+      return;
+    }
+
+    if (draft.communeId && !communeBelongsToProvince) {
+      setDraft({ ...draft, communeId: "", commune: "" });
+    }
+  }, [draft, selectedProvince, selectedRegion, setDraft]);
   const setFeaturedImageFromFile = (file: File | null) => {
     if (!file) return;
     if (!["image/png", "image/jpeg"].includes(file.type)) {
@@ -655,25 +664,24 @@ function ArticlesPanel({
               <SearchableSelect
                 value={draft.provinceId}
                 onChange={(provinceId) => {
-                  const selectedProvince = provinceRecords.find((record) => record.province.id === provinceId);
-                  setDraft({ ...draft, regionId: selectedProvince?.region.id ?? draft.regionId, provinceId, communeId: "" });
+                  const province = selectedRegion?.provinces.find((item) => item.id === provinceId);
+                  setDraft({ ...draft, provinceId: province?.id ?? "", province: province?.slug ?? "", communeId: "", commune: "" });
                 }}
                 options={provinceOptions}
+                disabled={!draft.regionId}
+                placeholder={draft.regionId ? "Select" : "Select region first"}
               />
             </Field>
             <Field label="Commune">
               <SearchableSelect
                 value={draft.communeId}
                 onChange={(communeId) => {
-                  const selectedCommune = communeRecords.find((record) => record.commune.id === communeId);
-                  setDraft({
-                    ...draft,
-                    regionId: selectedCommune?.region.id ?? draft.regionId,
-                    provinceId: selectedCommune?.province.id ?? draft.provinceId,
-                    communeId,
-                  });
+                  const commune = selectedProvince?.communes.find((item) => item.id === communeId);
+                  setDraft({ ...draft, communeId: commune?.id ?? "", commune: commune?.slug ?? "" });
                 }}
                 options={communeOptions}
+                disabled={!draft.provinceId}
+                placeholder={draft.provinceId ? "Select" : "Select province first"}
               />
             </Field>
             <Field label="Status"><select className={inputClass} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as ArticleStatus })}>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></Field>

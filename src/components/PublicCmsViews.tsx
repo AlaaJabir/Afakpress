@@ -32,6 +32,14 @@ function ArticleCard({ article }: { article: CmsArticle }) {
   );
 }
 
+function dedupeArticles(articles: CmsArticle[]) {
+  return articles.filter((article, index, list) => list.findIndex((item) => item.id === article.id || item.slug === article.slug) === index);
+}
+
+function publishedArticles(state: ReturnType<typeof useCms>["state"]) {
+  return dedupeArticles(getPublishedArticles(state));
+}
+
 function SectionBlock({ title, href, articles }: { title: string; href: string; articles: CmsArticle[] }) {
   return (
     <section>
@@ -48,7 +56,7 @@ function SectionBlock({ title, href, articles }: { title: string; href: string; 
 
 export function CmsHomePage() {
   const { state, isLoading, error } = useCms();
-  const published = getPublishedArticles(state);
+  const published = publishedArticles(state);
   const homepageArticles = published.length ? published : getPublishedArticles(initialCmsState);
   const homepageCategories = published.length ? state.categories : initialCmsState.categories;
   const homepageRegions = state.regions.length >= 12 ? state.regions : moroccoRegions;
@@ -173,7 +181,7 @@ export function CmsHomePage() {
 
 export function CmsArticlePage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const article = state.articles.find((item) => item.slug === slug);
+  const article = publishedArticles(state).find((item) => item.slug === slug);
   const region = state.regions.find((item) => item.slug === article?.region);
 
   if (!article) {
@@ -208,7 +216,7 @@ export function CmsArticlePage({ slug }: { slug: string }) {
 export function CmsCategoryPage({ slug }: { slug: string }) {
   const { state } = useCms();
   const category = state.categories.find((item) => item.slug === slug);
-  const categoryArticles = getPublishedArticles(state).filter((article) => article.category === slug);
+  const categoryArticles = publishedArticles(state).filter((article) => article.category === slug);
 
   if (!category) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Category not found.</p>;
@@ -228,10 +236,8 @@ export function CmsCategoryPage({ slug }: { slug: string }) {
 
 export function CmsRegionPage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const region = moroccoRegions.find((item) => item.slug === slug);
-  const provinceSlugs = new Set(region?.provinces.map((province) => province.slug) ?? []);
-  const communeSlugs = new Set(region?.provinces.flatMap((province) => province.communes.map((commune) => commune.slug)) ?? []);
-  const regionArticles = getPublishedArticles(state).filter((article) => article.region === slug || provinceSlugs.has(article.province) || communeSlugs.has(article.commune));
+  const region = state.regions.find((item) => item.slug === slug) ?? moroccoRegions.find((item) => item.slug === slug);
+  const regionArticles = publishedArticles(state).filter((article) => article.region === slug);
 
   if (!region) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Region not found.</p>;
@@ -264,9 +270,9 @@ export function CmsRegionPage({ slug }: { slug: string }) {
 
 export function CmsProvincePage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const match = moroccoRegions.flatMap((region) => region.provinces.map((province) => ({ region, province }))).find((item) => item.province.slug === slug);
-  const communeSlugs = new Set(match?.province.communes.map((commune) => commune.slug) ?? []);
-  const provinceArticles = getPublishedArticles(state).filter((article) => article.province === slug || communeSlugs.has(article.commune));
+  const geography = state.regions.length ? state.regions : moroccoRegions;
+  const match = geography.flatMap((region) => region.provinces.map((province) => ({ region, province }))).find((item) => item.province.slug === slug);
+  const provinceArticles = publishedArticles(state).filter((article) => article.province === slug);
 
   if (!match) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Province or prefecture not found.</p>;
@@ -300,10 +306,11 @@ export function CmsProvincePage({ slug }: { slug: string }) {
 
 export function CmsCommunePage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const match = moroccoRegions
+  const geography = state.regions.length ? state.regions : moroccoRegions;
+  const match = geography
     .flatMap((region) => region.provinces.flatMap((province) => province.communes.map((commune) => ({ region, province, commune }))))
     .find((item) => item.commune.slug === slug);
-  const communeArticles = getPublishedArticles(state).filter((article) => article.commune === slug);
+  const communeArticles = publishedArticles(state).filter((article) => article.commune === slug);
 
   if (!match) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Commune not found.</p>;
