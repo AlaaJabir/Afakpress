@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   getPublishedArticles,
+  initialCmsState,
   makeId,
   rolePermissions,
   type ArticleStatus,
@@ -220,6 +221,33 @@ const buttonClass = "inline-flex min-h-10 items-center justify-center rounded-md
 const primaryButtonClass = "inline-flex min-h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-400";
 const statusOptions: ArticleStatus[] = [...articleStatusValues];
 
+function sameLocation(left: { name: string; slug: string }, right: { name: string; slug: string }) {
+  return left.slug === right.slug || left.name === right.name;
+}
+
+function mergeProvinceCommunes(source: CmsProvince, fallback?: CmsProvince): CmsProvince {
+  if (!fallback) return source;
+  const communesBySlug = new Map(source.communes.map((commune) => [commune.slug, commune]));
+  const missingCommunes = fallback.communes.filter((commune) => !communesBySlug.has(commune.slug));
+  return { ...source, communes: [...source.communes, ...missingCommunes] };
+}
+
+function completeRegionHierarchy(region?: CmsRegion) {
+  if (!region) return undefined;
+  const fallbackRegion = initialCmsState.regions.find((item) => sameLocation(item, region));
+  if (!fallbackRegion) return region;
+
+  const mergedProvinces = region.provinces.map((province) => mergeProvinceCommunes(province, fallbackRegion.provinces.find((item) => sameLocation(item, province))));
+  const provinceSlugs = new Set(mergedProvinces.map((province) => province.slug));
+  const missingProvinces = fallbackRegion.provinces.filter((province) => !provinceSlugs.has(province.slug));
+
+  return { ...region, provinces: [...mergedProvinces, ...missingProvinces] };
+}
+
+function completeRegions(regions: CmsRegion[]) {
+  return regions.map((region) => completeRegionHierarchy(region) ?? region);
+}
+
 async function adminRequest(resource: AdminResource, method: "POST" | "PATCH" | "DELETE", headers: HeadersInit, body?: unknown, id?: string) {
   const url = id ? `/api/admin/${resource}?id=${encodeURIComponent(id)}` : `/api/admin/${resource}`;
   const response = await fetch(url, {
@@ -315,14 +343,15 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
   };
 
   const saveArticle = async () => {
-    const validationError = validateArticleDraft(articleDraft, state);
+    const completedState = { ...state, regions: completeRegions(state.regions) };
+    const validationError = validateArticleDraft(articleDraft, completedState);
     if (validationError) {
       notify("error", validationError);
       return;
     }
 
     const category = state.categories.find((item) => item.id === articleDraft.categoryId);
-    const region = state.regions.find((item) => item.id === articleDraft.regionId);
+    const region = completedState.regions.find((item) => item.id === articleDraft.regionId);
     const province = region?.provinces.find((item) => item.id === articleDraft.provinceId);
     const commune = province?.communes.find((item) => item.id === articleDraft.communeId);
     const author = state.users.find((item) => item.id === articleDraft.authorId);
@@ -522,10 +551,11 @@ function ArticlesPanel({
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const completedRegions = useMemo(() => completeRegions(state.regions), [state.regions]);
   const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
   const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
-  const regionOptions = useMemo(() => state.regions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [state.regions]);
-  const selectedRegion = useMemo(() => state.regions.find((region) => region.id === draft.regionId), [draft.regionId, state.regions]);
+  const regionOptions = useMemo(() => completedRegions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [completedRegions]);
+  const selectedRegion = useMemo(() => completedRegions.find((region) => region.id === draft.regionId), [completedRegions, draft.regionId]);
   const selectedProvince = useMemo(() => selectedRegion?.provinces.find((province) => province.id === draft.provinceId), [draft.provinceId, selectedRegion]);
   const provinceOptions = useMemo(
     () => (selectedRegion?.provinces ?? []).map((province) => ({ value: province.id, label: province.name || province.slug || province.id })),
