@@ -106,10 +106,11 @@ function sameLocation(left: { name?: string | null; slug?: string | null }, righ
   return leftValues.some((value) => rightValues.has(value));
 }
 
-function findRegionRow(rows: LocationRow[], region: { name: string; slug: string; provinces: { name: string; slug: string }[] }) {
-  const direct = rows.find((row) => sameLocation(row, region));
-  if (direct) return direct;
-  return rows.find((row) => region.provinces.some((province) => sameLocation(row, province)));
+function matchingRegionRows(rows: LocationRow[], region: { name: string; slug: string; provinces: { name: string; slug: string }[] }, provinceRows: ProvinceRow[]) {
+  return rows.filter((row) => {
+    if (sameLocation(row, region)) return true;
+    return provinceRows.some((province) => province.region_id === row.id && region.provinces.some((item) => sameLocation(item, province)));
+  });
 }
 
 async function insertMissingRow<Row extends Record<string, unknown>>(supabase: Db, table: "regions" | "provinces" | "communes", row: Row) {
@@ -136,38 +137,49 @@ async function syncMissingMoroccoHierarchy(supabase: Db) {
   const provinceRows = [...((provincesResult.data ?? []) as ProvinceRow[])];
   const communeRows = [...((communesResult.data ?? []) as CommuneRow[])];
 
+  const syncRegionRows = async (region: (typeof initialCmsState.regions)[number], rows: LocationRow[]) => {
+    for (const regionRow of rows) {
+      for (const province of region.provinces) {
+        let provinceRow = provinceRows.find((row) => row.region_id === regionRow.id && sameLocation(row, province));
+        if (!provinceRow) {
+          const provinceId = provinceRows.some((row) => row.id === province.id) ? stableUuid(`province-${regionRow.id}-${province.slug}`) : province.id;
+          const nextProvince = { id: provinceId, region_id: regionRow.id, name: province.name, slug: province.slug };
+          const error = await insertMissingRow(supabase, "provinces", nextProvince);
+          if (error) return error;
+          provinceRow = nextProvince;
+          provinceRows.push(provinceRow);
+        }
+
+        for (const commune of province.communes) {
+          const communeRow = communeRows.find((row) => row.province_id === provinceRow.id && sameLocation(row, commune));
+          if (!communeRow) {
+            const communeId = communeRows.some((row) => row.id === commune.id) ? stableUuid(`commune-${provinceRow.id}-${commune.slug}`) : commune.id;
+            const nextCommune = { id: communeId, province_id: provinceRow.id, name: commune.name, slug: commune.slug };
+            const error = await insertMissingRow(supabase, "communes", nextCommune);
+            if (error) return error;
+            communeRows.push(nextCommune);
+          }
+        }
+      }
+    }
+
+    return "";
+  };
+
   for (const region of initialCmsState.regions) {
-    let regionRow = findRegionRow(regionRows, region);
+    let rowsToSync = matchingRegionRows(regionRows, region, provinceRows);
+    let regionRow = rowsToSync[0];
     if (!regionRow) {
       const nextRegion = { id: region.id, name: region.name, slug: region.slug };
       const error = await insertMissingRow(supabase, "regions", nextRegion);
       if (error) return error;
       regionRow = nextRegion;
       regionRows.push(regionRow);
+      rowsToSync = [regionRow];
     }
 
-    for (const province of region.provinces) {
-      let provinceRow = provinceRows.find((row) => row.region_id === regionRow.id && sameLocation(row, province));
-      if (!provinceRow) {
-        const provinceId = provinceRows.some((row) => row.id === province.id) ? stableUuid(`province-${regionRow.id}-${province.slug}`) : province.id;
-        const nextProvince = { id: provinceId, region_id: regionRow.id, name: province.name, slug: province.slug };
-        const error = await insertMissingRow(supabase, "provinces", nextProvince);
-        if (error) return error;
-        provinceRow = nextProvince;
-        provinceRows.push(provinceRow);
-      }
-
-      for (const commune of province.communes) {
-        const communeRow = communeRows.find((row) => row.province_id === provinceRow.id && sameLocation(row, commune));
-        if (!communeRow) {
-          const communeId = communeRows.some((row) => row.id === commune.id) ? stableUuid(`commune-${provinceRow.id}-${commune.slug}`) : commune.id;
-          const nextCommune = { id: communeId, province_id: provinceRow.id, name: commune.name, slug: commune.slug };
-          const error = await insertMissingRow(supabase, "communes", nextCommune);
-          if (error) return error;
-          communeRows.push(nextCommune);
-        }
-      }
-    }
+    const error = await syncRegionRows(region, rowsToSync);
+    if (error) return error;
   }
 
   return "";

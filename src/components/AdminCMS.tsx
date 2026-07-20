@@ -21,6 +21,7 @@ import {
 } from "@/lib/cms";
 import { useCms } from "@/lib/cms-store";
 import { slugify } from "@/lib/slug";
+import { stableUuid } from "@/lib/uuid";
 import { canManageAdmins, cmsRoleFromAdmin, type AdminRole } from "@/lib/admin-roles";
 import type { AdminSession, AdminUserRecord } from "@/lib/admin-auth";
 import { articleStatusValues, validateArticleDraft } from "@/lib/article-validation";
@@ -241,7 +242,9 @@ function sharedProvinceCount(left: CmsRegion, right: CmsRegion) {
 function mergeProvinceCommunes(source: CmsProvince, fallback?: CmsProvince): CmsProvince {
   if (!fallback) return source;
   const communesBySlug = new Map(source.communes.map((commune) => [commune.slug, commune]));
-  const missingCommunes = fallback.communes.filter((commune) => !communesBySlug.has(commune.slug));
+  const missingCommunes = fallback.communes
+    .filter((commune) => !communesBySlug.has(commune.slug))
+    .map((commune) => ({ ...commune, id: stableUuid(`commune-${source.id}-${commune.slug}`) }));
   return { ...source, communes: [...source.communes, ...missingCommunes] };
 }
 
@@ -252,7 +255,16 @@ function completeRegionHierarchy(region?: CmsRegion) {
 
   const mergedProvinces = region.provinces.map((province) => mergeProvinceCommunes(province, fallbackRegion.provinces.find((item) => sameLocation(item, province))));
   const provinceSlugs = new Set(mergedProvinces.map((province) => province.slug));
-  const missingProvinces = fallbackRegion.provinces.filter((province) => !provinceSlugs.has(province.slug));
+  const missingProvinces = fallbackRegion.provinces
+    .filter((province) => !provinceSlugs.has(province.slug))
+    .map((province) => {
+      const provinceId = stableUuid(`province-${region.id}-${province.slug}`);
+      return {
+        ...province,
+        id: provinceId,
+        communes: province.communes.map((commune) => ({ ...commune, id: stableUuid(`commune-${provinceId}-${commune.slug}`) })),
+      };
+    });
 
   return { ...region, provinces: [...mergedProvinces, ...missingProvinces] };
 }
