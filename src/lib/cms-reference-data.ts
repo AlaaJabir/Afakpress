@@ -25,6 +25,11 @@ type CommuneRow = LocationRow & {
   province_id: string | null;
 };
 
+type SeedOptions = {
+  includeLocations?: boolean;
+  syncMissingHierarchy?: boolean;
+};
+
 export function defaultProfileRows() {
   return initialCmsState.users.map((user) => ({
     id: user.id,
@@ -188,7 +193,11 @@ async function syncMissingMoroccoHierarchy(supabase: Db) {
 export async function seedDefaultCmsReferences(
   supabase: Db,
   sessionProfile?: { id: string; name: string; email: string; role: string; avatar?: string | null },
+  options: SeedOptions = {},
 ) {
+  const includeLocations = options.includeLocations ?? true;
+  const syncMissingHierarchy = options.syncMissingHierarchy ?? false;
+
   if (sessionProfile) {
     const { error } = await supabase.from("profiles").upsert(sessionProfile, { onConflict: "id" });
     if (error && !error.message.toLowerCase().includes("duplicate key")) return error.message;
@@ -196,10 +205,10 @@ export async function seedDefaultCmsReferences(
 
   return (
     (await upsertRows(supabase, "categories", defaultCategoryRows())) ||
-    (await upsertRows(supabase, "regions", defaultRegionRows())) ||
-    (await upsertRows(supabase, "provinces", defaultProvinceRows())) ||
-    (await upsertRows(supabase, "communes", defaultCommuneRows())) ||
-    (await syncMissingMoroccoHierarchy(supabase))
+    (includeLocations ? (await upsertRows(supabase, "regions", defaultRegionRows())) : "") ||
+    (includeLocations ? (await upsertRows(supabase, "provinces", defaultProvinceRows())) : "") ||
+    (includeLocations ? (await upsertRows(supabase, "communes", defaultCommuneRows())) : "") ||
+    (syncMissingHierarchy ? (await syncMissingMoroccoHierarchy(supabase)) : "")
   );
 }
 

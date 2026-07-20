@@ -404,7 +404,14 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
       canonicalUrl: articleDraft.canonicalUrl || `/article/${slug}`,
     };
     try {
-      const payload = articlePayload(nextArticle);
+      const payload = {
+        ...articlePayload(nextArticle),
+        __location: {
+          region: region ? { id: region.id, name: region.name, slug: region.slug } : null,
+          province: province ? { id: province.id, name: province.name, slug: province.slug } : null,
+          commune: commune ? { id: commune.id, name: commune.name, slug: commune.slug } : null,
+        },
+      };
       console.info("[AdminCMS] article payload before save", {
         category_id: payload.category_id,
         region_id: payload.region_id,

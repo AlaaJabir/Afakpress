@@ -3,7 +3,7 @@ import { cmsRoleFromAdmin } from "@/lib/admin-roles";
 import { canAccess } from "@/lib/cms";
 import { articlePayloadSchema, formatZodError } from "@/lib/article-validation";
 import { resolveArticleReferences, seedDefaultCmsReferences } from "@/lib/cms-reference-data";
-import { createServiceSupabaseAdminClient, createServiceSupabaseClient } from "@/lib/supabase";
+import { createServiceSupabaseAdminClient } from "@/lib/supabase";
 import type { AdminResource } from "@/lib/supabase-cms";
 import { isValidUuid } from "@/lib/uuid";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -64,6 +64,18 @@ type ArticleCacheRefs = {
   communeSlug?: string;
 };
 
+type LocationReference = {
+  id?: string;
+  name?: string;
+  slug?: string;
+};
+
+type ArticleLocationReferences = {
+  region?: LocationReference | null;
+  province?: LocationReference | null;
+  commune?: LocationReference | null;
+};
+
 async function resolveArticleCacheRefs(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, article: ArticleCacheRow): Promise<ArticleCacheRefs> {
   const [category, region, province, commune] = await Promise.all([
     article.category_id ? supabase.from("categories").select("slug").eq("id", article.category_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -80,7 +92,7 @@ async function resolveArticleCacheRefs(supabase: NonNullable<ReturnType<typeof c
   };
 }
 
-async function validateArticleHierarchy(supabase: NonNullable<ReturnType<typeof createServiceSupabaseClient>>, payload: Record<string, unknown>) {
+async function validateArticleHierarchy(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, payload: Record<string, unknown>) {
   const regionId = typeof payload.region_id === "string" ? payload.region_id : null;
   const provinceId = typeof payload.province_id === "string" ? payload.province_id : null;
   const communeId = typeof payload.commune_id === "string" ? payload.commune_id : null;
@@ -97,6 +109,73 @@ async function validateArticleHierarchy(supabase: NonNullable<ReturnType<typeof 
     const { data, error } = await supabase.from("communes").select("id").eq("id", communeId).eq("province_id", provinceId).maybeSingle();
     if (error) return error.message;
     if (!data) return "Selected commune must belong to the selected province.";
+  }
+
+  return "";
+}
+
+function readLocationReferences(value: unknown): ArticleLocationReferences {
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+  const read = (key: "region" | "province" | "commune") => {
+    const item = record[key];
+    if (!item || typeof item !== "object") return null;
+    const location = item as Record<string, unknown>;
+    return {
+      id: typeof location.id === "string" ? location.id : undefined,
+      name: typeof location.name === "string" ? location.name : undefined,
+      slug: typeof location.slug === "string" ? location.slug : undefined,
+    };
+  };
+
+  return {
+    region: read("region"),
+    province: read("province"),
+    commune: read("commune"),
+  };
+}
+
+async function ensureLocationRow(
+  supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>,
+  table: "regions" | "provinces" | "communes",
+  row: Record<string, string>,
+) {
+  const { data, error } = await supabase.from(table).select("id").eq("id", row.id).maybeSingle();
+  if (error) return error.message;
+  if (data) return "";
+
+  const { error: insertError } = table === "regions"
+    ? await supabase.from("regions").insert({ id: row.id, name: row.name, slug: row.slug })
+    : table === "provinces"
+      ? await supabase.from("provinces").insert({ id: row.id, region_id: row.region_id, name: row.name, slug: row.slug })
+      : await supabase.from("communes").insert({ id: row.id, province_id: row.province_id, name: row.name, slug: row.slug });
+  if (!insertError) return "";
+  if (insertError.message.toLowerCase().includes("duplicate key")) return "";
+  return insertError.message;
+}
+
+async function ensureArticleLocationReferences(
+  supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>,
+  payload: Record<string, unknown>,
+  references: ArticleLocationReferences,
+) {
+  const regionId = typeof payload.region_id === "string" ? payload.region_id : "";
+  const provinceId = typeof payload.province_id === "string" ? payload.province_id : "";
+  const communeId = typeof payload.commune_id === "string" ? payload.commune_id : "";
+
+  if (regionId && references.region?.id === regionId && references.region.name && references.region.slug) {
+    const error = await ensureLocationRow(supabase, "regions", { id: regionId, name: references.region.name, slug: references.region.slug });
+    if (error) return error;
+  }
+
+  if (provinceId && regionId && references.province?.id === provinceId && references.province.name && references.province.slug) {
+    const error = await ensureLocationRow(supabase, "provinces", { id: provinceId, region_id: regionId, name: references.province.name, slug: references.province.slug });
+    if (error) return error;
+  }
+
+  if (communeId && provinceId && references.commune?.id === communeId && references.commune.name && references.commune.slug) {
+    const error = await ensureLocationRow(supabase, "communes", { id: communeId, province_id: provinceId, name: references.commune.name, slug: references.commune.slug });
+    if (error) return error;
   }
 
   return "";
@@ -135,10 +214,13 @@ async function validateProfileAuthUser(supabase: NonNullable<ReturnType<typeof c
 }
 
 async function prepareArticlePayload(
-  supabase: NonNullable<ReturnType<typeof createServiceSupabaseClient>>,
+  supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>,
   session: NonNullable<Awaited<ReturnType<typeof getAdminSessionFromRequest>>>,
   payload: Record<string, unknown>,
 ) {
+  const locationReferences = readLocationReferences(payload.__location);
+  delete payload.__location;
+
   const parsed = articlePayloadSchema.safeParse(payload);
   if (!parsed.success) return formatZodError(parsed.error);
 
@@ -157,8 +239,11 @@ async function prepareArticlePayload(
     email: session.email,
     role: cmsRoleFromAdmin(session.role),
     avatar: null,
-  });
+  }, { includeLocations: false });
   if (seedError) return seedError;
+
+  const locationError = await ensureArticleLocationReferences(supabase, payload, locationReferences);
+  if (locationError) return locationError;
 
   const relationError = await resolveArticleReferences(supabase, payload);
   if (relationError) return relationError;
@@ -179,8 +264,7 @@ async function prepareArticlePayload(
 
 export async function POST(request: Request, context: { params: Promise<{ resource: string }> }) {
   const supabase = createServiceSupabaseAdminClient();
-  const typedSupabase = createServiceSupabaseClient();
-  if (!supabase || !typedSupabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
+  if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
   const { resource } = await context.params;
   const table = tableName(resource);
@@ -190,7 +274,7 @@ export async function POST(request: Request, context: { params: Promise<{ resour
 
   const payload = await request.json();
   if (table === "articles") {
-    const error = await prepareArticlePayload(typedSupabase, authorization.session, payload);
+    const error = await prepareArticlePayload(supabase, authorization.session, payload);
     if (error) return Response.json({ error }, { status: 400 });
 
     const { data: existing } = await supabase.from(table).select("id").eq("slug", payload.slug).maybeSingle();
@@ -209,8 +293,7 @@ export async function POST(request: Request, context: { params: Promise<{ resour
 
 export async function PATCH(request: Request, context: { params: Promise<{ resource: string }> }) {
   const supabase = createServiceSupabaseAdminClient();
-  const typedSupabase = createServiceSupabaseClient();
-  if (!supabase || !typedSupabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
+  if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
   const { resource } = await context.params;
   const table = tableName(resource);
@@ -236,7 +319,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
     if (existingArticleError) return Response.json({ error: existingArticleError.message }, { status: 400 });
     previousArticle = existingArticle as ArticleCacheRow | null;
 
-    const error = await prepareArticlePayload(typedSupabase, authorization.session, payload);
+    const error = await prepareArticlePayload(supabase, authorization.session, payload);
     if (error) return Response.json({ error }, { status: 400 });
 
     const { data: existing } = await supabase.from(table).select("id").eq("slug", payload.slug).neq("id", id).maybeSingle();

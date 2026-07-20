@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     avatar: null,
   };
 
-  const error = await seedDefaultCmsReferences(supabase, profile);
+  const error = await seedDefaultCmsReferences(supabase, profile, { includeLocations: true, syncMissingHierarchy: true });
   if (error) return Response.json({ error }, { status: 400 });
 
   return Response.json({ ok: true });
