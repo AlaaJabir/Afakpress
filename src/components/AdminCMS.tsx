@@ -222,7 +222,20 @@ const primaryButtonClass = "inline-flex min-h-10 items-center justify-center rou
 const statusOptions: ArticleStatus[] = [...articleStatusValues];
 
 function sameLocation(left: { name: string; slug: string }, right: { name: string; slug: string }) {
-  return left.slug === right.slug || left.name === right.name;
+  return normalizedLocation(left.slug) === normalizedLocation(right.slug) || normalizedLocation(left.name) === normalizedLocation(right.name);
+}
+
+function normalizedLocation(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "")
+    .toLowerCase();
+}
+
+function sharedProvinceCount(left: CmsRegion, right: CmsRegion) {
+  const rightProvinces = new Set(right.provinces.flatMap((province) => [normalizedLocation(province.name), normalizedLocation(province.slug)]));
+  return left.provinces.filter((province) => rightProvinces.has(normalizedLocation(province.name)) || rightProvinces.has(normalizedLocation(province.slug))).length;
 }
 
 function mergeProvinceCommunes(source: CmsProvince, fallback?: CmsProvince): CmsProvince {
@@ -234,7 +247,7 @@ function mergeProvinceCommunes(source: CmsProvince, fallback?: CmsProvince): Cms
 
 function completeRegionHierarchy(region?: CmsRegion) {
   if (!region) return undefined;
-  const fallbackRegion = initialCmsState.regions.find((item) => sameLocation(item, region));
+  const fallbackRegion = initialCmsState.regions.find((item) => sameLocation(item, region)) ?? initialCmsState.regions.find((item) => sharedProvinceCount(region, item) > 0);
   if (!fallbackRegion) return region;
 
   const mergedProvinces = region.provinces.map((province) => mergeProvinceCommunes(province, fallbackRegion.provinces.find((item) => sameLocation(item, province))));
