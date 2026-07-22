@@ -207,12 +207,15 @@ export function CmsHomePage() {
 }
 
 export function CmsArticlePage({ slug }: { slug: string }) {
-  const { state } = useCms();
+  const { state, hasLoadedFromSupabase } = useCms();
   const article = publishedArticles(state).find((item) => item.slug === slug);
   const articleRegion = article ? articleRegionSlug(state, article) : "";
   const region = state.regions.find((item) => item.slug === articleRegion);
 
   if (!article) {
+    if (!hasLoadedFromSupabase) {
+      return <p className="border border-slate-200 bg-white p-6 text-slate-600">Loading article...</p>;
+    }
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Article not found.</p>;
   }
 

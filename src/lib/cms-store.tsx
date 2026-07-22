@@ -18,6 +18,7 @@ type CmsStore = {
   adminHeaders: () => HeadersInit;
   refreshFromSupabase: () => Promise<void>;
   isLoading: boolean;
+  hasLoadedFromSupabase: boolean;
   error: string;
 };
 
@@ -57,6 +58,7 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<CmsUser | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedFromSupabase, setHasLoadedFromSupabase] = useState(false);
   const [error, setError] = useState("");
 
   const notify = (type: NoticeType, message: string) => {
@@ -77,6 +79,7 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
       setError(message);
       notify("error", message);
     } finally {
+      setHasLoadedFromSupabase(true);
       setIsLoading(false);
     }
   };
@@ -88,6 +91,7 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => {
       if (process.env.NODE_ENV !== "production" && window.__AFAKPRESS_TEST_CMS_STATE__) {
         setState(window.__AFAKPRESS_TEST_CMS_STATE__);
+        setHasLoadedFromSupabase(true);
         return;
       }
       void refreshFromSupabase();
@@ -119,6 +123,7 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
     }),
     refreshFromSupabase,
     isLoading,
+    hasLoadedFromSupabase,
     error,
   };
 

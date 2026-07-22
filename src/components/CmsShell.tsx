@@ -15,7 +15,6 @@ function Chrome({ children }: { children: React.ReactNode }) {
   const breakingArticle = breaking?.articleId ? state.articles.find((article) => article.id === breaking.articleId) : null;
   const today = new Intl.DateTimeFormat("fr-MA", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
   const footerMenus = state.menus.filter((item) => item.active !== false && item.showInFooter === true);
-  const navigationRegions = state.regions.length >= 12 ? state.regions : moroccoRegions;
 
   return (
     <>
@@ -43,7 +42,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
         </div>
         <div className="border-y border-slate-200 bg-white">
           <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
-            <MegaMenu regions={navigationRegions} />
+            <MegaMenu regions={moroccoRegions} />
           </div>
         </div>
       </header>
