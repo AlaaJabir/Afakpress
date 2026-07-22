@@ -14,6 +14,19 @@ function extensionFor(type: string) {
   return "";
 }
 
+async function ensureMediaBucket(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>) {
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) return listError.message;
+  if (buckets?.some((bucket) => bucket.name === mediaBucket)) return "";
+
+  const { error } = await supabase.storage.createBucket(mediaBucket, {
+    public: true,
+    allowedMimeTypes: ["image/png", "image/jpeg"],
+    fileSizeLimit: maxFeaturedImageSize,
+  });
+  return error?.message ?? "";
+}
+
 export async function POST(request: Request) {
   const session = await getAdminSessionFromRequest(request);
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,6 +42,9 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) return Response.json({ error: "Upload a PNG or JPEG image." }, { status: 400 });
   if (!["image/png", "image/jpeg"].includes(file.type)) return Response.json({ error: "Featured image must be a PNG or JPEG file." }, { status: 400 });
   if (file.size > maxFeaturedImageSize) return Response.json({ error: "Featured image must be 2MB or smaller." }, { status: 400 });
+
+  const bucketError = await ensureMediaBucket(supabase);
+  if (bucketError) return Response.json({ error: bucketError }, { status: 400 });
 
   const extension = extensionFor(file.type);
   const path = `articles/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extension}`;

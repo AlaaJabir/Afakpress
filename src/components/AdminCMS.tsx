@@ -583,6 +583,7 @@ function ArticlesPanel({
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [isUploadingFeaturedImage, setIsUploadingFeaturedImage] = useState(false);
   const completedRegions = useMemo(() => completeRegions(state.regions), [state.regions]);
   const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
   const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
@@ -626,13 +627,17 @@ function ArticlesPanel({
     const formData = new FormData();
     formData.append("file", file);
 
+    setIsUploadingFeaturedImage(true);
     try {
       const response = await fetch("/api/admin/upload", { method: "POST", body: formData });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Featured image upload failed.");
       setDraft({ ...draft, featuredImage: payload.url, image: payload.url });
+      notify("success", "Featured image uploaded.");
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Featured image upload failed.");
+    } finally {
+      setIsUploadingFeaturedImage(false);
     }
   };
 
@@ -761,7 +766,7 @@ function ArticlesPanel({
           <Field label="SEO Title"><input className={inputClass} value={draft.seoTitle} onChange={(event) => setDraft({ ...draft, seoTitle: event.target.value })} /></Field>
           <Field label="SEO Description"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.seoDescription} onChange={(event) => setDraft({ ...draft, seoDescription: event.target.value })} /></Field>
           <Field label="Canonical URL"><input className={inputClass} value={draft.canonicalUrl} onChange={(event) => setDraft({ ...draft, canonicalUrl: event.target.value })} /></Field>
-          <button className={primaryButtonClass} disabled={!canEdit} onClick={saveArticle} type="button">{canEdit ? "Save article" : "Journalists can edit only their own articles"}</button>
+          <button className={primaryButtonClass} disabled={!canEdit || isUploadingFeaturedImage} onClick={saveArticle} type="button">{isUploadingFeaturedImage ? "Uploading image..." : canEdit ? "Save article" : "Journalists can edit only their own articles"}</button>
         </div>
       </div>
     </div>
