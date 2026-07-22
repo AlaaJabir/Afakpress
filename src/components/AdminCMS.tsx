@@ -304,6 +304,8 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
   const [query, setQuery] = useState("");
   const [articleDraft, setArticleDraft] = useState<CmsArticle>({ ...emptyArticle });
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
+  const [isSavingArticle, setIsSavingArticle] = useState(false);
+  const isSavingArticleRef = useRef(false);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [bootstrapAttempted, setBootstrapAttempted] = useState(false);
 
@@ -368,6 +370,8 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
   };
 
   const saveArticle = async () => {
+    if (isSavingArticleRef.current) return;
+
     const completedState = { ...state, regions: completeRegions(state.regions) };
     const validationError = validateArticleDraft(articleDraft, completedState);
     if (validationError) {
@@ -403,6 +407,8 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
       publishedAt: articleDraft.publishDate,
       canonicalUrl: articleDraft.canonicalUrl || `/article/${slug}`,
     };
+    isSavingArticleRef.current = true;
+    setIsSavingArticle(true);
     try {
       const payload = {
         ...articlePayload(nextArticle),
@@ -428,11 +434,14 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
         ...current,
         articles: current.articles.some((article) => article.id === nextArticle.id) ? current.articles.map((article) => (article.id === nextArticle.id ? nextArticle : article)) : [nextArticle, ...current.articles],
       }));
-      await refreshFromSupabase();
       setArticleDraft({ ...emptyArticle });
       notify("success", "Article saved to Supabase.");
+      router.refresh();
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Article save failed.");
+    } finally {
+      isSavingArticleRef.current = false;
+      setIsSavingArticle(false);
     }
   };
 
@@ -505,6 +514,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
               bulkDelete={bulkDelete}
               bulkUpdate={bulkUpdate}
               currentUser={currentUser}
+              isSavingArticle={isSavingArticle}
             />
           ) : null}
           {active === "media" ? <MediaPanel /> : null}
@@ -569,6 +579,7 @@ function ArticlesPanel({
   bulkDelete,
   bulkUpdate,
   currentUser,
+  isSavingArticle,
 }: {
   articles: CmsArticle[];
   draft: CmsArticle;
@@ -579,6 +590,7 @@ function ArticlesPanel({
   bulkDelete: () => void;
   bulkUpdate: (key: "status" | "category", value: string) => void;
   currentUser: CmsUser;
+  isSavingArticle: boolean;
 }) {
   const { state, setState, notify, adminHeaders, refreshFromSupabase } = useCms();
   const [statusFilter, setStatusFilter] = useState("");
@@ -766,7 +778,7 @@ function ArticlesPanel({
           <Field label="SEO Title"><input className={inputClass} value={draft.seoTitle} onChange={(event) => setDraft({ ...draft, seoTitle: event.target.value })} /></Field>
           <Field label="SEO Description"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.seoDescription} onChange={(event) => setDraft({ ...draft, seoDescription: event.target.value })} /></Field>
           <Field label="Canonical URL"><input className={inputClass} value={draft.canonicalUrl} onChange={(event) => setDraft({ ...draft, canonicalUrl: event.target.value })} /></Field>
-          <button className={primaryButtonClass} disabled={!canEdit || isUploadingFeaturedImage} onClick={saveArticle} type="button">{isUploadingFeaturedImage ? "Uploading image..." : canEdit ? "Save article" : "Journalists can edit only their own articles"}</button>
+          <button className={primaryButtonClass} disabled={!canEdit || isUploadingFeaturedImage || isSavingArticle} onClick={saveArticle} type="button">{isUploadingFeaturedImage ? "Uploading image..." : isSavingArticle ? "Saving article..." : canEdit ? "Save article" : "Journalists can edit only their own articles"}</button>
         </div>
       </div>
     </div>
