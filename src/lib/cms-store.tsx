@@ -48,7 +48,12 @@ function safeRemoveStorageItem(key: string) {
 }
 
 export function CmsProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<CmsState>(initialCmsState);
+  const [state, setState] = useState<CmsState>(() => {
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production" && window.__AFAKPRESS_TEST_CMS_STATE__) {
+      return window.__AFAKPRESS_TEST_CMS_STATE__;
+    }
+    return initialCmsState;
+  });
   const [currentUser, setCurrentUser] = useState<CmsUser | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(false);

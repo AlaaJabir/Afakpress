@@ -247,7 +247,7 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
   const supabase = createBrowserSupabaseClient();
   if (!supabase) return null;
 
-  const [categoriesResult, profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionsResult, provincesResult, communesResult] = await Promise.all([
+  const [categoriesResult, profilesResult, joinedArticlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionsResult, provincesResult, communesResult] = await Promise.all([
     supabase.from("categories").select("*"),
     supabase.from("profiles").select("*"),
     supabase.from("articles").select("*, categories(slug), regions(slug), provinces(slug), communes(slug)").order("published_at", { ascending: false }),
@@ -260,9 +260,17 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
     supabase.from("communes").select("*"),
   ]);
 
-  const firstError = [profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult].find((result) => result.error)?.error;
-  if (firstError) {
-    throw firstError;
+  let articlesResult = joinedArticlesResult;
+  if (articlesResult.error) {
+    console.warn("Supabase article relationship query failed, retrying without embedded references:", articlesResult.error);
+    const fallbackArticlesResult = await supabase.from("articles").select("*").order("published_at", { ascending: false });
+    if (!fallbackArticlesResult.error) {
+      articlesResult = fallbackArticlesResult;
+    }
+  }
+
+  if (articlesResult.error) {
+    throw articlesResult.error;
   }
 
   const categoryRows = (categoriesResult.data ?? []) as CategoryRow[];

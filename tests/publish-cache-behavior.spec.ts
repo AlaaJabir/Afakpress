@@ -39,3 +39,12 @@ test("article admin API invalidates affected public caches after Supabase writes
   expect(source).toContain("paths.add(`/province/${refs.provinceSlug}`)");
   expect(source).toContain("paths.add(`/commune/${refs.communeSlug}`)");
 });
+
+test("CMS data loading falls back when Supabase embedded article references fail", async () => {
+  const source = await readFile(path.join(root, "src/lib/supabase-cms.ts"), "utf8");
+
+  expect(source).toContain("joinedArticlesResult");
+  expect(source).toContain("retrying without embedded references");
+  expect(source).toContain("supabase.from(\"articles\").select(\"*\").order(\"published_at\", { ascending: false })");
+  expect(source).toContain("if (articlesResult.error) {");
+});
