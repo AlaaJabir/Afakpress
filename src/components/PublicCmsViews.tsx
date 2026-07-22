@@ -10,25 +10,48 @@ function imageFor(article: CmsArticle) {
   return article.featuredImage || article.image || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
 }
 
-function ArticleCard({ article }: { article: CmsArticle }) {
+function ArticleTag({ children, tone = "light" }: { children: React.ReactNode; tone?: "light" | "dark" }) {
   return (
-    <article className="grid gap-4 border-b border-slate-200 pb-6 sm:grid-cols-[180px_1fr]">
-      <div className="relative h-36 w-full overflow-hidden bg-slate-200 sm:h-full">
-        <Image src={imageFor(article)} alt="" fill sizes="(min-width: 640px) 160px, 100vw" className="object-cover" />
-      </div>
-      <div>
-        <div className="flex flex-wrap gap-2 text-xs font-bold uppercase text-red-700">
-          <span>{article.category}</span>
-          <span>{article.readingTime}</span>
+    <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase ${tone === "dark" ? "bg-white/90 text-slate-950" : "bg-red-50 text-red-700"}`}>
+      {children}
+    </span>
+  );
+}
+
+function ArticleMeta({ article, tone = "light" }: { article: CmsArticle; tone?: "light" | "dark" }) {
+  return (
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold ${tone === "dark" ? "text-white/85" : "text-slate-500"}`}>
+      <span>{article.author}</span>
+      <span>{article.publishDate}</span>
+      <span>{article.readingTime}</span>
+    </div>
+  );
+}
+
+function ArticleCard({ article, compact = false }: { article: CmsArticle; compact?: boolean }) {
+  return (
+    <Link href={`/article/${article.slug}`} aria-label={article.title} className="group block h-full">
+      <article className={`flex h-full overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-red-200 ${compact ? "gap-4 p-3" : "flex-col"}`}>
+        <div className={`relative shrink-0 overflow-hidden rounded-xl bg-slate-200 ${compact ? "h-24 w-24 sm:h-28 sm:w-32" : "h-56 w-full"}`}>
+          <Image src={imageFor(article)} alt="" fill sizes={compact ? "(min-width: 640px) 128px, 96px" : "(min-width: 1024px) 360px, 100vw"} className="object-cover brightness-95 transition duration-300 group-hover:scale-105" />
+          {!compact ? (
+            <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+              <ArticleTag>{article.category}</ArticleTag>
+            </div>
+          ) : null}
         </div>
-        <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">
-          <Link href={`/article/${article.slug}`} className="hover:text-red-700">
+        <div className={`${compact ? "min-w-0 flex-1 py-1" : "flex flex-1 flex-col p-5"}`}>
+          {compact ? <ArticleTag>{article.category}</ArticleTag> : null}
+          <h3 className={`${compact ? "mt-2 text-base" : "mt-3 text-2xl"} font-black leading-tight text-slate-950 transition group-hover:text-red-700`} dir="auto">
             {article.title}
-          </Link>
-        </h3>
-        <p className="mt-2 text-sm leading-6 text-slate-600">{article.excerpt}</p>
-      </div>
-    </article>
+          </h3>
+          {!compact ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{article.excerpt}</p> : null}
+          <div className={compact ? "mt-2" : "mt-auto pt-5"}>
+            <ArticleMeta article={article} />
+          </div>
+        </div>
+      </article>
+    </Link>
   );
 }
 
@@ -59,13 +82,13 @@ function articleCommuneSlug(state: CmsState, article: CmsArticle) {
 function SectionBlock({ title, href, articles }: { title: string; href: string; articles: CmsArticle[] }) {
   return (
     <section>
-      <div className="mb-6 flex items-end justify-between gap-4 border-b-4 border-slate-950 pb-3">
-        <h2 className="text-2xl font-black uppercase text-slate-950">{title}</h2>
-        <Link href={href} className="text-sm font-black text-red-700 hover:underline">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <h2 className="text-3xl font-black text-slate-950">{title}</h2>
+        <Link href={href} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700">
           View all
         </Link>
       </div>
-      <div className="space-y-6">{articles.map((article) => <ArticleCard key={article.id} article={article} />)}</div>
+      <div className="grid gap-5 md:grid-cols-2">{articles.map((article) => <ArticleCard key={article.id} article={article} />)}</div>
     </section>
   );
 }
@@ -92,49 +115,37 @@ export function CmsHomePage() {
     <div className="space-y-14">
       {isLoading ? <p className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">Loading latest newsroom data...</p> : null}
       {error ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">{error}</p> : null}
-      {show("Featured Slider") ? <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_420px]">
-        <article className="grid overflow-hidden border border-slate-200 bg-white lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="relative min-h-80 w-full bg-slate-200 lg:min-h-[560px]">
-          <Image src={imageFor(featured)} alt="" fill priority sizes="(min-width: 1024px) 58vw, 100vw" className="object-cover" />
-        </div>
-        <div className="flex flex-col justify-center p-6 lg:p-10 xl:p-12">
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Top story</p>
-          <h1 className="mt-4 text-4xl font-black leading-tight text-slate-950 lg:text-5xl">{featured.title}</h1>
-          <p className="mt-5 text-lg leading-8 text-slate-600">{featured.excerpt}</p>
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-sm font-bold text-slate-500">
-            <span>{featured.author}</span>
-            <span>{featured.publishDate}</span>
-            <span>{featured.readingTime}</span>
+      {show("Featured Slider") ? <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_420px]">
+        <Link href={`/article/${featured.slug}`} aria-label={featured.title} className="group relative min-h-[430px] overflow-hidden rounded-xl bg-slate-950 text-white shadow-sm md:min-h-[560px]">
+          <Image src={imageFor(featured)} alt="" fill priority sizes="(min-width: 1280px) 980px, 100vw" className="object-cover brightness-[0.68] transition duration-500 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
+          <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-8">
+            <div className="flex flex-wrap gap-2">
+              <ArticleTag tone="dark">{featured.category}</ArticleTag>
+              <ArticleTag tone="dark">Top story</ArticleTag>
+            </div>
+            <div className="max-w-3xl">
+              <h1 className="text-3xl font-black leading-tight tracking-normal md:text-5xl" dir="auto">{featured.title}</h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-white/85 md:text-lg">{featured.excerpt}</p>
+              <div className="mt-5">
+                <ArticleMeta article={featured} tone="dark" />
+              </div>
+            </div>
           </div>
-          <Link href={`/article/${featured.slug}`} className="mt-8 w-fit bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700">
-            Read the story
-          </Link>
-        </div>
-        </article>
+        </Link>
         <aside className="grid gap-4">
-          {homepageArticles.slice(1, 4).map((article) => (
-            <Link key={article.id} href={`/article/${article.slug}`} className="grid min-h-40 grid-cols-[140px_1fr] overflow-hidden border border-slate-200 bg-white transition hover:border-red-700">
-              <span className="relative block bg-slate-200">
-                <Image src={imageFor(article)} alt="" fill sizes="140px" className="object-cover" />
-              </span>
-              <span className="p-4">
-                <span className="text-xs font-black uppercase text-red-700">{article.category}</span>
-                <span className="mt-2 block text-lg font-black leading-tight text-slate-950">{article.title}</span>
-                <span className="mt-3 block text-xs font-bold text-slate-500">{article.publishDate}</span>
-              </span>
-            </Link>
-          ))}
+          {homepageArticles.slice(1, 4).map((article) => <ArticleCard key={article.id} article={article} compact />)}
         </aside>
       </section> : null}
 
       {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
         <SectionBlock title="Latest news" href="/category/national" articles={homepageArticles.slice(1, 5)} />
-        <aside className="border border-slate-200 bg-white p-6">
-          <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Most read</h2>
+        <aside className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <h2 className="text-2xl font-black text-slate-950">Most read</h2>
           <ol className="mt-5 space-y-5">
             {mostRead.map((article, index) => (
               <li key={article.id} className="grid grid-cols-[36px_1fr] gap-4">
-                <span className="text-3xl font-black text-red-700">{index + 1}</span>
+                <span className="text-3xl font-black text-red-700 tabular-nums">{index + 1}</span>
                 <Link href={`/article/${article.slug}`} className="font-black leading-snug text-slate-900 hover:text-red-700">
                   {article.title}
                 </Link>
@@ -145,15 +156,15 @@ export function CmsHomePage() {
       </section> : null}
 
       {show("Regional News") ? <section className="mx-auto w-full max-w-screen-2xl">
-        <div className="mb-6 flex items-end justify-between gap-4 border-b-4 border-slate-950 pb-3">
-          <h2 className="text-2xl font-black uppercase text-slate-950">Morocco regions</h2>
-          <Link href="/category/regions" className="text-sm font-black text-red-700 hover:underline">
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <h2 className="text-3xl font-black text-slate-950">Morocco regions</h2>
+          <Link href="/category/regions" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700">
             Regional desk
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
           {homepageRegions.slice(0, 8).map((region) => (
-            <Link key={region.slug} href={`/region/${region.slug}`} className="border border-slate-200 bg-white p-5 transition hover:border-red-700">
+            <Link key={region.slug} href={`/region/${region.slug}`} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-red-200">
               <span className="block text-lg font-black text-slate-950">{region.name}</span>
               <span className="mt-3 block text-sm leading-6 text-slate-600">{region.provinces.map((province) => province.name).join(" / ")}</span>
             </Link>
@@ -165,8 +176,8 @@ export function CmsHomePage() {
         {homepageCategories.slice(0, 3).map((category) => {
           const categoryArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === category.slug).slice(0, 2);
           return (
-            <div key={category.id} className="border border-slate-200 bg-white p-6">
-              <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">{category.name}</h2>
+            <div key={category.id} className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <h2 className="text-2xl font-black text-slate-950">{category.name}</h2>
               <p className="mt-4 text-sm leading-6 text-slate-600">{category.description}</p>
               <div className="mt-5 space-y-4">{categoryArticles.map((article) => <ArticleCard key={article.id} article={article} />)}</div>
             </div>

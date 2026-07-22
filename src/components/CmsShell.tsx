@@ -15,34 +15,35 @@ function Chrome({ children }: { children: React.ReactNode }) {
   const breakingArticle = breaking?.articleId ? state.articles.find((article) => article.id === breaking.articleId) : null;
   const today = new Intl.DateTimeFormat("fr-MA", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
   const footerMenus = state.menus.filter((item) => item.active !== false && item.showInFooter === true);
+  const navigationRegions = state.regions.length >= 12 ? state.regions : moroccoRegions;
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
-        <div className="border-b border-slate-100 bg-slate-950 text-white">
-          <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-2 text-xs font-bold sm:px-6 lg:px-10">
-            <span className="uppercase tracking-[0.18em] text-red-200">Presse marocaine indépendante</span>
+      <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-xl">
+        <div className="border-b border-slate-200 bg-slate-950 text-white">
+          <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-4 py-2 text-xs font-bold sm:px-6">
+            <span className="uppercase tracking-[0.18em] text-white/80">Presse marocaine indépendante</span>
             <span suppressHydrationWarning className="hidden capitalize text-slate-300 md:inline">{today}</span>
           </div>
         </div>
-        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
-          <div className="flex flex-col justify-center gap-3 py-2 md:flex-row md:items-center md:justify-between lg:py-3">
-            <Link href="/" className="block h-[58px] w-[108px] md:h-[66px] md:w-[122px] lg:h-[74px] lg:w-[138px]" aria-label="Afakpress">
-              <Image src="/afakpress-logo.png" alt="Afakpress" width={138} height={74} priority className="h-full w-full object-contain" />
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="flex min-h-20 items-center justify-between gap-5">
+            <Link href="/" className="block h-[43px] w-[130px]" aria-label="Afakpress">
+              <Image src="/afakpress-logo.png" alt="Afakpress" width={130} height={43} priority className="h-full w-full object-contain" />
             </Link>
-            <div className="flex flex-wrap items-center gap-1 text-xs font-black uppercase tracking-[0.08em] text-slate-600 md:gap-2">
-              <Link href="/category/national" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">
+            <div className="flex items-center gap-1 text-sm font-semibold text-slate-700">
+              <Link href="/category/national" className="whitespace-nowrap rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-red-700">
                 À la une
               </Link>
-              <Link href="/#newsletter" className="border border-transparent px-3 py-2 transition hover:border-red-200 hover:text-red-700">
+              <Link href="/#newsletter" className="whitespace-nowrap rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-red-700">
                 Newsletter
               </Link>
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-slate-200 bg-white">
-          <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
-            <MegaMenu regions={moroccoRegions} />
+        <div className="border-y border-slate-200 bg-white">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+            <MegaMenu regions={navigationRegions} />
           </div>
         </div>
       </header>
@@ -65,7 +66,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ) : null}
-      <main className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-10">{children}</main>
+      <main className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6">{children}</main>
       <footer className="mt-16 border-t border-slate-200 bg-slate-950 text-slate-300">
         <div className="mx-auto grid max-w-[1600px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.2fr_0.8fr_0.8fr] lg:px-10">
           <div>

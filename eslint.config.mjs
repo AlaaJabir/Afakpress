@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "afakpress-design-reference/**",
     "next-env.d.ts",
   ]),
 ]);

@@ -122,7 +122,7 @@ export function MegaMenu({
   return (
     <div className="relative z-[100] w-full" onMouseLeave={closeMenu}>
       <nav className="hidden w-full lg:block" aria-label="Primary regional navigation">
-        <div className="grid w-full grid-cols-12 items-stretch divide-x divide-slate-100 border-x border-slate-100">
+        <div className="grid w-full grid-cols-12 items-center gap-1 py-2">
           {regionItems.map((region) => (
             <Link
               key={region.id}
@@ -139,10 +139,10 @@ export function MegaMenu({
                   openRegion(region);
                 }
               }}
-              className={`flex min-h-[52px] items-center justify-center border-b-2 px-1.5 text-center text-[11px] font-black leading-4 text-slate-800 transition focus:outline-none xl:px-2 xl:text-xs ${
+              className={`flex min-h-10 items-center justify-center rounded-xl px-1.5 text-center text-[11px] font-bold leading-4 text-slate-700 transition focus:outline-none xl:px-2 ${
                 activeRegionId === region.id
-                  ? "border-red-700 bg-red-50 text-red-700"
-                  : "border-transparent hover:border-red-700 hover:bg-slate-50 hover:text-red-700 focus:border-red-700 focus:text-red-700"
+                  ? "bg-red-50 text-red-700"
+                  : "hover:bg-slate-100 hover:text-red-700 focus:bg-slate-100 focus:text-red-700"
               }`}
             >
               <span dir="auto">{region.label}</span>
@@ -153,18 +153,18 @@ export function MegaMenu({
 
       {activeRegion ? (
         <div
-          className="absolute left-0 right-0 top-full z-[1000] hidden overflow-hidden border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[340px_minmax(0,1fr)]"
+          className="absolute left-0 right-0 top-full z-[1000] hidden overflow-hidden rounded-b-xl border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[320px_minmax(0,1fr)]"
           onMouseEnter={() => {
             setActiveRegionId(activeRegion.id);
             setActiveProvinceId(activeProvince?.id ?? activeRegion.children[0]?.id ?? "");
           }}
           role="menu"
         >
-          <div className="max-h-[78vh] overflow-y-auto border-r border-slate-200 bg-slate-50 p-2">
+          <div className="max-h-[78vh] overflow-y-auto border-r border-slate-200 bg-slate-50 p-3">
             <Link
               dir="auto"
               href={activeRegion.href}
-              className="mb-2 block rounded-md bg-white px-3 py-3 text-sm font-black text-slate-950 shadow-sm transition hover:text-red-700 focus:text-red-700 focus:outline-none"
+              className="mb-2 block rounded-xl bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-sm transition hover:text-red-700 focus:text-red-700 focus:outline-none"
             >
               {activeRegion.label}
             </Link>
@@ -185,7 +185,7 @@ export function MegaMenu({
                         setActiveProvinceId(province.id);
                       }
                     }}
-                    className={`flex min-h-11 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-bold transition focus:outline-none ${
+                    className={`flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm font-bold transition focus:outline-none ${
                       activeProvince?.id === province.id
                         ? "bg-red-700 text-white"
                         : "text-slate-700 hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700"
@@ -204,7 +204,7 @@ export function MegaMenu({
               {activeRegion.children.map((province) => (
                 <section
                   key={province.id}
-                  className={`rounded-md border p-3 ${activeProvince?.id === province.id ? "border-red-200 bg-red-50/60" : "border-slate-200 bg-white"}`}
+                  className={`rounded-xl border p-4 ${activeProvince?.id === province.id ? "border-red-200 bg-red-50/60" : "border-slate-200 bg-white"}`}
                 >
                   <Link
                     dir="auto"
@@ -219,7 +219,7 @@ export function MegaMenu({
                         key={commune.id}
                         dir="auto"
                         href={commune.href}
-                        className="rounded-md px-2 py-1.5 text-sm font-bold leading-5 text-slate-700 transition hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 focus:outline-none"
+                        className="rounded-lg px-2 py-1.5 text-sm font-bold leading-5 text-slate-700 transition hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 focus:outline-none"
                       >
                         {commune.label}
                       </Link>
@@ -235,7 +235,7 @@ export function MegaMenu({
       <nav className="w-full lg:hidden" aria-label="Mobile regional navigation">
         <button
           aria-expanded={mobileOpen}
-          className="flex min-h-12 w-full items-center justify-between border-y border-slate-200 px-1 text-sm font-black uppercase text-slate-900"
+          className="flex min-h-12 w-full items-center justify-between px-1 text-sm font-black uppercase text-slate-900"
           onClick={() => setMobileOpen((current) => !current)}
           type="button"
         >
@@ -244,7 +244,7 @@ export function MegaMenu({
         </button>
         {mobileOpen ? (
           <ul
-            className="-mx-4 grid max-h-[calc(100dvh-12rem)] gap-1 overflow-y-auto overscroll-contain border-b border-slate-200 bg-white px-4 py-2 shadow-lg sm:-mx-6 sm:px-6"
+            className="-mx-4 grid max-h-[calc(100dvh-12rem)] gap-1 overflow-y-auto overscroll-contain border-y border-slate-200 bg-white px-4 py-2 shadow-lg sm:-mx-6 sm:px-6"
             role="menu"
           >
             {regionItems.map((item) => (

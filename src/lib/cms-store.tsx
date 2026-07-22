@@ -83,6 +83,7 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
     const timer = window.setTimeout(() => {
       if (process.env.NODE_ENV !== "production" && window.__AFAKPRESS_TEST_CMS_STATE__) {
         setState(window.__AFAKPRESS_TEST_CMS_STATE__);
+        return;
       }
       void refreshFromSupabase();
     }, 0);
