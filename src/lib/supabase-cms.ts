@@ -19,6 +19,12 @@ import { nullableUuid } from "@/lib/uuid";
 
 type Tables = Database["public"]["Tables"];
 type ArticleRow = Tables["articles"]["Row"];
+type ArticleRowWithRefs = ArticleRow & {
+  categories?: { slug: string | null } | null;
+  regions?: { slug: string | null } | null;
+  provinces?: { slug: string | null } | null;
+  communes?: { slug: string | null } | null;
+};
 type CategoryRow = Tables["categories"]["Row"];
 type MenuRow = Tables["menus"]["Row"];
 type MediaRow = Tables["media"]["Row"];
@@ -101,14 +107,14 @@ function userFromRow(row: ProfileRow): CmsUser {
   };
 }
 
-function articleFromRow(row: ArticleRow, categories: CmsCategory[], users: CmsUser[], regions: CmsRegion[]): CmsArticle {
-  const category = findCategorySlug(categories, row.category_id);
+function articleFromRow(row: ArticleRowWithRefs, categories: CmsCategory[], users: CmsUser[], regions: CmsRegion[]): CmsArticle {
+  const category = row.categories?.slug ?? findCategorySlug(categories, row.category_id);
   const content = row.content ?? "";
   const publishedAt = row.published_at ?? row.created_at ?? "";
   const publishDate = publishedAt.slice(0, 10);
-  const region = findRegionSlug(regions, row.region_id);
-  const province = findProvinceSlug(regions, row.province_id);
-  const commune = findCommuneSlug(regions, row.commune_id);
+  const region = row.regions?.slug ?? findRegionSlug(regions, row.region_id);
+  const province = row.provinces?.slug ?? findProvinceSlug(regions, row.province_id);
+  const commune = row.communes?.slug ?? findCommuneSlug(regions, row.commune_id);
   const title = row.title ?? "Untitled article";
   const slug = row.slug ?? row.id;
 
@@ -244,7 +250,7 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
   const [categoriesResult, profilesResult, articlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionsResult, provincesResult, communesResult] = await Promise.all([
     supabase.from("categories").select("*"),
     supabase.from("profiles").select("*"),
-    supabase.from("articles").select("*").order("published_at", { ascending: false }),
+    supabase.from("articles").select("*, categories(slug), regions(slug), provinces(slug), communes(slug)").order("published_at", { ascending: false }),
     supabase.from("menus").select("*").order("order_index", { ascending: true }),
     supabase.from("media").select("*"),
     supabase.from("pages").select("*"),
@@ -263,7 +269,7 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
   const categories = categoriesResult.error ? initialCmsState.categories : categoryRows.filter((row) => row.is_active !== false).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)).map(categoryFromRow);
   const users = (profilesResult.data ?? []).map(userFromRow);
   const regions = regionsResult.error || provincesResult.error || communesResult.error ? initialCmsState.regions : buildRegionTree(regionsResult.data ?? [], provincesResult.data ?? [], communesResult.data ?? []);
-  const articles = (articlesResult.data ?? []).map((row) => articleFromRow(row, categories, users, regions));
+  const articles = ((articlesResult.data ?? []) as ArticleRowWithRefs[]).map((row) => articleFromRow(row, categories, users, regions));
 
   return {
     ...initialCmsState,

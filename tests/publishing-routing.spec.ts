@@ -125,6 +125,12 @@ async function seedCms(page: Page) {
   }, cmsState);
 }
 
+async function seedCmsState(page: Page, state: typeof cmsState) {
+  await page.addInitScript((nextState) => {
+    (window as Window & { __AFAKPRESS_TEST_CMS_STATE__?: typeof nextState }).__AFAKPRESS_TEST_CMS_STATE__ = nextState;
+  }, state);
+}
+
 test.beforeEach(async ({ page }) => {
   await seedCms(page);
 });
@@ -166,4 +172,54 @@ test("category and article pages only render published matching content", async 
 
   await page.goto("/article/draft-should-not-render");
   await expect(page.locator("body")).toContainText("Article not found.");
+});
+
+test("published articles resolve category and geography from ids when slug fields are empty", async ({ page }) => {
+  const idOnlyState = {
+    ...cmsState,
+    articles: [
+      article({ id: "id-region", title: "ID Region Publish", slug: "id-region-publish", publishedAt: "2026-07-20T13:05:00.000Z" }),
+      article({ id: "id-province", title: "ID Province Publish", slug: "id-province-publish", publishedAt: "2026-07-20T13:04:00.000Z" }),
+      article({ id: "id-commune", title: "ID Commune Publish", slug: "id-commune-publish", publishedAt: "2026-07-20T13:03:00.000Z" }),
+      article({ id: "id-unrelated", title: "ID Unrelated Publish", slug: "id-unrelated-publish", publishedAt: "2026-07-20T13:02:00.000Z" }),
+      article({ id: "id-draft", title: "ID Draft Hidden", slug: "id-draft-hidden", status: "Draft", publishedAt: "2026-07-20T13:01:00.000Z" }),
+    ].map((item) => {
+      if (item.id === "id-unrelated") {
+        return { ...item, category: "", categoryId: "cat-economy", region: "", regionId: "region-casablanca", province: "", provinceId: "province-nouaceur", commune: "", communeId: "commune-bouskoura" };
+      }
+      if (item.id === "id-province") {
+        return { ...item, category: "", categoryId: "cat-politique", region: "", regionId: "region-rabat", province: "", provinceId: "province-rabat", commune: "", communeId: "" };
+      }
+      if (item.id === "id-commune" || item.id === "id-draft") {
+        return { ...item, category: "", categoryId: "cat-politique", region: "", regionId: "region-rabat", province: "", provinceId: "province-rabat", commune: "", communeId: "commune-rabat" };
+      }
+      return { ...item, category: "", categoryId: "cat-politique", region: "", regionId: "region-rabat", province: "", provinceId: "", commune: "", communeId: "" };
+    }),
+  };
+  await seedCmsState(page, idOnlyState);
+
+  await page.goto("/category/politique");
+  await expect(page.locator("body")).toContainText("ID Region Publish");
+  await expect(page.locator("body")).toContainText("ID Province Publish");
+  await expect(page.locator("body")).toContainText("ID Commune Publish");
+  await expect(page.locator("body")).not.toContainText("ID Unrelated Publish");
+  await expect(page.locator("body")).not.toContainText("ID Draft Hidden");
+
+  await page.goto("/region/rabat-sale-kenitra");
+  await expect(page.locator("body")).toContainText("ID Region Publish");
+  await expect(page.locator("body")).toContainText("ID Province Publish");
+  await expect(page.locator("body")).toContainText("ID Commune Publish");
+  await expect(page.locator("body")).not.toContainText("ID Unrelated Publish");
+
+  await page.goto("/province/rabat");
+  await expect(page.locator("body")).not.toContainText("ID Region Publish");
+  await expect(page.locator("body")).toContainText("ID Province Publish");
+  await expect(page.locator("body")).toContainText("ID Commune Publish");
+  await expect(page.getByRole("heading", { name: "ID Province Publish" })).toHaveCount(1);
+
+  await page.goto("/commune/rabat");
+  await expect(page.locator("body")).not.toContainText("ID Region Publish");
+  await expect(page.locator("body")).not.toContainText("ID Province Publish");
+  await expect(page.locator("body")).toContainText("ID Commune Publish");
+  await expect(page.getByRole("heading", { name: "ID Commune Publish" })).toHaveCount(1);
 });

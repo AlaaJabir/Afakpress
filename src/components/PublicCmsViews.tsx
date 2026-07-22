@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCms } from "@/lib/cms-store";
-import { getPublishedArticles, initialCmsState, type CmsArticle } from "@/lib/cms";
+import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState } from "@/lib/cms";
 import { moroccoRegions } from "@/data/morocco-regions";
 
 function imageFor(article: CmsArticle) {
@@ -40,6 +40,22 @@ function publishedArticles(state: ReturnType<typeof useCms>["state"]) {
   return dedupeArticles(getPublishedArticles(state));
 }
 
+function articleCategorySlug(state: CmsState, article: CmsArticle) {
+  return article.category || state.categories.find((category) => category.id === article.categoryId)?.slug || "";
+}
+
+function articleRegionSlug(state: CmsState, article: CmsArticle) {
+  return article.region || state.regions.find((region) => region.id === article.regionId)?.slug || "";
+}
+
+function articleProvinceSlug(state: CmsState, article: CmsArticle) {
+  return article.province || state.regions.flatMap((region) => region.provinces).find((province) => province.id === article.provinceId)?.slug || "";
+}
+
+function articleCommuneSlug(state: CmsState, article: CmsArticle) {
+  return article.commune || state.regions.flatMap((region) => region.provinces.flatMap((province) => province.communes)).find((commune) => commune.id === article.communeId)?.slug || "";
+}
+
 function SectionBlock({ title, href, articles }: { title: string; href: string; articles: CmsArticle[] }) {
   return (
     <section>
@@ -64,9 +80,9 @@ export function CmsHomePage() {
   const show = (label: string) => enabledSections.has(label);
   const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
   const mostRead = homepageArticles.filter((article) => article.mostRead).slice(0, 5);
-  const regionalArticles = homepageArticles.filter((article) => article.category === "regions");
-  const economyArticles = homepageArticles.filter((article) => article.category === "economy");
-  const opinionArticles = homepageArticles.filter((article) => article.category === "opinion");
+  const regionalArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "regions");
+  const economyArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "economy");
+  const opinionArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "opinion");
 
   if (!featured) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">No published articles yet.</p>;
@@ -147,7 +163,7 @@ export function CmsHomePage() {
 
       <section className="grid gap-6 lg:grid-cols-3">
         {homepageCategories.slice(0, 3).map((category) => {
-          const categoryArticles = homepageArticles.filter((article) => article.category === category.slug).slice(0, 2);
+          const categoryArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === category.slug).slice(0, 2);
           return (
             <div key={category.id} className="border border-slate-200 bg-white p-6">
               <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">{category.name}</h2>
@@ -182,7 +198,8 @@ export function CmsHomePage() {
 export function CmsArticlePage({ slug }: { slug: string }) {
   const { state } = useCms();
   const article = publishedArticles(state).find((item) => item.slug === slug);
-  const region = state.regions.find((item) => item.slug === article?.region);
+  const articleRegion = article ? articleRegionSlug(state, article) : "";
+  const region = state.regions.find((item) => item.slug === articleRegion);
 
   if (!article) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Article not found.</p>;
@@ -216,7 +233,7 @@ export function CmsArticlePage({ slug }: { slug: string }) {
 export function CmsCategoryPage({ slug }: { slug: string }) {
   const { state } = useCms();
   const category = state.categories.find((item) => item.slug === slug);
-  const categoryArticles = publishedArticles(state).filter((article) => article.category === slug);
+  const categoryArticles = publishedArticles(state).filter((article) => articleCategorySlug(state, article) === slug);
 
   if (!category) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Category not found.</p>;
@@ -237,7 +254,7 @@ export function CmsCategoryPage({ slug }: { slug: string }) {
 export function CmsRegionPage({ slug }: { slug: string }) {
   const { state } = useCms();
   const region = state.regions.find((item) => item.slug === slug) ?? moroccoRegions.find((item) => item.slug === slug);
-  const regionArticles = publishedArticles(state).filter((article) => article.region === slug);
+  const regionArticles = publishedArticles(state).filter((article) => articleRegionSlug(state, article) === slug);
 
   if (!region) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Region not found.</p>;
@@ -272,7 +289,7 @@ export function CmsProvincePage({ slug }: { slug: string }) {
   const { state } = useCms();
   const geography = state.regions.length ? state.regions : moroccoRegions;
   const match = geography.flatMap((region) => region.provinces.map((province) => ({ region, province }))).find((item) => item.province.slug === slug);
-  const provinceArticles = publishedArticles(state).filter((article) => article.province === slug);
+  const provinceArticles = publishedArticles(state).filter((article) => articleProvinceSlug(state, article) === slug);
 
   if (!match) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Province or prefecture not found.</p>;
@@ -310,7 +327,7 @@ export function CmsCommunePage({ slug }: { slug: string }) {
   const match = geography
     .flatMap((region) => region.provinces.flatMap((province) => province.communes.map((commune) => ({ region, province, commune }))))
     .find((item) => item.commune.slug === slug);
-  const communeArticles = publishedArticles(state).filter((article) => article.commune === slug);
+  const communeArticles = publishedArticles(state).filter((article) => articleCommuneSlug(state, article) === slug);
 
   if (!match) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Commune not found.</p>;
