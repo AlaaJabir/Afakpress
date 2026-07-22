@@ -612,7 +612,7 @@ function ArticlesPanel({
       setDraft({ ...draft, communeId: "", commune: "" });
     }
   }, [draft, selectedProvince, selectedRegion, setDraft]);
-  const setFeaturedImageFromFile = (file: File | null) => {
+  const setFeaturedImageFromFile = async (file: File | null) => {
     if (!file) return;
     if (!["image/png", "image/jpeg"].includes(file.type)) {
       notify("error", "Featured image must be a PNG or JPEG file.");
@@ -623,17 +623,17 @@ function ArticlesPanel({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const image = typeof reader.result === "string" ? reader.result : "";
-      if (!image) {
-        notify("error", "Featured image upload failed.");
-        return;
-      }
-      setDraft({ ...draft, featuredImage: image, image });
-    };
-    reader.onerror = () => notify("error", "Featured image upload failed.");
-    reader.readAsDataURL(file);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/admin/upload", { method: "POST", body: formData });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Featured image upload failed.");
+      setDraft({ ...draft, featuredImage: payload.url, image: payload.url });
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Featured image upload failed.");
+    }
   };
 
   return (
@@ -706,7 +706,7 @@ function ArticlesPanel({
             <div className="grid gap-3">
               <label className={`${buttonClass} cursor-pointer`}>
                 Choose PNG/JPEG image
-                <input className="sr-only" accept="image/png,image/jpeg" onChange={(event) => setFeaturedImageFromFile(event.target.files?.[0] ?? null)} type="file" />
+                <input className="sr-only" accept="image/png,image/jpeg" onChange={(event) => void setFeaturedImageFromFile(event.target.files?.[0] ?? null)} type="file" />
               </label>
               {draft.featuredImage ? (
                 <div className="grid gap-2">

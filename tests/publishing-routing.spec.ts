@@ -121,7 +121,7 @@ function article(overrides: Partial<Record<string, string>> = {}) {
 
 async function seedCms(page: Page) {
   await page.addInitScript((state) => {
-    window.localStorage.setItem("afakpress-cms-state-v2", JSON.stringify(state));
+    (window as Window & { __AFAKPRESS_TEST_CMS_STATE__?: typeof state }).__AFAKPRESS_TEST_CMS_STATE__ = state;
   }, cmsState);
 }
 

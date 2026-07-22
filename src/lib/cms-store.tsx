@@ -21,17 +21,34 @@ type CmsStore = {
   error: string;
 };
 
-const STORAGE_KEY = "afakpress-cms-state-v2";
+declare global {
+  interface Window {
+    __AFAKPRESS_TEST_CMS_STATE__?: CmsState;
+  }
+}
+
+const LEGACY_STORAGE_KEY = "afakpress-cms-state-v2";
+const STORAGE_MIGRATION_KEY = "afakpress-cms-storage-migrated-v1";
 const CmsContext = createContext<CmsStore | null>(null);
 
+function safeSetStorageItem(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn("Storage persistence skipped:", error);
+  }
+}
+
+function safeRemoveStorageItem(key: string) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch (error) {
+    console.warn("Storage persistence skipped:", error);
+  }
+}
+
 export function CmsProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<CmsState>(() => {
-    if (typeof window === "undefined") {
-      return initialCmsState;
-    }
-    const storedState = window.localStorage.getItem(STORAGE_KEY);
-    return storedState ? (JSON.parse(storedState) as CmsState) : initialCmsState;
-  });
+  const [state, setState] = useState<CmsState>(initialCmsState);
   const [currentUser, setCurrentUser] = useState<CmsUser | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,7 +77,13 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    safeRemoveStorageItem(LEGACY_STORAGE_KEY);
+    safeSetStorageItem(STORAGE_MIGRATION_KEY, "1");
+
     const timer = window.setTimeout(() => {
+      if (process.env.NODE_ENV !== "production" && window.__AFAKPRESS_TEST_CMS_STATE__) {
+        setState(window.__AFAKPRESS_TEST_CMS_STATE__);
+      }
       void refreshFromSupabase();
     }, 0);
     return () => window.clearTimeout(timer);
@@ -68,7 +91,6 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     window.dispatchEvent(new CustomEvent("afakpress-cms-updated", { detail: state }));
   }, [state]);
 
