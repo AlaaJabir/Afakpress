@@ -48,6 +48,7 @@ export type Database = {
           excerpt: string | null;
           content: string | null;
           featured_image: string | null;
+          geographic_scope: "national" | "region" | "province" | "commune" | null;
           category_id: string | null;
           author_id: string | null;
           region_id: string | null;
@@ -71,6 +72,7 @@ export type Database = {
           excerpt?: string | null;
           content?: string | null;
           featured_image?: string | null;
+          geographic_scope?: "national" | "region" | "province" | "commune" | null;
           category_id?: string | null;
           author_id?: string | null;
           region_id?: string | null;
@@ -94,6 +96,7 @@ export type Database = {
           excerpt?: string | null;
           content?: string | null;
           featured_image?: string | null;
+          geographic_scope?: "national" | "region" | "province" | "commune" | null;
           category_id?: string | null;
           author_id?: string | null;
           region_id?: string | null;

@@ -117,6 +117,17 @@ function articleFromRow(row: ArticleRowWithRefs, categories: CmsCategory[], user
   const commune = row.communes?.slug ?? findCommuneSlug(regions, row.commune_id);
   const title = row.title ?? "Untitled article";
   const slug = row.slug ?? row.id;
+  const geographicScope = row.geographic_scope === "commune"
+    ? "Commune"
+    : row.geographic_scope === "province"
+      ? "Province"
+      : row.geographic_scope === "region"
+        ? "Region"
+        : row.region_id
+          ? row.province_id
+            ? row.commune_id ? "Commune" : "Province"
+            : "Region"
+          : "National";
 
   return {
     id: row.id,
@@ -133,6 +144,7 @@ function articleFromRow(row: ArticleRowWithRefs, categories: CmsCategory[], user
     author: findAuthorName(users, row.author_id),
     categoryId: row.category_id ?? "",
     category,
+    geographicScope,
     regionId: row.region_id ?? "",
     region,
     provinceId: row.province_id ?? "",
@@ -293,12 +305,14 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
 }
 
 export function articlePayload(article: CmsArticle): Tables["articles"]["Insert"] {
+  const geographicScope = article.geographicScope ?? (article.communeId ? "Commune" : article.provinceId ? "Province" : article.regionId ? "Region" : "National");
   return {
     title: article.title,
     slug: article.slug,
     excerpt: article.excerpt,
     content: article.content,
     featured_image: article.featuredImage || article.image || null,
+    geographic_scope: geographicScope.toLowerCase() as "national" | "region" | "province" | "commune",
     category_id: nullableUuid(article.categoryId),
     author_id: nullableUuid(article.authorId),
     region_id: nullableUuid(article.regionId),

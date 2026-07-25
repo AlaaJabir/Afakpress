@@ -24,7 +24,7 @@ type CmsStore = {
 
 declare global {
   interface Window {
-    __AFAKPRESS_TEST_CMS_STATE__?: CmsState;
+    __AFAKPRESS_TEST_CMS_STATE__?: unknown;
   }
 }
 
@@ -51,7 +51,7 @@ function safeRemoveStorageItem(key: string) {
 export function CmsProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<CmsState>(() => {
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production" && window.__AFAKPRESS_TEST_CMS_STATE__) {
-      return window.__AFAKPRESS_TEST_CMS_STATE__;
+      return window.__AFAKPRESS_TEST_CMS_STATE__ as CmsState;
     }
     return initialCmsState;
   });
@@ -90,7 +90,7 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
 
     const timer = window.setTimeout(() => {
       if (process.env.NODE_ENV !== "production" && window.__AFAKPRESS_TEST_CMS_STATE__) {
-        setState(window.__AFAKPRESS_TEST_CMS_STATE__);
+        setState(window.__AFAKPRESS_TEST_CMS_STATE__ as CmsState);
         setHasLoadedFromSupabase(true);
         return;
       }

@@ -92,6 +92,7 @@ const emptyArticle: CmsArticle = {
   author: defaultArticleAuthor,
   categoryId: "",
   category: "",
+  geographicScope: "National",
   regionId: "",
   region: "",
   provinceId: "",
@@ -425,14 +426,17 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
         commune_id: payload.commune_id,
         author_id: payload.author_id,
       });
-      if (articleDraft.id) {
-        await adminRequest("articles", "PATCH", adminHeaders(), { id: articleDraft.id, ...payload });
-      } else {
-        await adminRequest("articles", "POST", adminHeaders(), payload);
-      }
+      const saved = articleDraft.id
+        ? await adminRequest("articles", "PATCH", adminHeaders(), { id: articleDraft.id, ...payload })
+        : await adminRequest("articles", "POST", adminHeaders(), payload);
+      const savedArticle = {
+        ...nextArticle,
+        id: typeof saved?.id === "string" ? saved.id : nextArticle.id,
+        slug: typeof saved?.slug === "string" ? saved.slug : nextArticle.slug,
+      };
       setState((current) => ({
         ...current,
-        articles: current.articles.some((article) => article.id === nextArticle.id) ? current.articles.map((article) => (article.id === nextArticle.id ? nextArticle : article)) : [nextArticle, ...current.articles],
+        articles: current.articles.some((article) => article.id === savedArticle.id) ? current.articles.map((article) => (article.id === savedArticle.id ? savedArticle : article)) : [savedArticle, ...current.articles],
       }));
       setArticleDraft({ ...emptyArticle });
       notify("success", "Article saved to Supabase.");
@@ -715,7 +719,7 @@ function ArticlesPanel({
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-xl font-black text-slate-950">Article editor</h2>
         <div className="mt-5 grid gap-4">
-          <Field label="Title"><input className={inputClass} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value, slug: slugify(event.target.value), seoTitle: event.target.value })} /></Field>
+          <Field label="Title"><input className={inputClass} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value, slug: draft.id ? draft.slug : slugify(event.target.value), seoTitle: event.target.value })} /></Field>
           <Field label="Slug"><input className={inputClass} value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} /></Field>
           <Field label="Excerpt"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value, seoDescription: event.target.value })} /></Field>
           <Field label="Full Content"><textarea className={`${inputClass} min-h-40 py-3`} value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} /></Field>
@@ -738,7 +742,31 @@ function ArticlesPanel({
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Author"><SearchableSelect value={draft.authorId} onChange={(authorId) => setDraft({ ...draft, authorId, author: authorId ? draft.author : defaultArticleAuthor })} options={authorOptions} placeholder={defaultArticleAuthor} /></Field>
             <Field label="Category"><SearchableSelect value={draft.categoryId} onChange={(categoryId) => setDraft({ ...draft, categoryId })} options={categoryOptions} /></Field>
-            <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => setDraft({ ...draft, regionId, provinceId: "", communeId: "" })} options={regionOptions} /></Field>
+            <Field label="Geographic scope">
+              <select
+                className={inputClass}
+                value={draft.geographicScope ?? "National"}
+                onChange={(event) => {
+                  const geographicScope = event.target.value as CmsArticle["geographicScope"];
+                  setDraft({
+                    ...draft,
+                    geographicScope,
+                    regionId: geographicScope === "National" ? "" : draft.regionId,
+                    region: geographicScope === "National" ? "" : draft.region,
+                    provinceId: geographicScope === "Province" || geographicScope === "Commune" ? draft.provinceId : "",
+                    province: geographicScope === "Province" || geographicScope === "Commune" ? draft.province : "",
+                    communeId: geographicScope === "Commune" ? draft.communeId : "",
+                    commune: geographicScope === "Commune" ? draft.commune : "",
+                  });
+                }}
+              >
+                <option>National</option>
+                <option>Region</option>
+                <option>Province</option>
+                <option>Commune</option>
+              </select>
+            </Field>
+            <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => setDraft({ ...draft, regionId, region: completedRegions.find((item) => item.id === regionId)?.slug ?? "", provinceId: "", province: "", communeId: "", commune: "" })} options={regionOptions} disabled={(draft.geographicScope ?? "National") === "National"} placeholder={(draft.geographicScope ?? "National") === "National" ? "Not applicable" : "Select"} /></Field>
             <Field label="Province / Prefecture">
               <SearchableSelect
                 value={draft.provinceId}
@@ -747,7 +775,7 @@ function ArticlesPanel({
                   setDraft({ ...draft, provinceId: province?.id ?? "", province: province?.slug ?? "", communeId: "", commune: "" });
                 }}
                 options={provinceOptions}
-                disabled={!draft.regionId}
+                disabled={!draft.regionId || draft.geographicScope === "National" || draft.geographicScope === "Region"}
                 placeholder={draft.regionId ? "Select" : "Select region first"}
               />
             </Field>
@@ -759,7 +787,7 @@ function ArticlesPanel({
                   setDraft({ ...draft, communeId: commune?.id ?? "", commune: commune?.slug ?? "" });
                 }}
                 options={communeOptions}
-                disabled={!draft.provinceId}
+                disabled={!draft.provinceId || draft.geographicScope !== "Commune"}
                 placeholder={draft.provinceId ? "Select" : "Select province first"}
               />
             </Field>

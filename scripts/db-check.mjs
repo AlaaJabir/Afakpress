@@ -33,7 +33,7 @@ const schema = {
   provinces: ["id", "region_id", "name", "slug", "created_at", "updated_at"],
   communes: ["id", "province_id", "name", "slug", "created_at", "updated_at"],
   media: ["id", "name", "url", "type", "folder", "alt", "caption", "copyright", "optimized", "created_at", "updated_at"],
-  articles: ["id", "title", "slug", "excerpt", "content", "featured_image", "category_id", "author_id", "region_id", "province_id", "commune_id", "status", "is_featured", "allow_comments", "views", "seo_title", "seo_description", "seo_keywords", "published_at", "created_at", "updated_at"],
+  articles: ["id", "title", "slug", "excerpt", "content", "featured_image", "category_id", "author_id", "geographic_scope", "region_id", "province_id", "commune_id", "status", "is_featured", "allow_comments", "views", "seo_title", "seo_description", "seo_keywords", "published_at", "created_at", "updated_at"],
   menus: ["id", "title", "slug", "parent_id", "level", "order_index", "is_active", "show_header", "show_footer", "created_at", "updated_at"],
   pages: ["id", "title", "slug", "content", "seo_title", "seo_description", "status", "created_at", "updated_at"],
   tags: ["id", "name", "slug", "created_at"],
@@ -146,7 +146,7 @@ for (const check of fkChecks) {
   }
 }
 
-const articleRows = await fetchRows("articles", "id,status,published_at,slug,title");
+const articleRows = await fetchRows("articles", "id,status,published_at,slug,title,geographic_scope,region_id,province_id,commune_id");
 for (const article of articleRows) {
   if (!article.slug) problem(`articles.slug is empty for article ${article.id}`);
   if (!article.title) problem(`articles.title is empty for article ${article.id}`);
@@ -155,6 +155,21 @@ for (const article of articleRows) {
   }
   if (article.published_at && Number.isNaN(Date.parse(article.published_at))) {
     problem(`articles.published_at is not a valid timestamp on article ${article.id}`);
+  }
+  if (!["national", "region", "province", "commune"].includes(article.geographic_scope)) {
+    problem(`articles.geographic_scope has invalid value ${article.geographic_scope} on article ${article.id}`);
+  }
+  if (article.geographic_scope === "national" && (article.region_id || article.province_id || article.commune_id)) {
+    problem(`National article ${article.id} contains geographic foreign keys.`);
+  }
+  if (article.geographic_scope === "region" && (!article.region_id || article.province_id || article.commune_id)) {
+    problem(`Region article ${article.id} has an inconsistent geographic hierarchy.`);
+  }
+  if (article.geographic_scope === "province" && (!article.region_id || !article.province_id || article.commune_id)) {
+    problem(`Province article ${article.id} has an inconsistent geographic hierarchy.`);
+  }
+  if (article.geographic_scope === "commune" && (!article.region_id || !article.province_id || !article.commune_id)) {
+    problem(`Commune article ${article.id} has an inconsistent geographic hierarchy.`);
   }
 }
 

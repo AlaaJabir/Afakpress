@@ -5,6 +5,7 @@ import { makeUuid, stableUuid } from "@/lib/uuid";
 
 export type Role = "Super Admin" | "Editor" | "Journalist" | "Moderator";
 export type ArticleStatus = "Draft" | "Pending Review" | "Scheduled" | "Published";
+export type GeographicScope = "National" | "Region" | "Province" | "Commune";
 export type NoticeType = "success" | "error" | "warning";
 
 export type CmsUser = {
@@ -77,6 +78,7 @@ export type CmsArticle = {
   author: string;
   categoryId: string;
   category: string;
+  geographicScope?: GeographicScope;
   regionId: string;
   region: string;
   provinceId: string;
@@ -254,6 +256,7 @@ const cmsArticles = articles.map((article, index): CmsArticle => {
     author: article.author,
     categoryId: category?.id ?? "",
     category: article.category,
+    geographicScope: commune ? "Commune" : province ? "Province" : region ? "Region" : "National",
     regionId: region?.id ?? "",
     region: article.region,
     provinceId: province?.id ?? "",

@@ -6,6 +6,7 @@ import { resolveArticleReferences, seedDefaultCmsReferences } from "@/lib/cms-re
 import { createServiceSupabaseAdminClient } from "@/lib/supabase";
 import type { AdminResource } from "@/lib/supabase-cms";
 import { isValidUuid } from "@/lib/uuid";
+import { slugify } from "@/lib/slug";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -225,6 +226,25 @@ async function prepareArticlePayload(
   if (!parsed.success) return formatZodError(parsed.error);
 
   Object.assign(payload, parsed.data);
+  payload.slug = slugify(String(payload.slug || payload.title));
+  if (!payload.slug) return "slug: Article slug could not be generated from the title.";
+
+  const scope = payload.geographic_scope;
+  if (scope === "national") {
+    payload.region_id = null;
+    payload.province_id = null;
+    payload.commune_id = null;
+  } else if (scope === "region") {
+    payload.province_id = null;
+    payload.commune_id = null;
+    if (!payload.region_id) return "Region scope requires region_id.";
+  } else if (scope === "province") {
+    payload.commune_id = null;
+    if (!payload.region_id || !payload.province_id) return "Province scope requires region_id and province_id.";
+  } else if (scope === "commune" && (!payload.region_id || !payload.province_id || !payload.commune_id)) {
+    return "Commune scope requires region_id, province_id, and commune_id.";
+  }
+  if (payload.status === "published" && !payload.published_at) payload.published_at = new Date().toISOString();
   console.info("[admin/articles] payload before FK validation", {
     category_id: payload.category_id,
     region_id: payload.region_id,
@@ -262,6 +282,20 @@ async function prepareArticlePayload(
   return "";
 }
 
+async function uniqueArticleSlug(
+  supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>,
+  requestedSlug: string,
+) {
+  const base = slugify(requestedSlug);
+  const { data, error } = await supabase.from("articles").select("slug").like("slug", `${base}%`);
+  if (error) return { error: error.message };
+  const existing = new Set((data ?? []).map((article) => article.slug).filter(Boolean));
+  if (!existing.has(base)) return { slug: base };
+  let suffix = 2;
+  while (existing.has(`${base}-${suffix}`)) suffix += 1;
+  return { slug: `${base}-${suffix}` };
+}
+
 export async function POST(request: Request, context: { params: Promise<{ resource: string }> }) {
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
@@ -276,9 +310,9 @@ export async function POST(request: Request, context: { params: Promise<{ resour
   if (table === "articles") {
     const error = await prepareArticlePayload(supabase, authorization.session, payload);
     if (error) return Response.json({ error }, { status: 400 });
-
-    const { data: existing } = await supabase.from(table).select("id").eq("slug", payload.slug).maybeSingle();
-    if (existing) return Response.json({ error: "Article slug already exists." }, { status: 409 });
+    const uniqueSlug = await uniqueArticleSlug(supabase, String(payload.slug));
+    if (uniqueSlug.error) return Response.json({ error: uniqueSlug.error }, { status: 400 });
+    payload.slug = uniqueSlug.slug;
   }
   if (table === "profiles") {
     const error = await validateProfileAuthUser(supabase, payload.id);

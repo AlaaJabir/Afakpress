@@ -18,6 +18,7 @@ export const articleDraftSchema = z.object({
   title: z.string().trim().min(1, "Article title is required."),
   slug: z.string().trim().min(1, "Article slug is required."),
   status: z.enum(articleStatusValues, "Article status is not valid."),
+  geographicScope: z.enum(["National", "Region", "Province", "Commune"]).optional(),
   publishDate: z.string().optional().refine((value) => !value || !Number.isNaN(Date.parse(value)), "Publish date must be a valid date."),
   categoryId: optionalUuid,
   authorId: optionalUuid,
@@ -32,6 +33,7 @@ export const articlePayloadSchema = z.object({
   excerpt: z.string().nullable().optional(),
   content: z.string().nullable().optional(),
   featured_image: z.string().nullable().optional(),
+  geographic_scope: z.enum(["national", "region", "province", "commune"]),
   category_id: optionalUuid,
   author_id: optionalUuid,
   region_id: optionalUuid,
@@ -68,6 +70,11 @@ export function validateArticleDraft(draft: CmsArticle, state: CmsState) {
   if (draft.regionId && !region) return "Selected region was not found in CMS data.";
   if (draft.provinceId && !province) return "Selected province must belong to the selected region.";
   if (draft.communeId && !commune) return "Selected commune must belong to the selected province.";
+  const scope = draft.geographicScope ?? (draft.communeId ? "Commune" : draft.provinceId ? "Province" : draft.regionId ? "Region" : "National");
+  if (scope === "National" && (draft.regionId || draft.provinceId || draft.communeId)) return "National articles cannot have a region, province, or commune.";
+  if (scope === "Region" && (!draft.regionId || draft.provinceId || draft.communeId)) return "Region scope requires only a region.";
+  if (scope === "Province" && (!draft.regionId || !draft.provinceId || draft.communeId)) return "Province scope requires a region and province.";
+  if (scope === "Commune" && (!draft.regionId || !draft.provinceId || !draft.communeId)) return "Commune scope requires a region, province, and commune.";
 
   return "";
 }

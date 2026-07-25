@@ -1,12 +1,16 @@
 import { CmsCommunePage } from "@/components/PublicCmsViews";
-import { moroccoRegions } from "@/data/morocco-regions";
+import { PublicDatabaseError, PublicLocationView } from "@/components/PublicRouteViews";
+import { getCommunePageData } from "@/lib/public-content";
+import { notFound } from "next/navigation";
 
-export function generateStaticParams() {
-  return moroccoRegions.flatMap((region) => region.provinces.flatMap((province) => province.communes.map((commune) => ({ slug: commune.slug }))));
-}
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
-export default async function CommunePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CommunePage({ params }: PageProps<"/commune/[slug]">) {
   const { slug } = await params;
-  return <CmsCommunePage slug={slug} />;
+  const result = await getCommunePageData(slug);
+  if (result.status === "unconfigured") return <CmsCommunePage slug={slug} />;
+  if (result.status === "not-found") notFound();
+  if (result.status === "error") return <PublicDatabaseError />;
+  return <PublicLocationView kind="Commune" location={result.data.location} articles={result.data.articles} />;
 }
-
