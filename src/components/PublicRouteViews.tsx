@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { PublicArticle, PublicEntity, PublicLocation } from "@/lib/public-content";
+import { sanitizeArticleHtml } from "@/lib/article-html";
 
 const fallbackImage = "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
 const emptyMessage = "No published articles are available in this section yet.";
@@ -19,7 +20,7 @@ function formattedDate(article: PublicArticle) {
 
 function ArticleCard({ article }: { article: PublicArticle }) {
   return (
-    <Link href={`/article/${article.slug}`} aria-label={article.title} className="group block">
+    <Link href={`/article/${encodeURIComponent(article.slug)}`} aria-label={article.title} className="group block">
       <article className="grid gap-4 overflow-hidden rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[180px_1fr]">
         <div className="relative h-40 overflow-hidden rounded-lg bg-slate-200 sm:h-full">
           <Image src={articleImage(article)} alt="" fill sizes="(min-width: 640px) 180px, 100vw" className="object-cover transition duration-300 group-hover:scale-105" />
@@ -44,6 +45,7 @@ function ArticleList({ articles }: { articles: PublicArticle[] }) {
 
 export function PublicArticleView({ article }: { article: PublicArticle }) {
   const locations = [article.region?.name, article.province?.name, article.commune?.name].filter(Boolean);
+  const content = sanitizeArticleHtml(article.content || article.excerpt || "No article content is available yet.");
   return (
     <article className="mx-auto max-w-5xl">
       <div className="border-b-4 border-slate-950 pb-6">
@@ -60,9 +62,7 @@ export function PublicArticleView({ article }: { article: PublicArticle }) {
           <Image src={article.featured_image} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" />
         </div>
       ) : null}
-      <div className="mt-8 space-y-6 text-lg leading-9 text-slate-700">
-        {(article.content ?? "").split(/\n{2,}/).filter(Boolean).map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 24)}`}>{paragraph}</p>)}
-      </div>
+      <div className="article-content mt-8 text-lg text-slate-700" dir="auto" dangerouslySetInnerHTML={{ __html: content }} />
     </article>
   );
 }

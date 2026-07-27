@@ -38,6 +38,7 @@ import {
   regionPayload,
   type AdminResource,
 } from "@/lib/supabase-cms";
+import { RichTextEditor } from "@/components/admin/RichTextEditor";
 
 type Section =
   | "dashboard"
@@ -691,7 +692,7 @@ function ArticlesPanel({
             <div key={article.id} className="grid grid-cols-[40px_minmax(320px,1fr)_150px_150px_150px_220px] gap-3 px-3 py-4 items-center">
               <input checked={selected.includes(article.id)} onChange={(event) => setSelected(event.target.checked ? [...selected, article.id] : selected.filter((id) => id !== article.id))} type="checkbox" />
               <div>
-                <Link href={`/article/${article.slug}`} className="font-black text-slate-950 hover:text-red-700">{article.title}</Link>
+                <Link href={`/article/${encodeURIComponent(article.slug)}`} className="font-black text-slate-950 hover:text-red-700">{article.title}</Link>
                 <p className="mt-1 text-xs font-bold text-slate-500">{article.excerpt}</p>
               </div>
               <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{article.status}</span>
@@ -722,7 +723,9 @@ function ArticlesPanel({
           <Field label="Title"><input className={inputClass} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value, slug: draft.id ? draft.slug : slugify(event.target.value), seoTitle: event.target.value })} /></Field>
           <Field label="Slug"><input className={inputClass} value={draft.slug} onChange={(event) => setDraft({ ...draft, slug: event.target.value })} /></Field>
           <Field label="Excerpt"><textarea className={`${inputClass} min-h-20 py-3`} value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value, seoDescription: event.target.value })} /></Field>
-          <Field label="Full Content"><textarea className={`${inputClass} min-h-40 py-3`} value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} /></Field>
+          <Field label="Full Content">
+            <RichTextEditor value={draft.content} onChange={(content) => setDraft({ ...draft, content })} />
+          </Field>
           <Field label="Featured Image">
             <div className="grid gap-3">
               <label className={`${buttonClass} cursor-pointer`}>

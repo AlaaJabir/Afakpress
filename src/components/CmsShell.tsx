@@ -50,7 +50,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
         <div className="border-y border-red-200 bg-red-700 text-white">
           <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-10">
             <span className="shrink-0 bg-white px-2 py-1 text-xs font-black uppercase text-red-700">Breaking</span>
-            <Link href={breakingArticle ? `/article/${breakingArticle.slug}` : breaking.url || "/"} className="truncate text-sm font-bold hover:underline">
+            <Link href={breakingArticle ? `/article/${encodeURIComponent(breakingArticle.slug)}` : breaking.url || "/"} className="truncate text-sm font-bold hover:underline">
               {breaking.title}
             </Link>
           </div>
@@ -59,7 +59,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
         <div className="border-y border-red-200 bg-red-700 text-white">
           <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-10">
             <span className="shrink-0 bg-white px-2 py-1 text-xs font-black uppercase text-red-700">Breaking</span>
-            <Link href={`/article/${fallbackBreaking.slug}`} className="truncate text-sm font-bold hover:underline">
+            <Link href={`/article/${encodeURIComponent(fallbackBreaking.slug)}`} className="truncate text-sm font-bold hover:underline">
               {fallbackBreaking.title}
             </Link>
           </div>

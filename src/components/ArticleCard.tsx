@@ -14,7 +14,7 @@ export function ArticleCard({ article }: { article: Article }) {
           <span>{article.readingTime}</span>
         </div>
         <h3 className="mt-2 text-xl font-black leading-tight text-slate-950">
-          <Link href={`/article/${article.slug}`} className="hover:text-red-700">
+          <Link href={`/article/${encodeURIComponent(article.slug)}`} className="hover:text-red-700">
             {article.title}
           </Link>
         </h3>

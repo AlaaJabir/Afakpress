@@ -7,6 +7,7 @@ import { createServiceSupabaseAdminClient } from "@/lib/supabase";
 import type { AdminResource } from "@/lib/supabase-cms";
 import { isValidUuid } from "@/lib/uuid";
 import { slugify } from "@/lib/slug";
+import { sanitizeArticleHtml } from "@/lib/article-html";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -226,6 +227,7 @@ async function prepareArticlePayload(
   if (!parsed.success) return formatZodError(parsed.error);
 
   Object.assign(payload, parsed.data);
+  if (typeof payload.content === "string") payload.content = sanitizeArticleHtml(payload.content);
   payload.slug = slugify(String(payload.slug || payload.title));
   if (!payload.slug) return "slug: Article slug could not be generated from the title.";
 

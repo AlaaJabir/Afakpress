@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCms } from "@/lib/cms-store";
 import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState } from "@/lib/cms";
 import { moroccoRegions } from "@/data/morocco-regions";
+import { sanitizeArticleHtml } from "@/lib/article-html";
 
 function imageFor(article: CmsArticle) {
   return article.featuredImage || article.image || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
@@ -30,7 +31,7 @@ function ArticleMeta({ article, tone = "light" }: { article: CmsArticle; tone?: 
 
 function ArticleCard({ article, compact = false }: { article: CmsArticle; compact?: boolean }) {
   return (
-    <Link href={`/article/${article.slug}`} aria-label={article.title} className="group block h-full">
+    <Link href={`/article/${encodeURIComponent(article.slug)}`} aria-label={article.title} className="group block h-full">
       <article className={`flex h-full overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-red-200 ${compact ? "gap-4 p-3" : "flex-col"}`}>
         <div className={`relative shrink-0 overflow-hidden rounded-xl bg-slate-200 ${compact ? "h-24 w-24 sm:h-28 sm:w-32" : "h-56 w-full"}`}>
           <Image src={imageFor(article)} alt="" fill sizes={compact ? "(min-width: 640px) 128px, 96px" : "(min-width: 1024px) 360px, 100vw"} className="object-cover brightness-95 transition duration-300 group-hover:scale-105" />
@@ -116,7 +117,7 @@ export function CmsHomePage() {
       {isLoading ? <p className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">Loading latest newsroom data...</p> : null}
       {error ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">{error}</p> : null}
       {show("Featured Slider") ? <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_420px]">
-        <Link href={`/article/${featured.slug}`} aria-label={featured.title} className="group relative min-h-[430px] overflow-hidden rounded-xl bg-slate-950 text-white shadow-sm md:min-h-[560px]">
+        <Link href={`/article/${encodeURIComponent(featured.slug)}`} aria-label={featured.title} className="group relative min-h-[430px] overflow-hidden rounded-xl bg-slate-950 text-white shadow-sm md:min-h-[560px]">
           <Image src={imageFor(featured)} alt="" fill priority sizes="(min-width: 1280px) 980px, 100vw" className="object-cover brightness-[0.68] transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
           <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-8">
@@ -146,7 +147,7 @@ export function CmsHomePage() {
             {mostRead.map((article, index) => (
               <li key={article.id} className="grid grid-cols-[36px_1fr] gap-4">
                 <span className="text-3xl font-black text-red-700 tabular-nums">{index + 1}</span>
-                <Link href={`/article/${article.slug}`} className="font-black leading-snug text-slate-900 hover:text-red-700">
+                <Link href={`/article/${encodeURIComponent(article.slug)}`} className="font-black leading-snug text-slate-900 hover:text-red-700">
                   {article.title}
                 </Link>
               </li>
@@ -218,6 +219,7 @@ export function CmsArticlePage({ slug }: { slug: string }) {
     }
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Article not found.</p>;
   }
+  const content = sanitizeArticleHtml(article.content || article.excerpt || "No article content is available yet.");
 
   return (
     <article className="mx-auto max-w-5xl">
@@ -235,11 +237,7 @@ export function CmsArticlePage({ slug }: { slug: string }) {
       <div className="relative mt-8 h-[420px] w-full overflow-hidden bg-slate-200 lg:h-[560px]">
         <Image src={imageFor(article)} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" />
       </div>
-      <div className="mt-8 space-y-6 text-lg leading-9 text-slate-700">
-        {article.content.split(/\n{2,}/).map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
-        ))}
-      </div>
+      <div className="article-content mt-8 text-lg text-slate-700" dir="auto" dangerouslySetInnerHTML={{ __html: content }} />
     </article>
   );
 }

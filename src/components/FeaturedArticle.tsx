@@ -17,7 +17,7 @@ export function FeaturedArticle({ article }: { article: Article }) {
           <span>{article.publishedAt}</span>
           <span>{article.readingTime}</span>
         </div>
-        <Link href={`/article/${article.slug}`} className="mt-8 w-fit bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700">
+        <Link href={`/article/${encodeURIComponent(article.slug)}`} className="mt-8 w-fit bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700">
           Read the story
         </Link>
       </div>

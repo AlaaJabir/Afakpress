@@ -45,11 +45,7 @@ export type PublicQueryResult<T> =
 const articleSelect = `
   id,title,slug,excerpt,content,featured_image,
   category_id,region_id,province_id,commune_id,
-  published_at,created_at,seo_title,seo_description,
-  category:categories(id,name,slug),
-  region:regions(id,name,slug),
-  province:provinces(id,name,slug),
-  commune:communes(id,name,slug)
+  published_at,created_at,seo_title,seo_description
 `;
 
 function normalizedSlug(value: string) {
@@ -86,20 +82,68 @@ async function publishedArticles(): Promise<PublicQueryResult<PublicArticle[]>> 
 export async function getPublishedArticleBySlug(slug: string): Promise<PublicQueryResult<PublicArticle>> {
   const supabase = createServerSupabaseClient();
   if (!supabase) return { status: "unconfigured" };
+  const requestedSlug = normalizedSlug(slug);
 
   const { data, error } = await supabase
     .from("articles")
-    .select(articleSelect)
-    .eq("slug", normalizedSlug(slug))
+    .select("*")
+    .eq("slug", requestedSlug)
     .eq("status", "published")
     .maybeSingle();
 
   if (error) {
-    logQueryError("article", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Article fetch error:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        slug: requestedSlug,
+      });
+    }
     return { status: "error" };
   }
   if (!data) return { status: "not-found" };
-  return { status: "ok", data: data as unknown as PublicArticle };
+  const article = data as unknown as PublicArticle;
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("Article slug match:", { requestedSlug, storedSlug: article.slug });
+  }
+
+  const [categoryResult, regionResult, provinceResult, communeResult] = await Promise.all([
+    article.category_id
+      ? supabase.from("categories").select("id,name,slug").eq("id", article.category_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    article.region_id
+      ? supabase.from("regions").select("id,name,slug").eq("id", article.region_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    article.province_id
+      ? supabase.from("provinces").select("id,name,slug").eq("id", article.province_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    article.commune_id
+      ? supabase.from("communes").select("id,name,slug").eq("id", article.commune_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  for (const [relation, relationError] of [
+    ["category", categoryResult.error],
+    ["region", regionResult.error],
+    ["province", provinceResult.error],
+    ["commune", communeResult.error],
+  ] as const) {
+    if (relationError) logQueryError(`article/${relation}`, relationError);
+  }
+
+  return {
+    status: "ok",
+    data: {
+      ...article,
+      category: categoryResult.data as PublicEntity | null,
+      region: regionResult.data as PublicEntity | null,
+      province: provinceResult.data as PublicEntity | null,
+      commune: communeResult.data as PublicEntity | null,
+    },
+  };
 }
 
 export async function getCategoryPageData(slug: string): Promise<PublicQueryResult<{ entity: PublicEntity; articles: PublicArticle[] }>> {

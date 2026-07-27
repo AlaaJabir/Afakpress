@@ -9,7 +9,7 @@ export function MostRead({ articles }: { articles: Article[] }) {
         {articles.map((article, index) => (
           <li key={article.slug} className="grid grid-cols-[36px_1fr] gap-4">
             <span className="text-3xl font-black text-red-700">{index + 1}</span>
-            <Link href={`/article/${article.slug}`} className="font-black leading-snug text-slate-900 hover:text-red-700">
+            <Link href={`/article/${encodeURIComponent(article.slug)}`} className="font-black leading-snug text-slate-900 hover:text-red-700">
               {article.title}
             </Link>
           </li>
@@ -18,4 +18,3 @@ export function MostRead({ articles }: { articles: Article[] }) {
     </aside>
   );
 }
-
