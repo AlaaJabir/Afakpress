@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { CmsShell } from "@/components/CmsShell";
+import { loadSupabaseCmsStateServer } from "@/lib/supabase-cms";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Afakpress",
@@ -17,11 +20,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  let cmsState = null;
+  try {
+    cmsState = await loadSupabaseCmsStateServer();
+  } catch (error) {
+    console.error("[RootLayout] Initial Supabase CMS load failed:", error);
+  }
+
   return (
     <html lang="en">
       <body>
-        <CmsShell>{children}</CmsShell>
+        <CmsShell initialState={cmsState ?? undefined} initiallyLoaded={Boolean(cmsState)}>{children}</CmsShell>
       </body>
     </html>
   );

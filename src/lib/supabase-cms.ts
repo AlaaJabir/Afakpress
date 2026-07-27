@@ -13,7 +13,7 @@ import type {
   CmsUser,
 } from "@/lib/cms";
 import { initialCmsState } from "@/lib/cms";
-import { createBrowserSupabaseClient } from "@/lib/supabase";
+import { createBrowserSupabaseClient, createServerSupabaseClient } from "@/lib/supabase";
 import type { Database } from "@/lib/supabase-types";
 import { nullableUuid } from "@/lib/uuid";
 
@@ -255,14 +255,17 @@ function buildRegionTree(regionRows: RegionRow[], provinceRows: ProvinceRow[], c
   }));
 }
 
-export async function loadSupabaseCmsState(): Promise<CmsState | null> {
-  const supabase = createBrowserSupabaseClient();
-  if (!supabase) return null;
+async function loadCmsStateFromSupabase(
+  supabase: NonNullable<ReturnType<typeof createBrowserSupabaseClient>>,
+  publishedOnly = false,
+): Promise<CmsState> {
+  let articlesQuery = supabase.from("articles").select("*, categories(slug), regions(slug), provinces(slug), communes(slug)").order("published_at", { ascending: false });
+  if (publishedOnly) articlesQuery = articlesQuery.eq("status", "published");
 
   const [categoriesResult, profilesResult, joinedArticlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionsResult, provincesResult, communesResult] = await Promise.all([
     supabase.from("categories").select("*"),
     supabase.from("profiles").select("*"),
-    supabase.from("articles").select("*, categories(slug), regions(slug), provinces(slug), communes(slug)").order("published_at", { ascending: false }),
+    articlesQuery,
     supabase.from("menus").select("*").order("order_index", { ascending: true }),
     supabase.from("media").select("*"),
     supabase.from("pages").select("*"),
@@ -275,7 +278,9 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
   let articlesResult = joinedArticlesResult;
   if (articlesResult.error) {
     console.warn("Supabase article relationship query failed, retrying without embedded references:", articlesResult.error);
-    const fallbackArticlesResult = await supabase.from("articles").select("*").order("published_at", { ascending: false });
+    let fallbackArticlesQuery = supabase.from("articles").select("*").order("published_at", { ascending: false });
+    if (publishedOnly) fallbackArticlesQuery = fallbackArticlesQuery.eq("status", "published");
+    const fallbackArticlesResult = await fallbackArticlesQuery;
     if (!fallbackArticlesResult.error) {
       articlesResult = fallbackArticlesResult;
     }
@@ -295,13 +300,23 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
     ...initialCmsState,
     users: users.length ? users : initialCmsState.users,
     categories: categories.length ? categories : initialCmsState.categories,
-    articles: articles.length ? articles : initialCmsState.articles,
+    articles,
     regions: regions.length ? regions : initialCmsState.regions,
     menus: menusResult.data?.length ? buildMenuTree(menusResult.data) : initialCmsState.menus,
     media: mediaResult.data?.map(mediaFromRow) ?? [],
     pages: pagesResult.data?.map(pageFromRow) ?? initialCmsState.pages,
     breakingNews: breakingResult.data?.map(breakingFromRow) ?? [],
   };
+}
+
+export async function loadSupabaseCmsState(): Promise<CmsState | null> {
+  const supabase = createBrowserSupabaseClient();
+  return supabase ? loadCmsStateFromSupabase(supabase) : null;
+}
+
+export async function loadSupabaseCmsStateServer(): Promise<CmsState | null> {
+  const supabase = createServerSupabaseClient();
+  return supabase ? loadCmsStateFromSupabase(supabase, true) : null;
 }
 
 export function articlePayload(article: CmsArticle): Tables["articles"]["Insert"] {

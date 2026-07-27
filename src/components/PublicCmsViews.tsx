@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCms } from "@/lib/cms-store";
-import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState } from "@/lib/cms";
+import { getPublishedArticles, type CmsArticle, type CmsState } from "@/lib/cms";
 import { moroccoRegions } from "@/data/morocco-regions";
 import { sanitizeArticleHtml } from "@/lib/article-html";
 
@@ -95,10 +95,10 @@ function SectionBlock({ title, href, articles }: { title: string; href: string; 
 }
 
 export function CmsHomePage() {
-  const { state, isLoading, error } = useCms();
+  const { state, isLoading, error, hasLoadedFromSupabase } = useCms();
   const published = publishedArticles(state);
-  const homepageArticles = published.length ? published : getPublishedArticles(initialCmsState);
-  const homepageCategories = published.length ? state.categories : initialCmsState.categories;
+  const homepageArticles = published;
+  const homepageCategories = state.categories;
   const homepageRegions = state.regions.length >= 12 ? state.regions : moroccoRegions;
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
@@ -107,6 +107,19 @@ export function CmsHomePage() {
   const regionalArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "regions");
   const economyArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "economy");
   const opinionArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "opinion");
+
+  if (!hasLoadedFromSupabase && !featured) {
+    return (
+      <div aria-label="Loading AfakPress" aria-busy="true" className="space-y-6">
+        <div className="h-[430px] animate-pulse rounded-xl bg-slate-200 md:h-[560px]" />
+        <div className="grid gap-5 md:grid-cols-3">
+          <div className="h-44 animate-pulse rounded-xl bg-slate-200" />
+          <div className="h-44 animate-pulse rounded-xl bg-slate-200" />
+          <div className="h-44 animate-pulse rounded-xl bg-slate-200" />
+        </div>
+      </div>
+    );
+  }
 
   if (!featured) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">No published articles yet.</p>;

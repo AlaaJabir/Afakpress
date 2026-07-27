@@ -7,6 +7,7 @@ import { CmsProvider, useCms } from "@/lib/cms-store";
 import { getPublishedArticles } from "@/lib/cms";
 import { MegaMenu } from "@/components/MegaMenu";
 import { moroccoRegions } from "@/data/morocco-regions";
+import type { CmsState } from "@/lib/cms";
 
 function Chrome({ children }: { children: React.ReactNode }) {
   const { state } = useCms();
@@ -98,12 +99,12 @@ function Chrome({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function CmsShell({ children }: { children: React.ReactNode }) {
+export function CmsShell({ children, initialState, initiallyLoaded = false }: { children: React.ReactNode; initialState?: CmsState; initiallyLoaded?: boolean }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
 
   return (
-    <CmsProvider>
+    <CmsProvider initialState={initialState} initiallyLoaded={initiallyLoaded && !isAdmin}>
       {isAdmin ? children : <Chrome>{children}</Chrome>}
     </CmsProvider>
   );

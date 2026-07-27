@@ -31,6 +31,18 @@ declare global {
 const LEGACY_STORAGE_KEY = "afakpress-cms-state-v2";
 const STORAGE_MIGRATION_KEY = "afakpress-cms-storage-migrated-v1";
 const CmsContext = createContext<CmsStore | null>(null);
+const emptyInitialState: CmsState = {
+  ...initialCmsState,
+  users: [],
+  categories: [],
+  articles: [],
+  menus: [],
+  media: [],
+  pages: [],
+  breakingNews: [],
+  comments: [],
+  subscribers: [],
+};
 
 function safeSetStorageItem(key: string, value: string) {
   try {
@@ -48,17 +60,20 @@ function safeRemoveStorageItem(key: string) {
   }
 }
 
-export function CmsProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<CmsState>(() => {
-    if (typeof window !== "undefined" && process.env.NODE_ENV !== "production" && window.__AFAKPRESS_TEST_CMS_STATE__) {
-      return window.__AFAKPRESS_TEST_CMS_STATE__ as CmsState;
-    }
-    return initialCmsState;
-  });
+export function CmsProvider({
+  children,
+  initialState = emptyInitialState,
+  initiallyLoaded = false,
+}: {
+  children: React.ReactNode;
+  initialState?: CmsState;
+  initiallyLoaded?: boolean;
+}) {
+  const [state, setState] = useState<CmsState>(initialState);
   const [currentUser, setCurrentUser] = useState<CmsUser | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasLoadedFromSupabase, setHasLoadedFromSupabase] = useState(false);
+  const [hasLoadedFromSupabase, setHasLoadedFromSupabase] = useState(initiallyLoaded);
   const [error, setError] = useState("");
 
   const notify = (type: NoticeType, message: string) => {
@@ -94,11 +109,12 @@ export function CmsProvider({ children }: { children: React.ReactNode }) {
         setHasLoadedFromSupabase(true);
         return;
       }
+      if (initiallyLoaded) return;
       void refreshFromSupabase();
     }, 0);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initiallyLoaded]);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("afakpress-cms-updated", { detail: state }));
