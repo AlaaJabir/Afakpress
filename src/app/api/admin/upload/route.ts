@@ -8,6 +8,13 @@ export const dynamic = "force-dynamic";
 const mediaBucket = "media";
 const maxFeaturedImageSize = 2 * 1024 * 1024;
 
+type SupabaseError = {
+  message: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+};
+
 function extensionFor(type: string) {
   if (type === "image/png") return "png";
   if (type === "image/jpeg") return "jpg";
@@ -25,6 +32,16 @@ async function ensureMediaBucket(supabase: NonNullable<ReturnType<typeof createS
     fileSizeLimit: maxFeaturedImageSize,
   });
   return error?.message ?? "";
+}
+
+function logMediaInsertError(error: SupabaseError, path: string, attempt: "full" | "minimal") {
+  console.error(`[admin/upload] Media record ${attempt} insert failed`, {
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+    path,
+  });
 }
 
 export async function POST(request: Request) {
@@ -57,7 +74,7 @@ export async function POST(request: Request) {
 
   const { data } = supabase.storage.from(mediaBucket).getPublicUrl(path);
   const mediaName = file.name.trim() || path.split("/").pop() || "Uploaded image";
-  const { data: media, error: mediaError } = await supabase
+  let { data: media, error: mediaError } = await supabase
     .from("media")
     .insert({
       name: mediaName,
@@ -71,15 +88,24 @@ export async function POST(request: Request) {
     .single();
 
   if (mediaError) {
-    await supabase.storage.from(mediaBucket).remove([path]);
-    console.error("[admin/upload] Media record insert failed", {
-      message: mediaError.message,
-      details: mediaError.details,
-      hint: mediaError.hint,
-      code: mediaError.code,
+    logMediaInsertError(mediaError, path, "full");
+    const minimalInsert = await supabase
+      .from("media")
+      .insert({ name: mediaName, url: data.publicUrl })
+      .select("*")
+      .single();
+    media = minimalInsert.data;
+    mediaError = minimalInsert.error;
+  }
+
+  if (mediaError) {
+    logMediaInsertError(mediaError, path, "minimal");
+    return Response.json({
+      url: data.publicUrl,
       path,
+      media: null,
+      warning: "Image uploaded and selected, but the media library table needs its schema migration.",
     });
-    return Response.json({ error: "The image uploaded, but could not be added to the media library." }, { status: 500 });
   }
 
   return Response.json({ url: data.publicUrl, path, media });

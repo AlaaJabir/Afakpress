@@ -673,7 +673,7 @@ function ArticlesPanel({
           media: current.media.some((media) => media.id === payload.media.id) ? current.media : [payload.media as CmsMedia, ...current.media],
         }));
       }
-      notify("success", "Featured image uploaded.");
+      notify(payload.warning ? "warning" : "success", payload.warning ?? "Featured image uploaded.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Featured image upload failed.";
       setFeaturedImageError(message);

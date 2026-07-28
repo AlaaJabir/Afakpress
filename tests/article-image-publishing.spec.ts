@@ -65,6 +65,8 @@ test("upload persists a media record and article API maps actionable database er
   const apiSource = await readFile(path.join(root, "src/app/api/admin/[resource]/route.ts"), "utf8");
   expect(uploadSource).toContain('.from("media")');
   expect(uploadSource).toContain("path, media");
+  expect(uploadSource).toContain('.insert({ name: mediaName, url: data.publicUrl })');
+  expect(uploadSource).toContain("Image uploaded and selected, but the media library table needs its schema migration.");
   expect(apiSource).toContain('error.code === "22P02"');
   expect(apiSource).toContain('error.code === "23505"');
   expect(apiSource).toContain('error.code === "23503"');
