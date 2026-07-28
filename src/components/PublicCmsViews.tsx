@@ -31,10 +31,10 @@ function ArticleMeta({ article, tone = "light" }: { article: CmsArticle; tone?: 
 
 function ArticleCard({ article, compact = false }: { article: CmsArticle; compact?: boolean }) {
   return (
-    <Link href={`/article/${encodeURIComponent(article.slug)}`} aria-label={article.title} className="group block h-full">
-      <article className={`flex h-full overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-red-200 ${compact ? "gap-4 p-3" : "flex-col"}`}>
-        <div className={`relative shrink-0 overflow-hidden rounded-xl bg-slate-200 ${compact ? "h-24 w-24 sm:h-28 sm:w-32" : "h-56 w-full"}`}>
-          <Image src={imageFor(article)} alt="" fill sizes={compact ? "(min-width: 640px) 128px, 96px" : "(min-width: 1024px) 360px, 100vw"} className="object-cover brightness-95 transition duration-300 group-hover:scale-105" />
+    <Link href={`/article/${encodeURIComponent(article.slug)}`} aria-label={article.title} className={`group block ${compact ? "" : "h-full"}`}>
+      <article className={`flex overflow-hidden bg-white transition hover:-translate-y-0.5 hover:shadow-lg ${compact ? "items-center gap-4 rounded-2xl border border-slate-200 p-3 shadow-sm hover:border-red-200" : "h-full flex-col rounded-xl shadow-sm ring-1 ring-slate-200 hover:ring-red-200"}`}>
+        <div className={`relative shrink-0 overflow-hidden bg-slate-200 ${compact ? "h-28 w-28 rounded-xl sm:h-32 sm:w-36" : "h-56 w-full rounded-xl"}`}>
+          <Image src={imageFor(article)} alt="" fill sizes={compact ? "(min-width: 640px) 144px, 112px" : "(min-width: 1024px) 360px, 100vw"} className="object-cover brightness-95 transition duration-300 group-hover:scale-105" />
           {!compact ? (
             <div className="absolute left-3 top-3 flex flex-wrap gap-2">
               <ArticleTag>{article.category}</ArticleTag>
@@ -42,8 +42,8 @@ function ArticleCard({ article, compact = false }: { article: CmsArticle; compac
           ) : null}
         </div>
         <div className={`${compact ? "min-w-0 flex-1 py-1" : "flex flex-1 flex-col p-5"}`}>
-          {compact ? <ArticleTag>{article.category}</ArticleTag> : null}
-          <h3 className={`${compact ? "mt-2 text-base" : "mt-3 text-2xl"} font-black leading-tight text-slate-950 transition group-hover:text-red-700`} dir="auto">
+          {compact && article.category ? <ArticleTag>{article.category}</ArticleTag> : null}
+          <h3 className={`${compact ? `${article.category ? "mt-3" : ""} line-clamp-3 text-lg leading-7` : "mt-3 text-2xl leading-tight"} font-black text-slate-950 transition group-hover:text-red-700`} dir="auto">
             {article.title}
           </h3>
           {!compact ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{article.excerpt}</p> : null}
@@ -103,7 +103,9 @@ export function CmsHomePage() {
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
   const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
-  const mostRead = homepageArticles.filter((article) => article.mostRead).slice(0, 5);
+  const markedMostRead = homepageArticles.filter((article) => article.mostRead);
+  const mostReadFallback = homepageArticles.filter((article) => article.id !== featured?.id);
+  const mostRead = (markedMostRead.length ? markedMostRead : mostReadFallback.length ? mostReadFallback : homepageArticles).slice(0, 5);
   const regionalArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "regions");
   const economyArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "economy");
   const opinionArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "opinion");
@@ -147,21 +149,30 @@ export function CmsHomePage() {
             </div>
           </div>
         </Link>
-        <aside className="grid gap-4">
+        <aside className="grid content-start gap-4">
           {homepageArticles.slice(1, 4).map((article) => <ArticleCard key={article.id} article={article} compact />)}
         </aside>
       </section> : null}
 
       {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
         <SectionBlock title="Latest news" href="/category/national" articles={homepageArticles.slice(1, 5)} />
-        <aside className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <h2 className="text-2xl font-black text-slate-950">Most read</h2>
-          <ol className="mt-5 space-y-5">
+        <aside className="self-start overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <h2 className="text-2xl font-black text-slate-950">Most read</h2>
+            <span className="h-1 w-12 rounded-full bg-red-700" />
+          </div>
+          <ol className="divide-y divide-slate-100 px-6">
             {mostRead.map((article, index) => (
-              <li key={article.id} className="grid grid-cols-[36px_1fr] gap-4">
-                <span className="text-3xl font-black text-red-700 tabular-nums">{index + 1}</span>
-                <Link href={`/article/${encodeURIComponent(article.slug)}`} className="font-black leading-snug text-slate-900 hover:text-red-700">
-                  {article.title}
+              <li key={article.id}>
+                <Link href={`/article/${encodeURIComponent(article.slug)}`} className="group/read grid grid-cols-[42px_1fr] gap-4 py-5">
+                  <span className="text-3xl font-black leading-none text-red-700/25 transition group-hover/read:text-red-700 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="min-w-0">
+                    <span className="line-clamp-2 font-black leading-6 text-slate-900 transition group-hover/read:text-red-700" dir="auto">{article.title}</span>
+                    <span className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+                      {article.category ? <span className="uppercase text-red-700">{article.category}</span> : null}
+                      {article.publishDate ? <span>{article.publishDate}</span> : null}
+                    </span>
+                  </span>
                 </Link>
               </li>
             ))}
