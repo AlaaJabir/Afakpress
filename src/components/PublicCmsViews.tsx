@@ -150,7 +150,7 @@ export function CmsHomePage() {
           </div>
         </Link>
         <aside className="grid content-start gap-4">
-          {homepageArticles.slice(1, 4).map((article) => <ArticleCard key={article.id} article={article} compact />)}
+          {homepageArticles.slice(1, 5).map((article) => <ArticleCard key={article.id} article={article} compact />)}
         </aside>
       </section> : null}
 
