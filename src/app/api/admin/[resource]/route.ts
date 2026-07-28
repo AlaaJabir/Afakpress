@@ -78,6 +78,33 @@ type ArticleLocationReferences = {
   commune?: LocationReference | null;
 };
 
+type DatabaseError = {
+  message?: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+};
+
+function articleDatabaseError(error: DatabaseError) {
+  const message = error.message ?? "";
+  if (error.code === "22P02") return "One of the selected category or location values is invalid.";
+  if (error.code === "23505") return "An article with this slug already exists.";
+  if (error.code === "23503") return "The selected category, region, province, commune, or media item no longer exists.";
+  if (error.code === "PGRST204") return "The article form and database schema are not synchronized.";
+  if (/row-level security/i.test(message)) return "Your account does not have permission to publish this article.";
+  return "The article could not be saved. Please check the highlighted fields and try again.";
+}
+
+function logArticleDatabaseError(operation: "insert" | "update", error: DatabaseError, payload: Record<string, unknown>) {
+  console.error(`[admin/articles] ${operation} failed`, {
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+    payload,
+  });
+}
+
 async function resolveArticleCacheRefs(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, article: ArticleCacheRow): Promise<ArticleCacheRefs> {
   const [category, region, province, commune] = await Promise.all([
     article.category_id ? supabase.from("categories").select("slug").eq("id", article.category_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -322,7 +349,13 @@ export async function POST(request: Request, context: { params: Promise<{ resour
   }
 
   const { data, error } = await supabase.from(table).insert(payload).select("*").single();
-  if (error) return Response.json({ error: error.message }, { status: 400 });
+  if (error) {
+    if (table === "articles") {
+      logArticleDatabaseError("insert", error, payload);
+      return Response.json({ error: articleDatabaseError(error), code: error.code }, { status: error.code === "23505" ? 409 : 400 });
+    }
+    return Response.json({ error: error.message }, { status: 400 });
+  }
   const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, data as ArticleCacheRow) : [];
   return Response.json({ data, revalidatedPaths });
 }
@@ -363,7 +396,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
   }
 
   const { data, error } = await supabase.from(table).update(payload).eq("id", id).select("*").single();
-  if (error) return Response.json({ error: error.message }, { status: 400 });
+  if (error) {
+    if (table === "articles") {
+      logArticleDatabaseError("update", error, payload);
+      return Response.json({ error: articleDatabaseError(error), code: error.code }, { status: error.code === "23505" ? 409 : 400 });
+    }
+    return Response.json({ error: error.message }, { status: 400 });
+  }
   const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, previousArticle, data as ArticleCacheRow) : [];
   return Response.json({ data, revalidatedPaths });
 }

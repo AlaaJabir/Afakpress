@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CmsArticle, CmsState } from "@/lib/cms";
+import { sanitizeArticleHtml } from "@/lib/article-html";
 
 export const articleStatusValues = ["Draft", "Pending Review", "Scheduled", "Published"] as const;
 export const dbArticleStatusValues = ["draft", "pending_review", "scheduled", "published"] as const;
@@ -70,6 +71,19 @@ export function validateArticleDraft(draft: CmsArticle, state: CmsState) {
   if (draft.regionId && !region) return "Selected region was not found in CMS data.";
   if (draft.provinceId && !province) return "Selected province must belong to the selected region.";
   if (draft.communeId && !commune) return "Selected commune must belong to the selected province.";
+  if (draft.status === "Published" && !category) return "Select a category before publishing.";
+  if (draft.status === "Published") {
+    const meaningfulContent = sanitizeArticleHtml(draft.content)
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;|&#160;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!meaningfulContent) return "Add article content before publishing.";
+  }
+  const featuredImage = (draft.featuredImage || draft.image).trim();
+  if (featuredImage && !/^https?:\/\//i.test(featuredImage)) {
+    return "Featured image must use a persistent HTTP or HTTPS URL.";
+  }
   const scope = draft.geographicScope ?? (draft.communeId ? "Commune" : draft.provinceId ? "Province" : draft.regionId ? "Region" : "National");
   if (scope === "National" && (draft.regionId || draft.provinceId || draft.communeId)) return "National articles cannot have a region, province, or commune.";
   if (scope === "Region" && (!draft.regionId || draft.provinceId || draft.communeId)) return "Region scope requires only a region.";

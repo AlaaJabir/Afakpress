@@ -56,5 +56,31 @@ export async function POST(request: Request) {
   if (error) return Response.json({ error: error.message }, { status: 400 });
 
   const { data } = supabase.storage.from(mediaBucket).getPublicUrl(path);
-  return Response.json({ url: data.publicUrl, path });
+  const mediaName = file.name.trim() || path.split("/").pop() || "Uploaded image";
+  const { data: media, error: mediaError } = await supabase
+    .from("media")
+    .insert({
+      name: mediaName,
+      url: data.publicUrl,
+      type: "Image",
+      folder: "Articles",
+      alt: mediaName.replace(/\.[^.]+$/, ""),
+      optimized: true,
+    })
+    .select("*")
+    .single();
+
+  if (mediaError) {
+    await supabase.storage.from(mediaBucket).remove([path]);
+    console.error("[admin/upload] Media record insert failed", {
+      message: mediaError.message,
+      details: mediaError.details,
+      hint: mediaError.hint,
+      code: mediaError.code,
+      path,
+    });
+    return Response.json({ error: "The image uploaded, but could not be added to the media library." }, { status: 500 });
+  }
+
+  return Response.json({ url: data.publicUrl, path, media });
 }

@@ -588,7 +588,7 @@ function ArticlesPanel({
 }: {
   articles: CmsArticle[];
   draft: CmsArticle;
-  setDraft: (article: CmsArticle) => void;
+  setDraft: React.Dispatch<React.SetStateAction<CmsArticle>>;
   selected: string[];
   setSelected: (ids: string[]) => void;
   saveArticle: () => void;
@@ -601,6 +601,9 @@ function ArticlesPanel({
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [isUploadingFeaturedImage, setIsUploadingFeaturedImage] = useState(false);
+  const [featuredImageError, setFeaturedImageError] = useState("");
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<CmsMedia | null>(null);
   const completedRegions = useMemo(() => completeRegions(state.regions), [state.regions]);
   const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
   const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
@@ -616,6 +619,14 @@ function ArticlesPanel({
     [selectedProvince],
   );
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;
+  const selectedMedia = state.media.find((media) => media.url === (draft.featuredImage || draft.image));
+  const selectedImageName = selectedMedia?.name || (() => {
+    try {
+      return decodeURIComponent(new URL(draft.featuredImage || draft.image).pathname.split("/").pop() || "Featured image");
+    } catch {
+      return "Featured image";
+    }
+  })();
 
   useEffect(() => {
     const provinceBelongsToRegion = Boolean(selectedRegion?.provinces.some((province) => province.id === draft.provinceId));
@@ -632,12 +643,17 @@ function ArticlesPanel({
   }, [draft, selectedProvince, selectedRegion, setDraft]);
   const setFeaturedImageFromFile = async (file: File | null) => {
     if (!file) return;
+    setFeaturedImageError("");
     if (!["image/png", "image/jpeg"].includes(file.type)) {
-      notify("error", "Featured image must be a PNG or JPEG file.");
+      const message = "Featured image must be a PNG or JPEG file.";
+      setFeaturedImageError(message);
+      notify("error", message);
       return;
     }
     if (file.size > maxFeaturedImageSize) {
-      notify("error", "Featured image must be 2MB or smaller.");
+      const message = "Featured image must be 2MB or smaller.";
+      setFeaturedImageError(message);
+      notify("error", message);
       return;
     }
 
@@ -649,10 +665,19 @@ function ArticlesPanel({
       const response = await fetch("/api/admin/upload", { method: "POST", body: formData });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Featured image upload failed.");
-      setDraft({ ...draft, featuredImage: payload.url, image: payload.url });
+      if (typeof payload.url !== "string" || !/^https?:\/\//i.test(payload.url)) throw new Error("Upload did not return a persistent image URL.");
+      setDraft((current) => ({ ...current, featuredImage: payload.url, image: payload.url }));
+      if (payload.media?.id) {
+        setState((current) => ({
+          ...current,
+          media: current.media.some((media) => media.id === payload.media.id) ? current.media : [payload.media as CmsMedia, ...current.media],
+        }));
+      }
       notify("success", "Featured image uploaded.");
     } catch (error) {
-      notify("error", error instanceof Error ? error.message : "Featured image upload failed.");
+      const message = error instanceof Error ? error.message : "Featured image upload failed.";
+      setFeaturedImageError(message);
+      notify("error", message);
     } finally {
       setIsUploadingFeaturedImage(false);
     }
@@ -728,18 +753,43 @@ function ArticlesPanel({
           </Field>
           <Field label="Featured Image">
             <div className="grid gap-3">
-              <label className={`${buttonClass} cursor-pointer`}>
-                Choose PNG/JPEG image
-                <input className="sr-only" accept="image/png,image/jpeg" onChange={(event) => void setFeaturedImageFromFile(event.target.files?.[0] ?? null)} type="file" />
-              </label>
+              <div className="flex flex-wrap gap-2">
+                <button className={buttonClass} onClick={() => {
+                  setPendingMedia(selectedMedia ?? null);
+                  setIsMediaPickerOpen(true);
+                }} type="button">{draft.featuredImage ? "Replace from media library" : "Select from media library"}</button>
+                <label className={`${buttonClass} cursor-pointer`}>
+                  {isUploadingFeaturedImage ? "Uploading..." : "Upload PNG/JPEG"}
+                  <input className="sr-only" accept="image/png,image/jpeg" disabled={isUploadingFeaturedImage} onChange={(event) => {
+                    void setFeaturedImageFromFile(event.target.files?.[0] ?? null);
+                    event.target.value = "";
+                  }} type="file" />
+                </label>
+              </div>
               {draft.featuredImage ? (
-                <div className="grid gap-2">
+                <div className="grid gap-3 rounded-lg border-2 border-emerald-500 bg-emerald-50 p-3" data-testid="selected-featured-image">
                   <div className="relative h-40 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${draft.featuredImage})` }} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img alt="Selected featured image" className="h-full w-full object-cover" src={draft.featuredImage} />
                   </div>
-                  <button className={buttonClass} onClick={() => setDraft({ ...draft, featuredImage: "", image: "" })} type="button">Remove image</button>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-800">Selected</p>
+                    <p className="mt-1 break-all text-sm font-bold text-slate-800">{selectedImageName}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button className={buttonClass} onClick={() => {
+                      setPendingMedia(selectedMedia ?? null);
+                      setIsMediaPickerOpen(true);
+                    }} type="button">Replace image</button>
+                    <button className={buttonClass} onClick={() => {
+                      setDraft((current) => ({ ...current, featuredImage: "", image: "" }));
+                      setFeaturedImageError("");
+                    }} type="button">Remove image</button>
+                  </div>
                 </div>
               ) : null}
+              {isUploadingFeaturedImage ? <p aria-live="polite" className="text-sm font-bold text-slate-600">Uploading image and saving it to the media library…</p> : null}
+              {featuredImageError ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{featuredImageError}</p> : null}
             </div>
           </Field>
           <div className="grid gap-4 md:grid-cols-2">
@@ -812,6 +862,52 @@ function ArticlesPanel({
           <button className={primaryButtonClass} disabled={!canEdit || isUploadingFeaturedImage || isSavingArticle} onClick={saveArticle} type="button">{isUploadingFeaturedImage ? "Uploading image..." : isSavingArticle ? "Saving article..." : canEdit ? "Save article" : "Journalists can edit only their own articles"}</button>
         </div>
       </div>
+      {isMediaPickerOpen ? (
+        <div aria-label="Select featured image" aria-modal="true" className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/70 p-4" role="dialog">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-5">
+              <div>
+                <h2 className="text-xl font-black text-slate-950">Media library</h2>
+                <p className="mt-1 text-sm text-slate-600">Choose an image, then confirm your selection.</p>
+              </div>
+              <button className={buttonClass} onClick={() => setIsMediaPickerOpen(false)} type="button">Close</button>
+            </div>
+            <div className="grid max-h-[65vh] grid-cols-2 gap-4 overflow-y-auto p-5 sm:grid-cols-3 lg:grid-cols-4">
+              {state.media.filter((media) => media.type === "Image" && /^https?:\/\//i.test(media.url)).map((media) => (
+                <button
+                  aria-pressed={pendingMedia?.id === media.id}
+                  className={`overflow-hidden rounded-lg border-2 text-left transition ${pendingMedia?.id === media.id ? "border-red-700 ring-4 ring-red-100" : "border-slate-200 hover:border-slate-400"}`}
+                  key={media.id}
+                  onDoubleClick={() => {
+                    setDraft((current) => ({ ...current, featuredImage: media.url, image: media.url }));
+                    setFeaturedImageError("");
+                    setIsMediaPickerOpen(false);
+                  }}
+                  onClick={() => setPendingMedia(media)}
+                  type="button"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img alt={media.alt || media.name} className="h-32 w-full bg-slate-100 object-cover" src={media.url} />
+                  <span className="block truncate p-3 text-sm font-black text-slate-800">{media.name}</span>
+                  {pendingMedia?.id === media.id ? <span className="block bg-red-700 px-3 py-2 text-xs font-black uppercase text-white">Selected</span> : null}
+                </button>
+              ))}
+              {state.media.filter((media) => media.type === "Image" && /^https?:\/\//i.test(media.url)).length === 0 ? (
+                <p className="col-span-full rounded-md border border-slate-200 bg-slate-50 p-6 text-sm font-bold text-slate-600">No persistent images are available. Upload an image from the article form first.</p>
+              ) : null}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
+              <button className={buttonClass} onClick={() => setIsMediaPickerOpen(false)} type="button">Cancel</button>
+              <button className={primaryButtonClass} disabled={!pendingMedia} onClick={() => {
+                if (!pendingMedia) return;
+                setDraft((current) => ({ ...current, featuredImage: pendingMedia.url, image: pendingMedia.url }));
+                setFeaturedImageError("");
+                setIsMediaPickerOpen(false);
+              }} type="button">Use this image</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
