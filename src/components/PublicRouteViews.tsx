@@ -4,18 +4,65 @@ import type { PublicArticle, PublicEntity, PublicLocation } from "@/lib/public-c
 import { sanitizeArticleHtml } from "@/lib/article-html";
 
 const fallbackImage = "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
-const emptyMessage = "No published articles are available in this section yet.";
+const emptyMessage = "لا توجد مقالات منشورة في هذه الصفحة حالياً.";
 
 function articleImage(article: PublicArticle) {
   return article.featured_image || fallbackImage;
 }
 
-function formattedDate(article: PublicArticle) {
+function formattedDate(article: PublicArticle, locale = "en") {
   const value = article.published_at ?? article.created_at;
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date);
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
+}
+
+function estimatedReadingTime(article: PublicArticle) {
+  const text = (article.content || article.excerpt || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return Math.max(1, Math.ceil((text ? text.split(" ").length : 0) / 200));
+}
+
+export function GeographicArticleCard({ article }: { article: PublicArticle }) {
+  return (
+    <Link href={`/article/${encodeURIComponent(article.slug)}`} aria-label={article.title} className="group block" dir="rtl">
+      <article className="flex flex-col-reverse overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md md:min-h-48 md:flex-row">
+        <div className="min-w-0 flex-1 p-5 text-right sm:p-6">
+          {article.category?.name ? (
+            <span className="inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700">
+              {article.category.name}
+            </span>
+          ) : null}
+          <h2 className="mt-3 text-xl font-black leading-8 text-slate-950 transition group-hover:text-red-700 sm:text-2xl">
+            {article.title}
+          </h2>
+          {article.excerpt ? <p className="mt-3 line-clamp-2 text-sm leading-7 text-slate-600">{article.excerpt}</p> : null}
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-500">
+            {article.author?.name ? <span>{article.author.name}</span> : null}
+            {formattedDate(article, "ar-MA") ? <time dateTime={article.published_at ?? article.created_at ?? undefined}>{formattedDate(article, "ar-MA")}</time> : null}
+            <span>{estimatedReadingTime(article)} دقائق للقراءة</span>
+          </div>
+        </div>
+        <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden bg-slate-200 md:aspect-auto md:w-60">
+          <Image src={articleImage(article)} alt="" fill sizes="(min-width: 768px) 240px, 100vw" className="object-cover transition duration-300 group-hover:scale-105" />
+        </div>
+      </article>
+    </Link>
+  );
+}
+
+export function GeographicArticleList({ articles }: { articles: PublicArticle[] }) {
+  if (!articles.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-600" dir="rtl">
+        <p className="text-base font-bold">{emptyMessage}</p>
+      </div>
+    );
+  }
+  return <div className="space-y-5">{articles.map((article) => <GeographicArticleCard key={article.id} article={article} />)}</div>;
 }
 
 function ArticleCard({ article }: { article: PublicArticle }) {
@@ -38,7 +85,7 @@ function ArticleCard({ article }: { article: PublicArticle }) {
 
 function ArticleList({ articles }: { articles: PublicArticle[] }) {
   if (!articles.length) {
-    return <p className="border border-slate-200 bg-white p-6 text-slate-600">{emptyMessage}</p>;
+    return <p className="border border-slate-200 bg-white p-6 text-slate-600">No published articles are available in this section yet.</p>;
   }
   return <div className="space-y-6">{articles.map((article) => <ArticleCard key={article.id} article={article} />)}</div>;
 }
@@ -80,18 +127,22 @@ export function PublicCategoryView({ entity, articles }: { entity: PublicEntity;
 
 export function PublicLocationView({ kind, location, articles }: { kind: "Region" | "Province / Prefecture" | "Commune"; location: PublicLocation; articles: PublicArticle[] }) {
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-      <section>
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">{kind}</p>
-        <h1 className="mt-3 text-4xl font-black text-slate-950">{location.entity.name}</h1>
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]" dir="rtl">
+      <section className="min-w-0">
+        <p className="text-sm font-black text-red-700">
+          {kind === "Region" ? "الجهة" : kind === "Commune" ? "الجماعة" : "العمالة أو الإقليم"}
+        </p>
+        <h1 className="mt-3 text-4xl font-black leading-tight text-slate-950">{location.entity.name}</h1>
+        <p className="mt-3 text-base leading-7 text-slate-600">آخر الأخبار والمستجدات من هذه المنطقة</p>
+        <p className="mt-2 text-sm font-bold text-slate-500">{articles.length} مقال</p>
         <div className="mt-4 flex flex-wrap gap-3 text-sm font-black">
           {location.region ? <Link href={`/region/${location.region.slug}`} className="text-red-700 hover:underline">{location.region.name}</Link> : null}
           {location.province ? <Link href={`/province/${location.province.slug}`} className="text-slate-600 hover:text-red-700">{location.province.name}</Link> : null}
         </div>
-        <div className="mt-8"><ArticleList articles={articles} /></div>
+        <div className="mt-8"><GeographicArticleList articles={articles} /></div>
       </section>
-      <aside className="border border-slate-200 bg-white p-6">
-        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Local structure</h2>
+      <aside className="self-start rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black text-slate-950">التقسيم الإداري</h2>
         <div className="mt-5 grid gap-3">
           {location.provinces?.map((province) => (
             <div key={province.id}>
