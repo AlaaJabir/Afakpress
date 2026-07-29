@@ -94,22 +94,14 @@ export function MegaMenu({
   const [activeProvinceId, setActiveProvinceId] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeRegion = regionItems.find((region) => region.id === activeRegionId) ?? null;
   const activeProvince = activeRegion?.children.find((province) => province.id === activeProvinceId) ?? activeRegion?.children[0] ?? null;
 
-  const cancelClose = useCallback(() => {
-    if (!closeTimerRef.current) return;
-    clearTimeout(closeTimerRef.current);
-    closeTimerRef.current = null;
-  }, []);
-
   const closeMenu = useCallback(() => {
-    cancelClose();
     setActiveRegionId("");
     setActiveProvinceId("");
-  }, [cancelClose]);
+  }, []);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -138,39 +130,35 @@ export function MegaMenu({
     return () => {
       document.removeEventListener("pointerdown", closeFromOutside);
       document.removeEventListener("keydown", closeFromEscape);
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
   }, [closeMenu]);
 
-  const openRegion = (region: MenuNode) => {
-    cancelClose();
+  const toggleRegion = (region: MenuNode) => {
+    if (activeRegionId === region.id) {
+      closeMenu();
+      return;
+    }
     setActiveRegionId(region.id);
     setActiveProvinceId(region.children[0]?.id ?? "");
   };
 
-  const scheduleClose = () => {
-    cancelClose();
-    closeTimerRef.current = setTimeout(closeMenu, 250);
-  };
-
   return (
-    <div ref={menuRef} className="relative z-[100] w-full" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+    <div ref={menuRef} className="relative z-[100] w-full">
       <nav className="hidden w-full lg:block" aria-label="Primary regional navigation">
         <div className="grid w-full grid-cols-12 items-center gap-1 py-2">
           {regionItems.map((region) => (
-            <Link
+            <button
               key={region.id}
               aria-expanded={activeRegionId === region.id}
               aria-haspopup="menu"
               dir="auto"
-              href={region.href}
-              onFocus={() => openRegion(region)}
-              onMouseEnter={() => openRegion(region)}
+              type="button"
+              onClick={() => toggleRegion(region)}
               onKeyDown={(event) => {
                 if (event.key === "Escape") closeMenu();
                 if (event.key === "ArrowDown" || event.key === "ArrowRight") {
                   event.preventDefault();
-                  openRegion(region);
+                  if (activeRegionId !== region.id) toggleRegion(region);
                 }
               }}
               className={`flex min-h-10 items-center justify-center rounded-xl px-1.5 text-center text-[11px] font-bold leading-4 text-slate-700 transition focus:outline-none xl:px-2 ${
@@ -180,7 +168,7 @@ export function MegaMenu({
               }`}
             >
               <span dir="auto">{region.label}</span>
-            </Link>
+            </button>
           ))}
         </div>
       </nav>
@@ -188,10 +176,6 @@ export function MegaMenu({
       {activeRegion ? (
         <div
           className="absolute left-0 right-0 top-full z-[1000] hidden rounded-b-xl border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[320px_minmax(0,1fr)]"
-          onMouseEnter={() => {
-            setActiveRegionId(activeRegion.id);
-            setActiveProvinceId(activeProvince?.id ?? activeRegion.children[0]?.id ?? "");
-          }}
           role="menu"
         >
           <div className="max-h-[78vh] overflow-y-auto border-r border-slate-200 bg-slate-50 p-3">
@@ -211,7 +195,6 @@ export function MegaMenu({
                     dir="auto"
                     href={province.href}
                     onFocus={() => setActiveProvinceId(province.id)}
-                    onMouseEnter={() => setActiveProvinceId(province.id)}
                     onKeyDown={(event) => {
                       if (event.key === "Escape") closeMenu();
                       if (event.key === "ArrowRight") {

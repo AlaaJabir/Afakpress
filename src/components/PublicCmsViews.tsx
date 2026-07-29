@@ -102,28 +102,6 @@ function RegionPin() {
   );
 }
 
-function MoroccoMapMark() {
-  return (
-    <svg aria-hidden="true" className="h-full w-full drop-shadow-sm" viewBox="0 0 180 420">
-      <defs>
-        <linearGradient id="morocco-map-fill" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#e2e8f0" />
-          <stop offset="100%" stopColor="#cbd5e1" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M114 12 94 26l-9 31-17 18-8 37-18 33-4 51-19 55-4 62 32-5 42-13-10-50 30-9-9-42 14-52 12-39 19-28 1-28-15-18Z"
-        fill="url(#morocco-map-fill)"
-        stroke="#cbd5e1"
-        strokeWidth="2"
-      />
-      {[[111, 43], [87, 83], [80, 119], [72, 154], [68, 194], [56, 235], [43, 284]].map(([cx, cy]) => (
-        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="4" fill="#15803d" opacity=".9" />
-      ))}
-    </svg>
-  );
-}
-
 function RegionsSpotlight({ regions }: { regions: CmsState["regions"] }) {
   if (!regions.length) return null;
 
@@ -136,8 +114,14 @@ function RegionsSpotlight({ regions }: { regions: CmsState["regions"] }) {
         <span className="mx-auto mt-3 block h-1 w-14 rounded-full bg-red-600" />
       </div>
       <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 px-4 py-5 sm:grid-cols-[112px_minmax(0,1fr)]">
-        <div className="relative min-h-80 overflow-hidden rounded-xl bg-gradient-to-b from-slate-50 to-slate-100">
-          <MoroccoMapMark />
+        <div className="relative min-h-80 overflow-hidden rounded-xl bg-slate-50">
+          <Image
+            src="/morocco-regions-map.png"
+            alt="Carte des 12 régions du Maroc"
+            fill
+            sizes="112px"
+            className="object-contain object-center p-1 drop-shadow-sm"
+          />
         </div>
         <nav aria-label="Régions du Maroc">
           <ul className="grid gap-0.5">
