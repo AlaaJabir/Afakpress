@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { CmsShell } from "@/components/CmsShell";
 import { loadSupabaseCmsStateServer } from "@/lib/supabase-cms";
@@ -18,6 +18,13 @@ export const metadata: Metadata = {
     description: "Moroccan press and regional news platform",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f8fafc",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

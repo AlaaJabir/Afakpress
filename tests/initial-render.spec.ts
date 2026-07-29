@@ -23,14 +23,20 @@ for (const viewport of [
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
     const hydrationErrors: string[] = [];
+    const browserErrors: string[] = [];
 
     page.on("console", (message) => {
       if (message.type() === "error" && /hydration|server rendered html/i.test(message.text())) {
         hydrationErrors.push(message.text());
       }
     });
+    page.on("pageerror", (error) => browserErrors.push(error.message));
 
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toBeVisible();
+    await expect(page.locator("header")).toBeVisible();
+    await expect(page.locator("main")).toBeVisible();
+    await expect(page.locator("body")).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     for (const title of legacyArticleTitles) {
       await expect(page.getByText(title, { exact: true })).toHaveCount(0);
     }
@@ -40,6 +46,7 @@ for (const viewport of [
       await expect(page.getByText(title, { exact: true })).toHaveCount(0);
     }
     expect(hydrationErrors).toEqual([]);
+    expect(browserErrors).toEqual([]);
 
     await context.close();
   });
