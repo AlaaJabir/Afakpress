@@ -34,6 +34,7 @@ type BreakingRow = Tables["breaking_news"]["Row"];
 type RegionRow = Tables["regions"]["Row"];
 type ProvinceRow = Tables["provinces"]["Row"];
 type CommuneRow = Tables["communes"]["Row"];
+type GeographyTable = "regions" | "provinces" | "communes";
 
 export type AdminResource = "articles" | "categories" | "menus" | "media" | "breaking_news" | "pages" | "settings" | "profiles" | "regions" | "provinces" | "communes" | "comments";
 
@@ -255,6 +256,28 @@ function buildRegionTree(regionRows: RegionRow[], provinceRows: ProvinceRow[], c
   }));
 }
 
+async function fetchAllGeographyRows(
+  supabase: NonNullable<ReturnType<typeof createBrowserSupabaseClient>>,
+  table: GeographyTable,
+  columns: string,
+) {
+  const pageSize = 1000;
+  const rows: unknown[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .order("name", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(`Could not load ${table}.`);
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+
+  return rows;
+}
+
 async function loadCmsStateFromSupabase(
   supabase: NonNullable<ReturnType<typeof createBrowserSupabaseClient>>,
   publishedOnly = false,
@@ -262,7 +285,7 @@ async function loadCmsStateFromSupabase(
   let articlesQuery = supabase.from("articles").select("*, categories(slug), regions(slug), provinces(slug), communes(slug)").order("published_at", { ascending: false });
   if (publishedOnly) articlesQuery = articlesQuery.eq("status", "published");
 
-  const [categoriesResult, profilesResult, joinedArticlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionsResult, provincesResult, communesResult] = await Promise.all([
+  const [categoriesResult, profilesResult, joinedArticlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionRows, provinceRows, communeRows] = await Promise.all([
     supabase.from("categories").select("*"),
     supabase.from("profiles").select("*"),
     articlesQuery,
@@ -270,9 +293,9 @@ async function loadCmsStateFromSupabase(
     supabase.from("media").select("*"),
     supabase.from("pages").select("*"),
     supabase.from("breaking_news").select("*").order("order_index", { ascending: true }),
-    supabase.from("regions").select("*"),
-    supabase.from("provinces").select("*"),
-    supabase.from("communes").select("*"),
+    fetchAllGeographyRows(supabase, "regions", "id,name,slug"),
+    fetchAllGeographyRows(supabase, "provinces", "id,name,slug,region_id"),
+    fetchAllGeographyRows(supabase, "communes", "id,name,slug,province_id"),
   ]);
 
   let articlesResult = joinedArticlesResult;
@@ -293,7 +316,7 @@ async function loadCmsStateFromSupabase(
   const categoryRows = (categoriesResult.data ?? []) as CategoryRow[];
   const categories = categoriesResult.error ? initialCmsState.categories : categoryRows.filter((row) => row.is_active !== false).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)).map(categoryFromRow);
   const users = (profilesResult.data ?? []).map(userFromRow);
-  const regions = regionsResult.error || provincesResult.error || communesResult.error ? initialCmsState.regions : buildRegionTree(regionsResult.data ?? [], provincesResult.data ?? [], communesResult.data ?? []);
+  const regions = buildRegionTree(regionRows as RegionRow[], provinceRows as ProvinceRow[], communeRows as CommuneRow[]);
   const articles = ((articlesResult.data ?? []) as ArticleRowWithRefs[]).map((row) => articleFromRow(row, categories, users, regions));
 
   return {
@@ -301,7 +324,7 @@ async function loadCmsStateFromSupabase(
     users: users.length ? users : initialCmsState.users,
     categories: categories.length ? categories : initialCmsState.categories,
     articles,
-    regions: regions.length ? regions : initialCmsState.regions,
+    regions,
     menus: menusResult.data?.length ? buildMenuTree(menusResult.data) : initialCmsState.menus,
     media: mediaResult.data?.map(mediaFromRow) ?? [],
     pages: pagesResult.data?.map(pageFromRow) ?? initialCmsState.pages,
@@ -317,6 +340,45 @@ export async function loadSupabaseCmsState(): Promise<CmsState | null> {
 export async function loadSupabaseCmsStateServer(): Promise<CmsState | null> {
   const supabase = createServerSupabaseClient();
   return supabase ? loadCmsStateFromSupabase(supabase, true) : null;
+}
+
+export async function loadCmsRegions() {
+  const supabase = createBrowserSupabaseClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("regions").select("id,name,slug").order("name");
+  if (error) throw new Error("Could not load regions.");
+  return data ?? [];
+}
+
+export async function loadCmsProvinces(regionId: string) {
+  const supabase = createBrowserSupabaseClient();
+  if (!supabase || !regionId) return [];
+  const { data, error } = await supabase
+    .from("provinces")
+    .select("id,name,slug,region_id")
+    .eq("region_id", regionId)
+    .order("name");
+  if (error) throw new Error("Could not load provinces.");
+  return data ?? [];
+}
+
+export async function loadCmsCommunes(provinceId: string) {
+  const supabase = createBrowserSupabaseClient();
+  if (!supabase || !provinceId) return [];
+  const pageSize = 1000;
+  const rows: CommuneRow[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("communes")
+      .select("id,name,slug,province_id")
+      .eq("province_id", provinceId)
+      .order("name")
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error("Could not load communes.");
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
 }
 
 export function articlePayload(article: CmsArticle): Tables["articles"]["Insert"] {

@@ -66,18 +66,6 @@ type ArticleCacheRefs = {
   communeSlug?: string;
 };
 
-type LocationReference = {
-  id?: string;
-  name?: string;
-  slug?: string;
-};
-
-type ArticleLocationReferences = {
-  region?: LocationReference | null;
-  province?: LocationReference | null;
-  commune?: LocationReference | null;
-};
-
 type DatabaseError = {
   message?: string;
   details?: string;
@@ -126,85 +114,24 @@ async function validateArticleHierarchy(supabase: NonNullable<ReturnType<typeof 
   const provinceId = typeof payload.province_id === "string" ? payload.province_id : null;
   const communeId = typeof payload.commune_id === "string" ? payload.commune_id : null;
 
+  if (regionId) {
+    const { data, error } = await supabase.from("regions").select("id").eq("id", regionId).maybeSingle();
+    if (error) return "The selected region could not be verified.";
+    if (!data) return "The selected region no longer exists. Refresh CMS data and select it again.";
+  }
+
   if (provinceId) {
     if (!regionId) return "Selected province requires a selected region.";
     const { data, error } = await supabase.from("provinces").select("id").eq("id", provinceId).eq("region_id", regionId).maybeSingle();
-    if (error) return error.message;
+    if (error) return "The selected province could not be verified.";
     if (!data) return "Selected province must belong to the selected region.";
   }
 
   if (communeId) {
     if (!provinceId) return "Selected commune requires a selected province.";
     const { data, error } = await supabase.from("communes").select("id").eq("id", communeId).eq("province_id", provinceId).maybeSingle();
-    if (error) return error.message;
+    if (error) return "The selected commune could not be verified.";
     if (!data) return "Selected commune must belong to the selected province.";
-  }
-
-  return "";
-}
-
-function readLocationReferences(value: unknown): ArticleLocationReferences {
-  if (!value || typeof value !== "object") return {};
-  const record = value as Record<string, unknown>;
-  const read = (key: "region" | "province" | "commune") => {
-    const item = record[key];
-    if (!item || typeof item !== "object") return null;
-    const location = item as Record<string, unknown>;
-    return {
-      id: typeof location.id === "string" ? location.id : undefined,
-      name: typeof location.name === "string" ? location.name : undefined,
-      slug: typeof location.slug === "string" ? location.slug : undefined,
-    };
-  };
-
-  return {
-    region: read("region"),
-    province: read("province"),
-    commune: read("commune"),
-  };
-}
-
-async function ensureLocationRow(
-  supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>,
-  table: "regions" | "provinces" | "communes",
-  row: Record<string, string>,
-) {
-  const { data, error } = await supabase.from(table).select("id").eq("id", row.id).maybeSingle();
-  if (error) return error.message;
-  if (data) return "";
-
-  const { error: insertError } = table === "regions"
-    ? await supabase.from("regions").insert({ id: row.id, name: row.name, slug: row.slug })
-    : table === "provinces"
-      ? await supabase.from("provinces").insert({ id: row.id, region_id: row.region_id, name: row.name, slug: row.slug })
-      : await supabase.from("communes").insert({ id: row.id, province_id: row.province_id, name: row.name, slug: row.slug });
-  if (!insertError) return "";
-  if (insertError.message.toLowerCase().includes("duplicate key")) return "";
-  return insertError.message;
-}
-
-async function ensureArticleLocationReferences(
-  supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>,
-  payload: Record<string, unknown>,
-  references: ArticleLocationReferences,
-) {
-  const regionId = typeof payload.region_id === "string" ? payload.region_id : "";
-  const provinceId = typeof payload.province_id === "string" ? payload.province_id : "";
-  const communeId = typeof payload.commune_id === "string" ? payload.commune_id : "";
-
-  if (regionId && references.region?.id === regionId && references.region.name && references.region.slug) {
-    const error = await ensureLocationRow(supabase, "regions", { id: regionId, name: references.region.name, slug: references.region.slug });
-    if (error) return error;
-  }
-
-  if (provinceId && regionId && references.province?.id === provinceId && references.province.name && references.province.slug) {
-    const error = await ensureLocationRow(supabase, "provinces", { id: provinceId, region_id: regionId, name: references.province.name, slug: references.province.slug });
-    if (error) return error;
-  }
-
-  if (communeId && provinceId && references.commune?.id === communeId && references.commune.name && references.commune.slug) {
-    const error = await ensureLocationRow(supabase, "communes", { id: communeId, province_id: provinceId, name: references.commune.name, slug: references.commune.slug });
-    if (error) return error;
   }
 
   return "";
@@ -247,7 +174,6 @@ async function prepareArticlePayload(
   session: NonNullable<Awaited<ReturnType<typeof getAdminSessionFromRequest>>>,
   payload: Record<string, unknown>,
 ) {
-  const locationReferences = readLocationReferences(payload.__location);
   delete payload.__location;
 
   const parsed = articlePayloadSchema.safeParse(payload);
@@ -290,9 +216,6 @@ async function prepareArticlePayload(
     avatar: null,
   }, { includeLocations: false });
   if (seedError) return seedError;
-
-  const locationError = await ensureArticleLocationReferences(supabase, payload, locationReferences);
-  if (locationError) return locationError;
 
   const relationError = await resolveArticleReferences(supabase, payload);
   if (relationError) return relationError;

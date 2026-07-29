@@ -98,17 +98,49 @@ async function countRows(table) {
 }
 
 async function fetchRows(table, columns) {
-  const { data, error } = await supabase.from(table).select(columns).limit(10000);
-  if (error) {
-    problem(`Read failed for ${table}.${columns}: ${error.message}`);
-    return [];
+  const pageSize = 1000;
+  const rows = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase.from(table).select(columns).range(from, from + pageSize - 1);
+    if (error) {
+      problem(`Read failed for ${table}.${columns}: ${error.message}`);
+      return [];
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
   }
-  return data ?? [];
+  return rows;
 }
 
 function validUuid(value) {
   return value === null || value === undefined || value === "" || uuidPattern.test(String(value));
 }
+
+function normalizedLocation(value) {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "")
+    .toLowerCase();
+}
+
+function reportDuplicates(rows, table, value, parent = "") {
+  const seen = new Map();
+  for (const row of rows) {
+    const normalized = value(row);
+    if (!normalized) continue;
+    const key = `${parent ? parent(row) : ""}:${normalized}`;
+    const existing = seen.get(key);
+    if (existing) {
+      problem(`${table} contains duplicate ${parent ? "parent-scoped " : ""}${value === slugValue ? "slug" : "normalized name"} rows: ${existing} and ${row.id}.`);
+    } else {
+      seen.set(key, row.id);
+    }
+  }
+}
+
+const slugValue = (row) => normalizedLocation(row.slug);
+const nameValue = (row) => normalizedLocation(row.name);
 
 for (const [table, columns] of Object.entries(schema)) {
   await tableColumnsExist(table, columns);
@@ -145,6 +177,22 @@ for (const check of fkChecks) {
     }
   }
 }
+
+const geographyRows = {
+  regions: await fetchRows("regions", "id,name,slug"),
+  provinces: await fetchRows("provinces", "id,region_id,name,slug"),
+  communes: await fetchRows("communes", "id,province_id,name,slug"),
+};
+if (geographyRows.regions.length !== 12) {
+  problem(`Expected 12 regions, found ${geographyRows.regions.length}.`);
+}
+reportDuplicates(geographyRows.regions, "regions", slugValue);
+reportDuplicates(geographyRows.regions, "regions", nameValue);
+reportDuplicates(geographyRows.provinces, "provinces", slugValue);
+reportDuplicates(geographyRows.provinces, "provinces", nameValue, (row) => row.region_id);
+reportDuplicates(geographyRows.communes, "communes", slugValue);
+reportDuplicates(geographyRows.communes, "communes", nameValue, (row) => row.province_id);
+console.log(`Geography audit: ${geographyRows.regions.length} regions, ${geographyRows.provinces.length} provinces/prefectures, ${geographyRows.communes.length} communes.`);
 
 const articleRows = await fetchRows("articles", "id,status,published_at,slug,title,geographic_scope,region_id,province_id,commune_id");
 for (const article of articleRows) {

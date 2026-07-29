@@ -60,17 +60,11 @@ export function validateArticleDraft(draft: CmsArticle, state: CmsState) {
   const parsed = articleDraftSchema.safeParse(draft);
   if (!parsed.success) return formatZodError(parsed.error);
 
-  const region = draft.regionId ? state.regions.find((item) => item.id === draft.regionId) : null;
-  const province = draft.provinceId ? region?.provinces.find((item) => item.id === draft.provinceId) : null;
-  const commune = draft.communeId ? province?.communes.find((item) => item.id === draft.communeId) : null;
   const category = draft.categoryId ? state.categories.find((item) => item.id === draft.categoryId) : null;
   const author = draft.authorId ? state.users.find((item) => item.id === draft.authorId) : null;
 
   if (draft.categoryId && !category) return "Selected category was not found in CMS data.";
   if (draft.authorId && !author) return "Selected author was not found in CMS data.";
-  if (draft.regionId && !region) return "Selected region was not found in CMS data.";
-  if (draft.provinceId && !province) return "Selected province must belong to the selected region.";
-  if (draft.communeId && !commune) return "Selected commune must belong to the selected province.";
   if (draft.status === "Published" && !category) return "Select a category before publishing.";
   if (draft.status === "Published") {
     const meaningfulContent = sanitizeArticleHtml(draft.content)

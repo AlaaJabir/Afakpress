@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CmsRegion } from "@/lib/cms";
-import type { MoroccoRegion } from "@/data/morocco-regions";
 
-type RegionSource = CmsRegion | MoroccoRegion;
+type RegionSource = CmsRegion;
 
 type MenuNode = {
   id: string;
@@ -94,6 +93,8 @@ export function MegaMenu({
   const [activeRegionId, setActiveRegionId] = useState("");
   const [activeProvinceId, setActiveProvinceId] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeRegion = regionItems.find((region) => region.id === activeRegionId) ?? null;
   const activeProvince = activeRegion?.children.find((province) => province.id === activeProvinceId) ?? activeRegion?.children[0] ?? null;
@@ -109,18 +110,51 @@ export function MegaMenu({
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    const closeFromOutside = (event: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) closeMenu();
+    };
+    const closeFromEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMenu();
+        setMobileOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeFromOutside);
+    document.addEventListener("keydown", closeFromEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeFromOutside);
+      document.removeEventListener("keydown", closeFromEscape);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  const cancelClose = () => {
+    if (!closeTimerRef.current) return;
+    clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  };
+
   const openRegion = (region: MenuNode) => {
+    cancelClose();
     setActiveRegionId(region.id);
     setActiveProvinceId(region.children[0]?.id ?? "");
   };
 
   const closeMenu = () => {
+    cancelClose();
     setActiveRegionId("");
     setActiveProvinceId("");
   };
 
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(closeMenu, 250);
+  };
+
   return (
-    <div className="relative z-[100] w-full" onMouseLeave={closeMenu}>
+    <div ref={menuRef} className="relative z-[100] w-full" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
       <nav className="hidden w-full lg:block" aria-label="Primary regional navigation">
         <div className="grid w-full grid-cols-12 items-center gap-1 py-2">
           {regionItems.map((region) => (
@@ -153,7 +187,7 @@ export function MegaMenu({
 
       {activeRegion ? (
         <div
-          className="absolute left-0 right-0 top-full z-[1000] hidden overflow-hidden rounded-b-xl border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[320px_minmax(0,1fr)]"
+          className="absolute left-0 right-0 top-full z-[1000] hidden rounded-b-xl border border-slate-200 bg-white opacity-100 shadow-2xl ring-1 ring-slate-950/5 transition duration-150 ease-out lg:grid lg:grid-cols-[320px_minmax(0,1fr)]"
           onMouseEnter={() => {
             setActiveRegionId(activeRegion.id);
             setActiveProvinceId(activeProvince?.id ?? activeRegion.children[0]?.id ?? "");

@@ -42,6 +42,7 @@ const emptyInitialState: CmsState = {
   breakingNews: [],
   comments: [],
   subscribers: [],
+  regions: [],
 };
 
 function safeSetStorageItem(key: string, value: string) {

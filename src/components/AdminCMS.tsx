@@ -36,6 +36,9 @@ import {
   communePayload,
   provincePayload,
   regionPayload,
+  loadCmsCommunes,
+  loadCmsProvinces,
+  loadCmsRegions,
   type AdminResource,
 } from "@/lib/supabase-cms";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
@@ -224,57 +227,6 @@ const buttonClass = "inline-flex min-h-10 items-center justify-center rounded-md
 const primaryButtonClass = "inline-flex min-h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-400";
 const statusOptions: ArticleStatus[] = [...articleStatusValues];
 
-function sameLocation(left: { name: string; slug: string }, right: { name: string; slug: string }) {
-  return normalizedLocation(left.slug) === normalizedLocation(right.slug) || normalizedLocation(left.name) === normalizedLocation(right.name);
-}
-
-function normalizedLocation(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u064B-\u065F\u0670]/g, "")
-    .replace(/[^\p{Letter}\p{Number}]+/gu, "")
-    .toLowerCase();
-}
-
-function sharedProvinceCount(left: CmsRegion, right: CmsRegion) {
-  const rightProvinces = new Set(right.provinces.flatMap((province) => [normalizedLocation(province.name), normalizedLocation(province.slug)]));
-  return left.provinces.filter((province) => rightProvinces.has(normalizedLocation(province.name)) || rightProvinces.has(normalizedLocation(province.slug))).length;
-}
-
-function mergeProvinceCommunes(source: CmsProvince, fallback?: CmsProvince): CmsProvince {
-  if (!fallback) return source;
-  const communesBySlug = new Map(source.communes.map((commune) => [commune.slug, commune]));
-  const missingCommunes = fallback.communes
-    .filter((commune) => !communesBySlug.has(commune.slug))
-    .map((commune) => ({ ...commune, id: stableUuid(`commune-${source.id}-${commune.slug}`) }));
-  return { ...source, communes: [...source.communes, ...missingCommunes] };
-}
-
-function completeRegionHierarchy(region?: CmsRegion) {
-  if (!region) return undefined;
-  const fallbackRegion = initialCmsState.regions.find((item) => sameLocation(item, region)) ?? initialCmsState.regions.find((item) => sharedProvinceCount(region, item) > 0);
-  if (!fallbackRegion) return region;
-
-  const mergedProvinces = region.provinces.map((province) => mergeProvinceCommunes(province, fallbackRegion.provinces.find((item) => sameLocation(item, province))));
-  const provinceSlugs = new Set(mergedProvinces.map((province) => province.slug));
-  const missingProvinces = fallbackRegion.provinces
-    .filter((province) => !provinceSlugs.has(province.slug))
-    .map((province) => {
-      const provinceId = stableUuid(`province-${region.id}-${province.slug}`);
-      return {
-        ...province,
-        id: provinceId,
-        communes: province.communes.map((commune) => ({ ...commune, id: stableUuid(`commune-${provinceId}-${commune.slug}`) })),
-      };
-    });
-
-  return { ...region, provinces: [...mergedProvinces, ...missingProvinces] };
-}
-
-function completeRegions(regions: CmsRegion[]) {
-  return regions.map((region) => completeRegionHierarchy(region) ?? region);
-}
-
 async function adminRequest(resource: AdminResource, method: "POST" | "PATCH" | "DELETE", headers: HeadersInit, body?: unknown, id?: string) {
   const url = id ? `/api/admin/${resource}?id=${encodeURIComponent(id)}` : `/api/admin/${resource}`;
   const response = await fetch(url, {
@@ -374,15 +326,14 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
   const saveArticle = async () => {
     if (isSavingArticleRef.current) return;
 
-    const completedState = { ...state, regions: completeRegions(state.regions) };
-    const validationError = validateArticleDraft(articleDraft, completedState);
+    const validationError = validateArticleDraft(articleDraft, state);
     if (validationError) {
       notify("error", validationError);
       return;
     }
 
     const category = state.categories.find((item) => item.id === articleDraft.categoryId);
-    const region = completedState.regions.find((item) => item.id === articleDraft.regionId);
+    const region = state.regions.find((item) => item.id === articleDraft.regionId);
     const province = region?.provinces.find((item) => item.id === articleDraft.provinceId);
     const commune = province?.communes.find((item) => item.id === articleDraft.communeId);
     const author = state.users.find((item) => item.id === articleDraft.authorId);
@@ -397,11 +348,11 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
       image: articleDraft.featuredImage || articleDraft.image,
       categoryId: category?.id ?? "",
       category: category?.slug ?? articleDraft.category,
-      regionId: region?.id ?? "",
+      regionId: region?.id ?? articleDraft.regionId,
       region: region?.slug ?? articleDraft.region,
-      provinceId: province?.id ?? "",
+      provinceId: province?.id ?? articleDraft.provinceId,
       province: province?.slug ?? articleDraft.province,
-      communeId: commune?.id ?? "",
+      communeId: commune?.id ?? articleDraft.communeId,
       commune: commune?.slug ?? articleDraft.commune,
       authorId: author?.id ?? "",
       author: (author?.name ?? articleDraft.author) || defaultArticleAuthor,
@@ -412,14 +363,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
     isSavingArticleRef.current = true;
     setIsSavingArticle(true);
     try {
-      const payload = {
-        ...articlePayload(nextArticle),
-        __location: {
-          region: region ? { id: region.id, name: region.name, slug: region.slug } : null,
-          province: province ? { id: province.id, name: province.name, slug: province.slug } : null,
-          commune: commune ? { id: commune.id, name: commune.name, slug: commune.slug } : null,
-        },
-      };
+      const payload = articlePayload(nextArticle);
       console.info("[AdminCMS] article payload before save", {
         category_id: payload.category_id,
         region_id: payload.region_id,
@@ -604,19 +548,23 @@ function ArticlesPanel({
   const [featuredImageError, setFeaturedImageError] = useState("");
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<CmsMedia | null>(null);
-  const completedRegions = useMemo(() => completeRegions(state.regions), [state.regions]);
+  const completedRegions = state.regions;
+  const [selectorRegions, setSelectorRegions] = useState<Array<{ id: string; name: string | null; slug: string | null }>>([]);
+  const [selectorProvinces, setSelectorProvinces] = useState<Array<{ id: string; name: string | null; slug: string | null; region_id: string | null }>>([]);
+  const [selectorCommunes, setSelectorCommunes] = useState<Array<{ id: string; name: string | null; slug: string | null; province_id: string | null }>>([]);
+  const [geographyLoadError, setGeographyLoadError] = useState("");
   const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
   const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
-  const regionOptions = useMemo(() => completedRegions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [completedRegions]);
+  const regionOptions = useMemo(() => selectorRegions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [selectorRegions]);
   const selectedRegion = useMemo(() => completedRegions.find((region) => region.id === draft.regionId), [completedRegions, draft.regionId]);
   const selectedProvince = useMemo(() => selectedRegion?.provinces.find((province) => province.id === draft.provinceId), [draft.provinceId, selectedRegion]);
   const provinceOptions = useMemo(
-    () => (selectedRegion?.provinces ?? []).map((province) => ({ value: province.id, label: province.name || province.slug || province.id })),
-    [selectedRegion],
+    () => selectorProvinces.map((province) => ({ value: province.id, label: province.name || province.slug || province.id })),
+    [selectorProvinces],
   );
   const communeOptions = useMemo(
-    () => (selectedProvince?.communes ?? []).map((commune) => ({ value: commune.id, label: commune.name || commune.slug || commune.id })),
-    [selectedProvince],
+    () => selectorCommunes.map((commune) => ({ value: commune.id, label: commune.name || commune.slug || commune.id })),
+    [selectorCommunes],
   );
   const canEdit = currentUser?.role !== "Journalist" || !draft.ownerId || draft.ownerId === currentUser.id;
   const selectedMedia = state.media.find((media) => media.url === (draft.featuredImage || draft.image));
@@ -629,18 +577,29 @@ function ArticlesPanel({
   })();
 
   useEffect(() => {
-    const provinceBelongsToRegion = Boolean(selectedRegion?.provinces.some((province) => province.id === draft.provinceId));
-    const communeBelongsToProvince = Boolean(selectedProvince?.communes.some((commune) => commune.id === draft.communeId));
+    setGeographyLoadError("");
+    void loadCmsRegions()
+      .then(setSelectorRegions)
+      .catch(() => setGeographyLoadError("Could not load regions from Supabase."));
+  }, []);
 
-    if (draft.provinceId && !provinceBelongsToRegion) {
-      setDraft({ ...draft, provinceId: "", province: "", communeId: "", commune: "" });
-      return;
-    }
+  useEffect(() => {
+    setSelectorProvinces([]);
+    if (!draft.regionId) return;
+    setGeographyLoadError("");
+    void loadCmsProvinces(draft.regionId)
+      .then(setSelectorProvinces)
+      .catch(() => setGeographyLoadError("Could not load provinces from Supabase."));
+  }, [draft.regionId]);
 
-    if (draft.communeId && !communeBelongsToProvince) {
-      setDraft({ ...draft, communeId: "", commune: "" });
-    }
-  }, [draft, selectedProvince, selectedRegion, setDraft]);
+  useEffect(() => {
+    setSelectorCommunes([]);
+    if (!draft.provinceId) return;
+    setGeographyLoadError("");
+    void loadCmsCommunes(draft.provinceId)
+      .then(setSelectorCommunes)
+      .catch(() => setGeographyLoadError("Could not load communes from Supabase."));
+  }, [draft.provinceId]);
   const setFeaturedImageFromFile = async (file: File | null) => {
     if (!file) return;
     setFeaturedImageError("");
@@ -819,6 +778,7 @@ function ArticlesPanel({
                 <option>Commune</option>
               </select>
             </Field>
+            {geographyLoadError ? <p className="text-sm font-bold text-red-700">{geographyLoadError}</p> : null}
             <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => setDraft({ ...draft, regionId, region: completedRegions.find((item) => item.id === regionId)?.slug ?? "", provinceId: "", province: "", communeId: "", commune: "" })} options={regionOptions} disabled={(draft.geographicScope ?? "National") === "National"} placeholder={(draft.geographicScope ?? "National") === "National" ? "Not applicable" : "Select"} /></Field>
             <Field label="Province / Prefecture">
               <SearchableSelect

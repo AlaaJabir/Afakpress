@@ -258,15 +258,15 @@ export async function resolveArticleReferences(supabase: Db, payload: ArticleRef
   if (author.error) return author.error;
   payload.author_id = author.id;
 
-  const region = await resolveReference(supabase, "regions", payload.region_id, defaultRegionRows(), "Selected region");
+  const region = await resolveReference(supabase, "regions", payload.region_id, [], "Selected region");
   if (region.error) return region.error;
   payload.region_id = region.id;
 
-  const province = await resolveReference(supabase, "provinces", payload.province_id, defaultProvinceRows(), "Selected province");
+  const province = await resolveReference(supabase, "provinces", payload.province_id, [], "Selected province");
   if (province.error) return province.error;
   payload.province_id = province.id;
 
-  const commune = await resolveReference(supabase, "communes", payload.commune_id, defaultCommuneRows(), "Selected commune");
+  const commune = await resolveReference(supabase, "communes", payload.commune_id, [], "Selected commune");
   if (commune.error) return commune.error;
   payload.commune_id = commune.id;
 
