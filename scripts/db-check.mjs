@@ -124,23 +124,29 @@ function normalizedLocation(value) {
     .toLowerCase();
 }
 
-function reportDuplicates(rows, table, value, parent = "") {
-  const seen = new Map();
+const intentionalNormalizedNameGroups = new Set([
+  [
+    "1de8778f-d1d3-4cf1-8d49-daba910cda3f",
+    "f685a9ee-f2c1-489d-86d8-52a9525df31a",
+  ].sort().join(","),
+]);
+
+function reportDuplicates(rows, table, value, parent = "", normalize = true) {
+  const groups = new Map();
   for (const row of rows) {
-    const normalized = value(row);
-    if (!normalized) continue;
-    const key = `${parent ? parent(row) : ""}:${normalized}`;
-    const existing = seen.get(key);
-    if (existing) {
-      problem(`${table} contains duplicate ${parent ? "parent-scoped " : ""}${value === slugValue ? "slug" : "normalized name"} rows: ${existing} and ${row.id}.`);
-    } else {
-      seen.set(key, row.id);
-    }
+    const comparedValue = normalize ? normalizedLocation(value(row)) : String(value(row) ?? "").trim();
+    if (!comparedValue) continue;
+    const key = `${parent ? parent(row) : ""}:${comparedValue}`;
+    groups.set(key, [...(groups.get(key) ?? []), row.id]);
+  }
+  for (const ids of groups.values()) {
+    if (ids.length < 2 || intentionalNormalizedNameGroups.has([...ids].sort().join(","))) continue;
+    problem(`${table} contains duplicate ${parent ? "parent-scoped " : ""}${normalize ? "normalized name" : "slug"} rows: ${ids.join(" and ")}.`);
   }
 }
 
-const slugValue = (row) => normalizedLocation(row.slug);
-const nameValue = (row) => normalizedLocation(row.name);
+const slugValue = (row) => row.slug;
+const nameValue = (row) => row.name;
 
 for (const [table, columns] of Object.entries(schema)) {
   await tableColumnsExist(table, columns);
@@ -186,11 +192,17 @@ const geographyRows = {
 if (geographyRows.regions.length !== 12) {
   problem(`Expected 12 regions, found ${geographyRows.regions.length}.`);
 }
-reportDuplicates(geographyRows.regions, "regions", slugValue);
+if (geographyRows.provinces.length !== 74) {
+  problem(`Expected 74 provinces/prefectures, found ${geographyRows.provinces.length}.`);
+}
+if (geographyRows.communes.length !== 1499) {
+  problem(`Expected 1499 communes, found ${geographyRows.communes.length}.`);
+}
+reportDuplicates(geographyRows.regions, "regions", slugValue, "", false);
 reportDuplicates(geographyRows.regions, "regions", nameValue);
-reportDuplicates(geographyRows.provinces, "provinces", slugValue);
+reportDuplicates(geographyRows.provinces, "provinces", slugValue, (row) => row.region_id, false);
 reportDuplicates(geographyRows.provinces, "provinces", nameValue, (row) => row.region_id);
-reportDuplicates(geographyRows.communes, "communes", slugValue);
+reportDuplicates(geographyRows.communes, "communes", slugValue, (row) => row.province_id, false);
 reportDuplicates(geographyRows.communes, "communes", nameValue, (row) => row.province_id);
 console.log(`Geography audit: ${geographyRows.regions.length} regions, ${geographyRows.provinces.length} provinces/prefectures, ${geographyRows.communes.length} communes.`);
 

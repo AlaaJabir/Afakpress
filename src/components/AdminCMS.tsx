@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   getPublishedArticles,
-  initialCmsState,
   makeId,
   rolePermissions,
   type ArticleStatus,
@@ -21,7 +20,6 @@ import {
 } from "@/lib/cms";
 import { useCms } from "@/lib/cms-store";
 import { slugify } from "@/lib/slug";
-import { stableUuid } from "@/lib/uuid";
 import { canManageAdmins, cmsRoleFromAdmin, type AdminRole } from "@/lib/admin-roles";
 import type { AdminSession, AdminUserRecord } from "@/lib/admin-auth";
 import { articleStatusValues, validateArticleDraft } from "@/lib/article-validation";
@@ -577,25 +575,20 @@ function ArticlesPanel({
   })();
 
   useEffect(() => {
-    setGeographyLoadError("");
     void loadCmsRegions()
       .then(setSelectorRegions)
       .catch(() => setGeographyLoadError("Could not load regions from Supabase."));
   }, []);
 
   useEffect(() => {
-    setSelectorProvinces([]);
     if (!draft.regionId) return;
-    setGeographyLoadError("");
     void loadCmsProvinces(draft.regionId)
       .then(setSelectorProvinces)
       .catch(() => setGeographyLoadError("Could not load provinces from Supabase."));
   }, [draft.regionId]);
 
   useEffect(() => {
-    setSelectorCommunes([]);
     if (!draft.provinceId) return;
-    setGeographyLoadError("");
     void loadCmsCommunes(draft.provinceId)
       .then(setSelectorCommunes)
       .catch(() => setGeographyLoadError("Could not load communes from Supabase."));
@@ -779,11 +772,18 @@ function ArticlesPanel({
               </select>
             </Field>
             {geographyLoadError ? <p className="text-sm font-bold text-red-700">{geographyLoadError}</p> : null}
-            <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => setDraft({ ...draft, regionId, region: completedRegions.find((item) => item.id === regionId)?.slug ?? "", provinceId: "", province: "", communeId: "", commune: "" })} options={regionOptions} disabled={(draft.geographicScope ?? "National") === "National"} placeholder={(draft.geographicScope ?? "National") === "National" ? "Not applicable" : "Select"} /></Field>
+            <Field label="Region"><SearchableSelect value={draft.regionId} onChange={(regionId) => {
+              setGeographyLoadError("");
+              setSelectorProvinces([]);
+              setSelectorCommunes([]);
+              setDraft({ ...draft, regionId, region: completedRegions.find((item) => item.id === regionId)?.slug ?? "", provinceId: "", province: "", communeId: "", commune: "" });
+            }} options={regionOptions} disabled={(draft.geographicScope ?? "National") === "National"} placeholder={(draft.geographicScope ?? "National") === "National" ? "Not applicable" : "Select"} /></Field>
             <Field label="Province / Prefecture">
               <SearchableSelect
                 value={draft.provinceId}
                 onChange={(provinceId) => {
+                  setGeographyLoadError("");
+                  setSelectorCommunes([]);
                   const province = selectedRegion?.provinces.find((item) => item.id === provinceId);
                   setDraft({ ...draft, provinceId: province?.id ?? "", province: province?.slug ?? "", communeId: "", commune: "" });
                 }}

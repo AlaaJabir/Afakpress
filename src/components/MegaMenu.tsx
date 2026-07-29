@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CmsRegion } from "@/lib/cms";
 
 type RegionSource = CmsRegion;
@@ -99,6 +99,18 @@ export function MegaMenu({
   const activeRegion = regionItems.find((region) => region.id === activeRegionId) ?? null;
   const activeProvince = activeRegion?.children.find((province) => province.id === activeProvinceId) ?? activeRegion?.children[0] ?? null;
 
+  const cancelClose = useCallback(() => {
+    if (!closeTimerRef.current) return;
+    clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    cancelClose();
+    setActiveRegionId("");
+    setActiveProvinceId("");
+  }, [cancelClose]);
+
   useEffect(() => {
     if (!mobileOpen) return;
 
@@ -128,24 +140,12 @@ export function MegaMenu({
       document.removeEventListener("keydown", closeFromEscape);
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
-  }, []);
-
-  const cancelClose = () => {
-    if (!closeTimerRef.current) return;
-    clearTimeout(closeTimerRef.current);
-    closeTimerRef.current = null;
-  };
+  }, [closeMenu]);
 
   const openRegion = (region: MenuNode) => {
     cancelClose();
     setActiveRegionId(region.id);
     setActiveProvinceId(region.children[0]?.id ?? "");
-  };
-
-  const closeMenu = () => {
-    cancelClose();
-    setActiveRegionId("");
-    setActiveProvinceId("");
   };
 
   const scheduleClose = () => {

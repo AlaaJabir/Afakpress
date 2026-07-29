@@ -10,7 +10,23 @@ const supabaseHostname = (() => {
   }
 })();
 
+const geographyRedirects = [
+  ["/region/rabat-sale-kenitra", "/region/جهة-الرباط-سلا-القنيطرة"],
+  ["/region/casablanca-settat", "/region/جهة-الدار-البيضاء-سطات"],
+  ["/region/tanger-tetouan-al-hoceima", "/region/جهة-طنجة-تطوان-الحسيمة"],
+  ["/province/rabat", "/province/عمالة-الرباط"],
+  ["/province/tanger-assilah", "/province/عمالة-طنجة-ا-صيلة"],
+  ["/commune/tanger", "/commune/طنجة"],
+] as const;
+
 const nextConfig: NextConfig = {
+  async redirects() {
+    return geographyRedirects.map(([source, destination]) => ({
+      source,
+      destination,
+      permanent: true,
+    }));
+  },
   images: {
     remotePatterns: [
       {
