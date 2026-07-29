@@ -94,12 +94,86 @@ function SectionBlock({ title, href, articles }: { title: string; href: string; 
   );
 }
 
+function RegionPin() {
+  return (
+    <svg aria-hidden="true" className="size-4 shrink-0 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
+      <path fillRule="evenodd" d="M12 2.25a7.5 7.5 0 0 0-7.5 7.5c0 5.3 6.35 11.3 6.62 11.55a1.3 1.3 0 0 0 1.76 0c.27-.25 6.62-6.25 6.62-11.55a7.5 7.5 0 0 0-7.5-7.5Zm0 10.25a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function MoroccoMapMark() {
+  return (
+    <svg aria-hidden="true" className="h-full w-full drop-shadow-sm" viewBox="0 0 180 420">
+      <defs>
+        <linearGradient id="morocco-map-fill" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#e2e8f0" />
+          <stop offset="100%" stopColor="#cbd5e1" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M114 12 94 26l-9 31-17 18-8 37-18 33-4 51-19 55-4 62 32-5 42-13-10-50 30-9-9-42 14-52 12-39 19-28 1-28-15-18Z"
+        fill="url(#morocco-map-fill)"
+        stroke="#cbd5e1"
+        strokeWidth="2"
+      />
+      {[[111, 43], [87, 83], [80, 119], [72, 154], [68, 194], [56, 235], [43, 284]].map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="4" fill="#15803d" opacity=".9" />
+      ))}
+    </svg>
+  );
+}
+
+function RegionsSpotlight({ regions }: { regions: CmsState["regions"] }) {
+  if (!regions.length) return null;
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="regions-spotlight-title">
+      <div className="bg-slate-950 px-5 py-5 text-center text-white">
+        <h2 id="regions-spotlight-title" className="text-xl font-black uppercase tracking-[0.08em]">
+          Les {regions.length} régions du Maroc
+        </h2>
+        <span className="mx-auto mt-3 block h-1 w-14 rounded-full bg-red-600" />
+      </div>
+      <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 px-4 py-5 sm:grid-cols-[112px_minmax(0,1fr)]">
+        <div className="relative min-h-80 overflow-hidden rounded-xl bg-gradient-to-b from-slate-50 to-slate-100">
+          <MoroccoMapMark />
+        </div>
+        <nav aria-label="Régions du Maroc">
+          <ul className="grid gap-0.5">
+            {regions.map((region) => (
+              <li key={region.id}>
+                <Link
+                  href={`/region/${encodeURIComponent(region.slug)}`}
+                  className="group flex min-h-7 items-center gap-2 rounded-lg px-2 py-1 text-right text-[13px] font-bold leading-5 text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-800 focus:bg-emerald-50 focus:text-emerald-800 focus:outline-none"
+                  dir="rtl"
+                >
+                  <RegionPin />
+                  <span className="line-clamp-1">{region.name.replace(/^جهة\s+/u, "")}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+      <div className="px-4 pb-5">
+        <Link
+          href="#morocco-regions"
+          className="flex min-h-11 items-center justify-center rounded-xl bg-red-700 px-4 text-sm font-black uppercase tracking-[0.06em] text-white shadow-sm transition hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-100"
+        >
+          Voir toutes les régions
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 export function CmsHomePage() {
   const { state, isLoading, error, hasLoadedFromSupabase } = useCms();
   const published = publishedArticles(state);
   const homepageArticles = published;
   const homepageCategories = state.categories;
-  const homepageRegions = state.regions.length >= 12 ? state.regions : moroccoRegions;
+  const homepageRegions = state.regions;
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
   const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
@@ -156,31 +230,34 @@ export function CmsHomePage() {
 
       {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
         <SectionBlock title="Latest news" href="/category/national" articles={homepageArticles.slice(1, 5)} />
-        <aside className="self-start overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-            <h2 className="text-2xl font-black text-slate-950">Most read</h2>
-            <span className="h-1 w-12 rounded-full bg-red-700" />
-          </div>
-          <ol className="divide-y divide-slate-100 px-6">
-            {mostRead.map((article, index) => (
-              <li key={article.id}>
-                <Link href={`/article/${encodeURIComponent(article.slug)}`} className="group/read grid grid-cols-[42px_1fr] gap-4 py-5">
-                  <span className="text-3xl font-black leading-none text-red-700/25 transition group-hover/read:text-red-700 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="min-w-0">
-                    <span className="line-clamp-2 font-black leading-6 text-slate-900 transition group-hover/read:text-red-700" dir="auto">{article.title}</span>
-                    <span className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
-                      {article.category ? <span className="uppercase text-red-700">{article.category}</span> : null}
-                      {article.publishDate ? <span>{article.publishDate}</span> : null}
+        <aside className="grid self-start gap-6">
+          <RegionsSpotlight regions={homepageRegions} />
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+              <h2 className="text-2xl font-black text-slate-950">Most read</h2>
+              <span className="h-1 w-12 rounded-full bg-red-700" />
+            </div>
+            <ol className="divide-y divide-slate-100 px-6">
+              {mostRead.map((article, index) => (
+                <li key={article.id}>
+                  <Link href={`/article/${encodeURIComponent(article.slug)}`} className="group/read grid grid-cols-[42px_1fr] gap-4 py-5">
+                    <span className="text-3xl font-black leading-none text-red-700/25 transition group-hover/read:text-red-700 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0">
+                      <span className="line-clamp-2 font-black leading-6 text-slate-900 transition group-hover/read:text-red-700" dir="auto">{article.title}</span>
+                      <span className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+                        {article.category ? <span className="uppercase text-red-700">{article.category}</span> : null}
+                        {article.publishDate ? <span>{article.publishDate}</span> : null}
+                      </span>
                     </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </div>
         </aside>
       </section> : null}
 
-      {show("Regional News") ? <section className="mx-auto w-full max-w-screen-2xl">
+      {show("Regional News") ? <section id="morocco-regions" className="mx-auto w-full max-w-screen-2xl scroll-mt-36">
         <div className="mb-6 flex items-end justify-between gap-4">
           <h2 className="text-3xl font-black text-slate-950">Morocco regions</h2>
           <Link href="/category/regions" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700">
