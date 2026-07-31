@@ -152,7 +152,9 @@ function Chrome({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex flex-col gap-3 border-t border-white/10 py-6 text-xs font-bold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>© Afakpress. All rights reserved.</p>
+            <p>
+              © Afakpress. All rights reserved. Site created and developed by Mr JABIR Alaa, Owner &amp; CTO of ITMD Company.
+            </p>
             <p className="uppercase tracking-[0.14em]">Moroccan press and regional news</p>
           </div>
         </div>
