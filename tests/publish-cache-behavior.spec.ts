@@ -48,3 +48,12 @@ test("CMS data loading falls back when Supabase embedded article references fail
   expect(source).toContain("supabase.from(\"articles\").select(articleColumns).order(\"published_at\", { ascending: false })");
   expect(source).toContain("if (articlesResult.error) {");
 });
+
+test("category pages filter published articles in Supabase", async () => {
+  const source = await readFile(path.join(root, "src/lib/public-content.ts"), "utf8");
+  const categoryQuery = source.slice(source.indexOf("export async function getCategoryPageData"), source.indexOf("async function locationRows"));
+
+  expect(categoryQuery).toContain('.eq("status", "published")');
+  expect(categoryQuery).toContain('.eq("category_id", category.id)');
+  expect(categoryQuery).not.toContain(".filter((article) => article.category_id === category.id)");
+});

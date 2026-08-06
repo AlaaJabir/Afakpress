@@ -72,23 +72,6 @@ function logQueryError(scope: string, error: unknown) {
   }
 }
 
-async function publishedArticles(): Promise<PublicQueryResult<PublicArticle[]>> {
-  const supabase = createServerSupabaseClient();
-  if (!supabase) return { status: "unconfigured" };
-
-  const { data, error } = await supabase
-    .from("articles")
-    .select(articleSelect)
-    .eq("status", "published")
-    .order("published_at", { ascending: false, nullsFirst: false });
-
-  if (error) {
-    logQueryError("articles", error);
-    return { status: "error" };
-  }
-  return { status: "ok", data: (data ?? []) as unknown as PublicArticle[] };
-}
-
 export async function getPublishedArticleBySlug(slug: string): Promise<PublicQueryResult<PublicArticle>> {
   const supabase = createServerSupabaseClient();
   if (!supabase) return { status: "unconfigured" };
@@ -173,13 +156,23 @@ export async function getCategoryPageData(slug: string): Promise<PublicQueryResu
   if (!entity) return { status: "not-found" };
   const category = entity as unknown as PublicEntity;
 
-  const articles = await publishedArticles();
-  if (articles.status !== "ok") return articles;
+  const { data: articles, error: articlesError } = await supabase
+    .from("articles")
+    .select(articleSelect)
+    .eq("status", "published")
+    .eq("category_id", category.id)
+    .order("published_at", { ascending: false, nullsFirst: false });
+
+  if (articlesError) {
+    logQueryError("category/articles", articlesError);
+    return { status: "error" };
+  }
+
   return {
     status: "ok",
     data: {
       entity: category,
-      articles: articles.data.filter((article) => article.category_id === category.id),
+      articles: (articles ?? []) as unknown as PublicArticle[],
     },
   };
 }
