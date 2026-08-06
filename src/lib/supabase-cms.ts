@@ -37,7 +37,7 @@ type CommuneRow = Tables["communes"]["Row"];
 type GeographyTable = "regions" | "provinces" | "communes";
 
 const articleColumns = "id,title,slug,excerpt,content,featured_image,geographic_scope,category_id,author_id,region_id,province_id,commune_id,status,is_featured,views,seo_title,seo_description,seo_keywords,published_at,created_at";
-const articleColumnsWithRefs = `${articleColumns}, categories(slug), regions(slug), provinces(slug), communes(slug)`;
+const articleColumnsWithRefs = `${articleColumns}, categories:categories!articles_category_id_fkey(slug), regions:regions!articles_region_id_fkey(slug), provinces:provinces!articles_province_id_fkey(slug), communes:communes!articles_commune_id_fkey(slug)`;
 
 export type AdminResource = "articles" | "categories" | "menus" | "media" | "breaking_news" | "pages" | "settings" | "profiles" | "regions" | "provinces" | "communes" | "comments";
 

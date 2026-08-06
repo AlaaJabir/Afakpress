@@ -43,6 +43,7 @@ test("article admin API invalidates affected public caches after Supabase writes
 test("CMS data loading falls back when Supabase embedded article references fail", async () => {
   const source = await readFile(path.join(root, "src/lib/supabase-cms.ts"), "utf8");
 
+  expect(source).toContain("communes:communes!articles_commune_id_fkey(slug)");
   expect(source).toContain("joinedArticlesResult");
   expect(source).toContain("retrying without embedded references");
   expect(source).toContain("supabase.from(\"articles\").select(articleColumns).order(\"published_at\", { ascending: false })");
