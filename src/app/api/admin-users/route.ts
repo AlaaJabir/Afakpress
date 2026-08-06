@@ -4,6 +4,8 @@ import { createServiceSupabaseAdminClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
+const adminUserColumns = "id,user_id,email,role,status,created_at";
+
 async function requireSuperAdmin(request: Request) {
   const session = await getAdminSessionFromRequest(request);
   if (!session) return { error: Response.json({ error: "Unauthorized" }, { status: 401 }) };
@@ -17,7 +19,7 @@ export async function GET(request: Request) {
   const supabase = createServiceSupabaseAdminClient();
   if (!supabase) return Response.json({ error: "Missing Supabase service role configuration." }, { status: 500 });
 
-  const { data, error } = await supabase.from("admin_users").select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("admin_users").select(adminUserColumns).order("created_at", { ascending: false });
   if (error) return Response.json({ error: error.message }, { status: 400 });
   return Response.json({ data });
 }
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("admin_users")
     .upsert({ email: normalizedEmail, user_id: userId, role: nextRole, status: "active" }, { onConflict: "email" })
-    .select("*")
+    .select(adminUserColumns)
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 400 });
@@ -61,7 +63,7 @@ export async function PATCH(request: Request) {
   if (adminRoles.includes(role)) payload.role = role;
   if (status === "active" || status === "disabled") payload.status = status;
 
-  const { data, error } = await supabase.from("admin_users").update(payload).eq("id", id).select("*").single();
+  const { data, error } = await supabase.from("admin_users").update(payload).eq("id", id).select(adminUserColumns).single();
   if (error) return Response.json({ error: error.message }, { status: 400 });
   return Response.json({ data });
 }

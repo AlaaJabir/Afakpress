@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 const mediaBucket = "media";
 const maxFeaturedImageSize = 2 * 1024 * 1024;
+const mediaColumns = "id,name,url,type,folder,alt,caption,copyright,optimized";
 
 type SupabaseError = {
   message: string;
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
       alt: mediaName.replace(/\.[^.]+$/, ""),
       optimized: true,
     })
-    .select("*")
+    .select(mediaColumns)
     .single();
 
   if (mediaError) {
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     const minimalInsert = await supabase
       .from("media")
       .insert({ name: mediaName, url: data.publicUrl })
-      .select("*")
+      .select(mediaColumns)
       .single();
     media = minimalInsert.data;
     mediaError = minimalInsert.error;

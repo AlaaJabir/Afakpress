@@ -45,6 +45,6 @@ test("CMS data loading falls back when Supabase embedded article references fail
 
   expect(source).toContain("joinedArticlesResult");
   expect(source).toContain("retrying without embedded references");
-  expect(source).toContain("supabase.from(\"articles\").select(\"*\").order(\"published_at\", { ascending: false })");
+  expect(source).toContain("supabase.from(\"articles\").select(articleColumns).order(\"published_at\", { ascending: false })");
   expect(source).toContain("if (articlesResult.error) {");
 });

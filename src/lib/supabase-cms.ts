@@ -36,6 +36,9 @@ type ProvinceRow = Tables["provinces"]["Row"];
 type CommuneRow = Tables["communes"]["Row"];
 type GeographyTable = "regions" | "provinces" | "communes";
 
+const articleColumns = "id,title,slug,excerpt,content,featured_image,geographic_scope,category_id,author_id,region_id,province_id,commune_id,status,is_featured,views,seo_title,seo_description,seo_keywords,published_at,created_at";
+const articleColumnsWithRefs = `${articleColumns}, categories(slug), regions(slug), provinces(slug), communes(slug)`;
+
 export type AdminResource = "articles" | "categories" | "menus" | "media" | "breaking_news" | "pages" | "settings" | "profiles" | "regions" | "provinces" | "communes" | "comments";
 
 function articleStatus(status: string | null | undefined): ArticleStatus {
@@ -282,17 +285,17 @@ async function loadCmsStateFromSupabase(
   supabase: NonNullable<ReturnType<typeof createBrowserSupabaseClient>>,
   publishedOnly = false,
 ): Promise<CmsState> {
-  let articlesQuery = supabase.from("articles").select("*, categories(slug), regions(slug), provinces(slug), communes(slug)").order("published_at", { ascending: false });
+  let articlesQuery = supabase.from("articles").select(articleColumnsWithRefs).order("published_at", { ascending: false });
   if (publishedOnly) articlesQuery = articlesQuery.eq("status", "published");
 
   const [categoriesResult, profilesResult, joinedArticlesResult, menusResult, mediaResult, pagesResult, breakingResult, regionRows, provinceRows, communeRows] = await Promise.all([
-    supabase.from("categories").select("*"),
-    supabase.from("profiles").select("*"),
+    supabase.from("categories").select("id,name,slug,description,parent_id,order_index,is_active"),
+    supabase.from("profiles").select("id,name,email,role,avatar"),
     articlesQuery,
-    supabase.from("menus").select("*").order("order_index", { ascending: true }),
-    supabase.from("media").select("*"),
-    supabase.from("pages").select("*"),
-    supabase.from("breaking_news").select("*").order("order_index", { ascending: true }),
+    supabase.from("menus").select("id,title,slug,parent_id,level,order_index,is_active,show_header,show_footer").order("order_index", { ascending: true }),
+    supabase.from("media").select("id,name,url,type,folder,alt,caption,copyright,optimized"),
+    supabase.from("pages").select("id,title,slug,content,seo_title,seo_description,status"),
+    supabase.from("breaking_news").select("id,title,article_id,url,is_active,order_index").order("order_index", { ascending: true }),
     fetchAllGeographyRows(supabase, "regions", "id,name,slug"),
     fetchAllGeographyRows(supabase, "provinces", "id,name,slug,region_id"),
     fetchAllGeographyRows(supabase, "communes", "id,name,slug,province_id"),
@@ -301,7 +304,7 @@ async function loadCmsStateFromSupabase(
   let articlesResult = joinedArticlesResult;
   if (articlesResult.error) {
     console.warn("Supabase article relationship query failed, retrying without embedded references:", articlesResult.error);
-    let fallbackArticlesQuery = supabase.from("articles").select("*").order("published_at", { ascending: false });
+    let fallbackArticlesQuery = supabase.from("articles").select(articleColumns).order("published_at", { ascending: false });
     if (publishedOnly) fallbackArticlesQuery = fallbackArticlesQuery.eq("status", "published");
     const fallbackArticlesResult = await fallbackArticlesQuery;
     if (!fallbackArticlesResult.error) {

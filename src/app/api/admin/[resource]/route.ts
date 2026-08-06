@@ -13,6 +13,20 @@ import { revalidatePath, revalidateTag } from "next/cache";
 export const dynamic = "force-dynamic";
 
 const resources: AdminResource[] = ["articles", "categories", "menus", "media", "breaking_news", "pages", "settings", "profiles", "regions", "provinces", "communes", "comments"];
+const writeResultColumns: Record<AdminResource, string> = {
+  articles: "id,slug,status,category_id,region_id,province_id,commune_id",
+  categories: "id",
+  menus: "id",
+  media: "id",
+  breaking_news: "id",
+  pages: "id",
+  settings: "id",
+  profiles: "id",
+  regions: "id",
+  provinces: "id",
+  communes: "id",
+  comments: "id",
+};
 const resourcePermission: Record<AdminResource, string> = {
   articles: "articles",
   categories: "categories",
@@ -271,7 +285,7 @@ export async function POST(request: Request, context: { params: Promise<{ resour
     if (error) return Response.json({ error }, { status: 400 });
   }
 
-  const { data, error } = await supabase.from(table).insert(payload).select("*").single();
+  const { data, error } = await supabase.from(table).insert(payload).select(writeResultColumns[table]).single();
   if (error) {
     if (table === "articles") {
       logArticleDatabaseError("insert", error, payload);
@@ -318,7 +332,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
     if (existing) return Response.json({ error: "Article slug already exists." }, { status: 409 });
   }
 
-  const { data, error } = await supabase.from(table).update(payload).eq("id", id).select("*").single();
+  const { data, error } = await supabase.from(table).update(payload).eq("id", id).select(writeResultColumns[table]).single();
   if (error) {
     if (table === "articles") {
       logArticleDatabaseError("update", error, payload);

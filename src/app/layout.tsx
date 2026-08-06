@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { CmsShell } from "@/components/CmsShell";
-import { loadSupabaseCmsStateServer } from "@/lib/supabase-cms";
 
 export const dynamic = "force-dynamic";
 
@@ -27,18 +26,11 @@ export const viewport: Viewport = {
   themeColor: "#f8fafc",
 };
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  let cmsState = null;
-  try {
-    cmsState = await loadSupabaseCmsStateServer();
-  } catch (error) {
-    console.error("[RootLayout] Initial Supabase CMS load failed:", error);
-  }
-
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>
-        <CmsShell initialState={cmsState ?? undefined} initiallyLoaded={Boolean(cmsState)}>{children}</CmsShell>
+        <CmsShell>{children}</CmsShell>
       </body>
     </html>
   );

@@ -52,6 +52,12 @@ const articleSelect = `
   author:profiles(id,name,slug)
 `;
 
+const articleDetailSelect = `
+  id,title,slug,excerpt,content,featured_image,
+  category_id,author_id,region_id,province_id,commune_id,
+  published_at,created_at,seo_title,seo_description
+`;
+
 function normalizedSlug(value: string) {
   try {
     return decodeURIComponent(value).normalize("NFC").trim();
@@ -90,7 +96,7 @@ export async function getPublishedArticleBySlug(slug: string): Promise<PublicQue
 
   const { data, error } = await supabase
     .from("articles")
-    .select("*")
+    .select(articleDetailSelect)
     .eq("slug", requestedSlug)
     .eq("status", "published")
     .maybeSingle();
