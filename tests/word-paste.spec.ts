@@ -49,7 +49,7 @@ test("sanitizer preserves embedded data images, dimensions, styles, and tables",
 });
 
 test("cleanWordHtml handles real browser DOM execution", async ({ page }) => {
-  await page.goto("http://127.0.0.1:3000/");
+  await page.goto("/");
 
   const cleanedHtml = await page.evaluate(() => {
     const sampleWordDoc = `
