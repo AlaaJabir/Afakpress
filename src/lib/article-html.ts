@@ -26,13 +26,13 @@ export function sanitizeArticleHtml(value: string | null | undefined) {
 
   return sanitizeHtml(html, {
     allowedTags: [
-      "p", "br", "h2", "h3", "h4", "strong", "b", "em", "i", "u",
+      "p", "br", "h2", "h3", "h4", "strong", "b", "em", "i", "u", "s",
       "ul", "ol", "li", "blockquote", "a", "hr",
       "table", "thead", "tbody", "tfoot", "tr", "th", "td", "img",
     ],
     allowedAttributes: {
       a: ["href", "target", "rel", "title"],
-      img: ["src", "alt", "title"],
+      img: ["src", "alt", "title", "width", "height", "style", "class", "loading"],
       th: ["colspan", "rowspan", "style"],
       td: ["colspan", "rowspan", "style"],
       p: ["style"],
@@ -44,10 +44,17 @@ export function sanitizeArticleHtml(value: string | null | undefined) {
       "*": {
         "text-align": [/^(?:left|right|center|justify)$/],
       },
+      img: {
+        width: [/^[0-9]+(?:px|%|em|rem)?$/],
+        height: [/^[0-9]+(?:px|%|em|rem)?$/],
+        "max-width": [/^[0-9]+(?:px|%|em|rem)?$/],
+        "max-height": [/^[0-9]+(?:px|%|em|rem)?$/],
+        "aspect-ratio": [/^[0-9/.\s]+$/],
+      },
     },
-    allowedSchemes: ["http", "https", "mailto", "tel"],
+    allowedSchemes: ["http", "https", "mailto", "tel", "data"],
     allowedSchemesByTag: {
-      img: ["http", "https"],
+      img: ["http", "https", "data"],
     },
     allowProtocolRelative: false,
     transformTags: {
@@ -57,6 +64,13 @@ export function sanitizeArticleHtml(value: string | null | undefined) {
           ...attributes,
           target: attributes.target === "_blank" ? "_blank" : "_self",
           rel: "noopener noreferrer",
+        },
+      }),
+      img: (_tagName, attributes) => ({
+        tagName: "img",
+        attribs: {
+          ...attributes,
+          loading: attributes.loading || "lazy",
         },
       }),
     },
