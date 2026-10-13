@@ -21,6 +21,25 @@ const cmsState = {
       ],
     },
     {
+      id: "region-rabat-ar",
+      name: "Rabat-Sale-Kenitra",
+      slug: "جهة-الرباط-سلا-القنيطرة",
+      provinces: [
+        {
+          id: "province-rabat",
+          name: "Rabat",
+          slug: "rabat",
+          communes: [{ id: "commune-rabat", name: "Rabat", slug: "rabat" }],
+        },
+        {
+          id: "province-rabat-ar",
+          name: "Rabat",
+          slug: "عمالة-الرباط",
+          communes: [{ id: "commune-rabat", name: "Rabat", slug: "rabat" }],
+        },
+      ],
+    },
+    {
       id: "region-casablanca",
       name: "Casablanca-Settat",
       slug: "casablanca-settat",
@@ -36,9 +55,12 @@ const cmsState = {
   ],
   media: [],
   articles: [
-    article({ id: "article-region", title: "Region Only Publish", slug: "region-only-publish", region: "rabat-sale-kenitra", province: "", commune: "", publishedAt: "2026-07-20T12:04:00.000Z" }),
-    article({ id: "article-province", title: "Province Publish", slug: "province-publish", region: "rabat-sale-kenitra", province: "rabat", commune: "", publishedAt: "2026-07-20T12:03:00.000Z" }),
-    article({ id: "article-commune", title: "Commune Publish", slug: "commune-publish", region: "rabat-sale-kenitra", province: "rabat", commune: "rabat", publishedAt: "2026-07-20T12:02:00.000Z" }),
+    article({ id: "article-region", title: "Region Only Publish", slug: "region-only-publish", region: "rabat-sale-kenitra", regionId: "region-rabat", province: "", commune: "", publishedAt: "2026-07-20T12:04:00.000Z" }),
+    article({ id: "article-region-ar", title: "Region Only Publish", slug: "region-only-publish-ar", region: "جهة-الرباط-سلا-القنيطرة", regionId: "region-rabat-ar", province: "", commune: "", publishedAt: "2026-07-20T12:04:00.000Z" }),
+    article({ id: "article-province", title: "Province Publish", slug: "province-publish", region: "rabat-sale-kenitra", regionId: "region-rabat", province: "rabat", commune: "", publishedAt: "2026-07-20T12:03:00.000Z" }),
+    article({ id: "article-province-ar", title: "Province Publish", slug: "province-publish-ar", region: "جهة-الرباط-سلا-القنيطرة", regionId: "region-rabat-ar", province: "عمالة-الرباط", commune: "", publishedAt: "2026-07-20T12:03:00.000Z" }),
+    article({ id: "article-commune", title: "Commune Publish", slug: "commune-publish", region: "rabat-sale-kenitra", regionId: "region-rabat", province: "rabat", commune: "rabat", publishedAt: "2026-07-20T12:02:00.000Z" }),
+    article({ id: "article-commune-ar", title: "Commune Publish", slug: "commune-publish-ar", region: "جهة-الرباط-سلا-القنيطرة", regionId: "region-rabat-ar", province: "عمالة-الرباط", commune: "rabat", publishedAt: "2026-07-20T12:02:00.000Z" }),
     article({ id: "article-category", title: "Category Publish", slug: "category-publish", category: "economy", region: "rabat-sale-kenitra", province: "", commune: "", publishedAt: "2026-07-20T12:01:00.000Z" }),
     article({ id: "article-other", title: "Unrelated Casablanca Publish", slug: "unrelated-casablanca-publish", region: "casablanca-settat", province: "nouaceur", commune: "bouskoura", publishedAt: "2026-07-20T12:00:00.000Z" }),
     article({ id: "article-draft", title: "Draft Should Not Render", slug: "draft-should-not-render", status: "Draft", region: "rabat-sale-kenitra", province: "rabat", commune: "rabat" }),

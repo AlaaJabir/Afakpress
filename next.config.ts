@@ -20,7 +20,6 @@ const geographyRedirects = [
 ] as const;
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   async redirects() {
     return geographyRedirects.map(([source, destination]) => ({
       source,

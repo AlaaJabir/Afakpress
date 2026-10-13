@@ -49,6 +49,6 @@ test("CMS content renders without legacy localStorage persistence", async ({ pag
 
   await page.goto("/");
 
-  await expect(page.getByRole("link", { name: "Afakpress" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Afakpress", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), legacyStorageKey)).toBeNull();
 });
