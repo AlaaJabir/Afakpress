@@ -108,8 +108,8 @@ function Chrome({ children }: { children: React.ReactNode }) {
             <MegaMenu regions={state.regions} />
           </div>
         </div>
+        <ArabicBreakingNewsTicker breakingNews={state.breakingNews} articles={state.articles} />
       </header>
-      <ArabicBreakingNewsTicker breakingNews={state.breakingNews} articles={state.articles} />
       <main className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6">{children}</main>
       <footer className="mt-20 border-t-4 border-red-700 bg-slate-950 text-slate-300">
         <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
