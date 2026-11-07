@@ -7,6 +7,7 @@ import { useState } from "react";
 import { CmsProvider, useCms } from "@/lib/cms-store";
 import { getPublishedArticles } from "@/lib/cms";
 import { MegaMenu } from "@/components/MegaMenu";
+import { ArabicBreakingNewsTicker } from "@/components/ArabicBreakingNewsTicker";
 import type { CmsState } from "@/lib/cms";
 
 function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedArticles> }) {
@@ -73,9 +74,6 @@ function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedAr
 function Chrome({ children }: { children: React.ReactNode }) {
   const { state } = useCms();
   const published = getPublishedArticles(state);
-  const fallbackBreaking = published.find((article) => article.breaking);
-  const breaking = state.breakingNews.filter((item) => item.isActive).sort((a, b) => a.orderIndex - b.orderIndex)[0];
-  const breakingArticle = breaking?.articleId ? state.articles.find((article) => article.id === breaking.articleId) : null;
   const today = new Intl.DateTimeFormat("fr-MA", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
 
   return (
@@ -111,25 +109,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      {breaking ? (
-        <div className="border-y border-red-200 bg-red-700 text-white">
-          <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-10">
-            <span className="shrink-0 bg-white px-2 py-1 text-xs font-black uppercase text-red-700">Breaking</span>
-            <Link href={breakingArticle ? `/article/${encodeURIComponent(breakingArticle.slug)}` : breaking.url || "/"} className="truncate text-sm font-bold hover:underline">
-              {breaking.title}
-            </Link>
-          </div>
-        </div>
-      ) : fallbackBreaking ? (
-        <div className="border-y border-red-200 bg-red-700 text-white">
-          <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-10">
-            <span className="shrink-0 bg-white px-2 py-1 text-xs font-black uppercase text-red-700">Breaking</span>
-            <Link href={`/article/${encodeURIComponent(fallbackBreaking.slug)}`} className="truncate text-sm font-bold hover:underline">
-              {fallbackBreaking.title}
-            </Link>
-          </div>
-        </div>
-      ) : null}
+      <ArabicBreakingNewsTicker breakingNews={state.breakingNews} articles={state.articles} />
       <main className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6">{children}</main>
       <footer className="mt-20 border-t-4 border-red-700 bg-slate-950 text-slate-300">
         <div className="mx-auto max-w-[1200px] px-4 sm:px-6">

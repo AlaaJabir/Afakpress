@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { cleanWordHtml, extractRtfImages, isWordHtml } from "../src/lib/word-paste";
+import { extractRtfImages, isWordHtml } from "../src/lib/word-paste";
 import { sanitizeArticleHtml } from "../src/lib/article-html";
 
 test("identifies Microsoft Word HTML signatures", () => {

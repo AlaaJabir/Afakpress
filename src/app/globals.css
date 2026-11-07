@@ -146,3 +146,12 @@ input {
 .rich-text-editor-content .selectedCell {
   background: #fee2e2;
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
