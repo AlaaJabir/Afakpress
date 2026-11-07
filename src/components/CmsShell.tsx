@@ -8,6 +8,7 @@ import { CmsProvider, useCms } from "@/lib/cms-store";
 import { getPublishedArticles } from "@/lib/cms";
 import { MegaMenu } from "@/components/MegaMenu";
 import { ArabicBreakingNewsTicker } from "@/components/ArabicBreakingNewsTicker";
+import { AfakFooter } from "@/components/AfakFooter";
 import type { CmsState } from "@/lib/cms";
 
 function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedArticles> }) {
@@ -111,34 +112,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
         <ArabicBreakingNewsTicker breakingNews={state.breakingNews} articles={state.articles} />
       </header>
       <main className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6">{children}</main>
-      <footer className="mt-20 border-t-4 border-red-700 bg-slate-950 text-slate-300">
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
-          <div className="grid gap-10 py-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)] lg:items-end lg:py-16">
-            <div>
-              <Image src="/afakpress-logo.png" alt="Afakpress" width={180} height={99} className="h-auto w-[180px] brightness-0 invert" />
-              <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300">{state.settings.footer}</p>
-              <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                <span>Independent journalism</span>
-                <span className="h-1 w-1 rounded-full bg-red-600" />
-                <span>Morocco</span>
-              </div>
-            </div>
-            <div className="border-l-2 border-red-700 pl-6">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-red-400">Newsroom</p>
-              <a className="mt-3 block break-all text-lg font-black text-white transition hover:text-red-300" href={`mailto:${state.settings.contactEmail}`}>
-                {state.settings.contactEmail}
-              </a>
-              <p className="mt-3 text-sm leading-6 text-slate-400">{state.settings.address}</p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-3 border-t border-white/10 py-6 text-xs font-bold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              © Afakpress. All rights reserved. Site created and developed by Mr JABIR Alaa, Owner &amp; CTO of ITMD Company.
-            </p>
-            <p className="uppercase tracking-[0.14em]">Moroccan press and regional news</p>
-          </div>
-        </div>
-      </footer>
+      <AfakFooter />
     </>
   );
 }

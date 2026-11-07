@@ -38,6 +38,9 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# aistudio
+.aistudio
 next-env.d.ts
 
 # Playwright
