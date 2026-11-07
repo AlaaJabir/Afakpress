@@ -14,44 +14,111 @@ export type ArabicNewsItem = {
   slug?: string;
 };
 
-const defaultArabicNews: ArabicNewsItem[] = [
-  {
-    id: "default-1",
-    tag: "اليابان",
-    title: "طوكيو وسيول تعززان التنسيق التقني لتطوير أشباه الموصلات وسلاسل توريد الذكاء الاصطناعي",
-    date: "28 أغسطس 2026",
-  },
-  {
-    id: "default-2",
-    tag: "كينيا",
-    title: "قمة نيروبي للمناخ تدعو إلى تمويلات عادلة ومشاريع مستدامة للطاقة المتجددة لدول الجنوب",
-    date: "2 سبتمبر 2026",
-  },
-  {
-    id: "default-3",
-    tag: "المغرب",
-    title: "المغرب يسجل مؤشرات إيجابية في نمو الاستثمارات الجهوية وصادرات الطاقات النظيفة والسيارات",
-    date: "7 نوفمبر 2026",
-  },
-  {
-    id: "default-4",
-    tag: "اقتصاد",
-    title: "افتتاح منصات جديدة لخدمة المستثمرين والمقاولات الناشئة بكبرى جهات المملكة لدعم التشغيل",
-    date: "6 نوفمبر 2026",
-  },
-  {
-    id: "default-5",
-    tag: "طنجة",
-    title: "ميناء طنجة المتوسط يسجل حركة استثنائية في تدفق الشاحنات الدولية وصادرات الصناعات الحديثة",
-    date: "5 نوفمبر 2026",
-  },
-  {
-    id: "default-6",
-    tag: "الرباط",
-    title: "مجلس جهة الرباط-سلا-القنيطرة يصادق على حزمة مشاريع تنموية للربط القروي والمساحات الخضراء",
-    date: "4 نوفمبر 2026",
-  },
-];
+// Known Arabic titles for default site articles if they are in English
+const SEED_ARTICLE_ARABIC_TITLES: Record<string, string> = {
+  "morocco-regional-investment-local-project-desks":
+    "المغرب يسرع خطط الاستثمار الجهوي مع إطلاق مكاتب جديدة لدعم المشاريع المحلية",
+  "tanger-port-corridor-logistics-summer-peak":
+    "رواق ميناء طنجة المتوسط يشهد حركة لوجستية مكثفة استعداداً لذروة الطلب الصيفي",
+  "rabat-civic-services-dashboard-commune-follow-up":
+    "الرباط تطلق منصة رقمية تفاعلية لتتبع الخدمات الجماعية وشكايات المواطنين",
+  "agadir-tourism-coastal-mountain-offers":
+    "مهنيو السياحة بأكادير يطلقون باقات متكاملة تربط الشريط الساحلي بالمسارات الجبلية",
+  "commune-data-morocco-public-service-priority":
+    "أهمية إتاحة البيانات المحلية والشفافية كأولوية وطنية لتطوير الحكامة الترابية",
+  "dakhla-renewables-supplier-interest-southern-provinces":
+    "مشاريع الطاقات المتجددة بالداخلة تستقطب اهتمام مقاولات الخدمات وسلاسل الإمداد",
+};
+
+const TAG_TRANSLATIONS: Record<string, string> = {
+  national: "وطني",
+  regions: "الجهات",
+  economy: "اقتصاد",
+  culture: "ثقافة",
+  opinion: "رأي",
+  politics: "سياسة",
+  society: "مجتمع",
+  sport: "رياضة",
+  technology: "تكنولوجيا",
+  casablanca: "الدار البيضاء",
+  "casablanca-settat": "الدار البيضاء - سطات",
+  maarif: "المعاريف",
+  tanger: "طنجة",
+  "tanger-assilah": "طنجة - أصيلة",
+  "tanger-tetouan-al-hoceima": "طنجة - تطوان",
+  rabat: "الرباط",
+  "rabat-sale-kenitra": "الرباط - سلا",
+  agadir: "أكادير",
+  "agadir-ida-outanane": "أكادير إداوتنان",
+  "souss-massa": "سوس - ماسة",
+  fes: "فاس",
+  "fes-meknes": "فاس - مكناس",
+  dakhla: "الداخلة",
+  "oued-ed-dahab": "وادي الذهب",
+  "dakhla-oued-ed-dahab": "الداخلة - وادي الذهب",
+  marrakech: "مراكش",
+  "marrakech-safi": "مراكش - آسفي",
+};
+
+function formatTagLabel(label?: string): string {
+  if (!label) return "أخبار";
+  const normalized = label.trim().toLowerCase();
+  if (TAG_TRANSLATIONS[normalized]) {
+    return TAG_TRANSLATIONS[normalized];
+  }
+  // If already in Arabic or custom string
+  return label.replace(/^جهة\s+/, "").replace(/^عمالة\s+/, "").trim() || "أخبار";
+}
+
+function getArticleTag(article: CmsArticle): string {
+  if (article.breaking) {
+    return "عاجل";
+  }
+  if (article.commune && article.commune !== "None") {
+    return formatTagLabel(article.commune);
+  }
+  if (article.province && article.province !== "None") {
+    return formatTagLabel(article.province);
+  }
+  if (article.region && article.region !== "None") {
+    return formatTagLabel(article.region);
+  }
+  if (article.category) {
+    return formatTagLabel(article.category);
+  }
+  return "أخبار";
+}
+
+function getDisplayTitle(article: CmsArticle): string {
+  // If the article has an Arabic title or custom title
+  if (SEED_ARTICLE_ARABIC_TITLES[article.slug]) {
+    return SEED_ARTICLE_ARABIC_TITLES[article.slug];
+  }
+  return article.title;
+}
+
+function formatArabicDate(dateString?: string): string {
+  if (!dateString) {
+    return new Intl.DateTimeFormat("ar-MA", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+  }
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) {
+      return dateString;
+    }
+    return new Intl.DateTimeFormat("ar-MA", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(d);
+  } catch {
+    return dateString;
+  }
+}
 
 interface ArabicBreakingNewsTickerProps {
   breakingNews?: CmsBreakingNews[];
@@ -64,32 +131,74 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Combine any active CMS breaking news with curated headlines
-  const formattedToday = new Intl.DateTimeFormat("ar-MA", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
+  // 1. Build dynamic ticker items exclusively from site articles & CMS breaking news
+  const newsItems: ArabicNewsItem[] = [];
 
-  const cmsItems: ArabicNewsItem[] = breakingNews
+  // A. CMS Breaking news configured in Admin
+  const activeBreaking = breakingNews
     .filter((item) => item.isActive)
-    .sort((a, b) => a.orderIndex - b.orderIndex)
-    .map((item) => {
-      const matchedArticle = item.articleId ? articles.find((art) => art.id === item.articleId) : null;
-      return {
-        id: `cms-${item.id}`,
-        tag: "عاجل",
-        title: item.title,
-        date: formattedToday,
-        slug: matchedArticle?.slug,
-        url: item.url || (matchedArticle ? `/article/${encodeURIComponent(matchedArticle.slug)}` : undefined),
-      };
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  for (const item of activeBreaking) {
+    const matched = item.articleId ? articles.find((art) => art.id === item.articleId) : null;
+    newsItems.push({
+      id: `cms-breaking-${item.id}`,
+      tag: matched ? (matched.breaking ? "عاجل" : getArticleTag(matched)) : "عاجل",
+      title: item.title,
+      date: matched ? formatArabicDate(matched.publishedAt || matched.publishDate) : formatArabicDate(),
+      slug: matched?.slug,
+      url: item.url || (matched ? `/article/${encodeURIComponent(matched.slug)}` : undefined),
     });
+  }
 
-  const newsItems = cmsItems.length > 0 ? [...cmsItems, ...defaultArabicNews] : defaultArabicNews;
+  // B. Published articles marked breaking in the site
+  const publishedBreaking = articles
+    .filter((art) => art.status === "Published" && art.breaking && !newsItems.some((n) => n.slug === art.slug))
+    .sort((a, b) => (b.publishedAt || b.publishDate || "").localeCompare(a.publishedAt || a.publishDate || ""));
 
-  // Quadruple items to ensure smooth seamless infinite scrolling
-  const displayedItems = [...newsItems, ...newsItems, ...newsItems, ...newsItems];
+  for (const art of publishedBreaking) {
+    newsItems.push({
+      id: `article-breaking-${art.id}`,
+      tag: "عاجل",
+      title: getDisplayTitle(art),
+      date: formatArabicDate(art.publishedAt || art.publishDate),
+      slug: art.slug,
+      url: `/article/${encodeURIComponent(art.slug)}`,
+    });
+  }
+
+  // C. All published articles from the site
+  const publishedArticles = articles
+    .filter((art) => art.status === "Published" && !newsItems.some((n) => n.slug === art.slug))
+    .sort((a, b) => (b.publishedAt || b.publishDate || "").localeCompare(a.publishedAt || a.publishDate || ""));
+
+  for (const art of publishedArticles) {
+    newsItems.push({
+      id: `article-${art.id}`,
+      tag: getArticleTag(art),
+      title: getDisplayTitle(art),
+      date: formatArabicDate(art.publishedAt || art.publishDate),
+      slug: art.slug,
+      url: `/article/${encodeURIComponent(art.slug)}`,
+    });
+  }
+
+  // Fallback if no articles exist yet
+  const finalItems: ArabicNewsItem[] =
+    newsItems.length > 0
+      ? newsItems
+      : [
+          {
+            id: "site-welcome",
+            tag: "آفاق بريس",
+            title: "منصة آفاق بريس الإخبارية - متابعة مستمرة لأحدث المستجدات الوطنية والجهوية في المغرب",
+            date: formatArabicDate(),
+            url: "/",
+          },
+        ];
+
+  // Quadruple items to ensure smooth continuous marquee loop
+  const displayedItems = [...finalItems, ...finalItems, ...finalItems, ...finalItems];
 
   // Auto-scroll loop
   useEffect(() => {
@@ -103,10 +212,8 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
       lastTimestamp = timestamp;
 
       if (isPlaying && !isHovered && container) {
-        // In RTL scrollLeft can be negative or positive depending on browser implementation
-        container.scrollLeft -= delta * 0.055; // Smooth 55px per second
+        container.scrollLeft -= delta * 0.055; // Smooth 55px per second in RTL
 
-        // If scrolled past halfway, loop seamlessly back to start
         const maxScroll = container.scrollWidth / 2;
         if (Math.abs(container.scrollLeft) >= maxScroll) {
           container.scrollLeft = 0;
@@ -162,7 +269,7 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
           <div className="absolute -left-2 top-0 bottom-0 w-0 border-y-[22px] sm:border-y-[24px] border-y-transparent border-r-[8px] border-r-[#b91c1c] pointer-events-none" />
         </div>
 
-        {/* Center: Scrolling News Feed */}
+        {/* Center: Scrolling News Feed with dynamic articles */}
         <div
           ref={scrollContainerRef}
           onMouseEnter={() => setIsHovered(true)}
@@ -187,12 +294,12 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
                     <span>{item.date}</span>
                   </span>
 
-                  {/* Country/Category Tag */}
+                  {/* Dynamic Category/Region/Tag */}
                   <span className="inline-flex items-center rounded bg-red-950/80 border border-red-700/80 px-2 py-0.5 text-[11px] sm:text-xs font-bold text-amber-300 shadow-sm whitespace-nowrap">
                     {item.tag}
                   </span>
 
-                  {/* Headline Title */}
+                  {/* Article Title */}
                   {href ? (
                     <Link
                       href={href}
@@ -230,7 +337,7 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
 
           <span className="text-slate-700 select-none">|</span>
 
-          {/* Next button (Right in RTL moves forward) */}
+          {/* Next button */}
           <button
             type="button"
             onClick={scrollNext}
@@ -241,7 +348,7 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
             <ChevronRight className="size-4" />
           </button>
 
-          {/* Previous button (Left in RTL moves backward) */}
+          {/* Previous button */}
           <button
             type="button"
             onClick={scrollPrev}
