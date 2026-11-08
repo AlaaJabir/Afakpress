@@ -97,7 +97,7 @@ export function AfakFooter() {
 
       <div className="mx-auto max-w-[1400px] px-4 pt-12 pb-16 sm:px-6 lg:px-8">
         {/* 2. Hero Newsletter Callout Box */}
-        <div className="relative mb-16 overflow-hidden rounded-2xl sm:rounded-3xl border border-white/10 bg-gradient-to-l from-[#0e1322] via-[#111728] to-[#2b080c] p-6 shadow-2xl sm:p-10 lg:p-12">
+        <div id="newsletter" className="relative mb-16 overflow-hidden rounded-2xl sm:rounded-3xl border border-white/10 bg-gradient-to-l from-[#0e1322] via-[#111728] to-[#2b080c] p-6 shadow-2xl sm:p-10 lg:p-12">
           {/* Subtle background ambient radial glow */}
           <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-red-600/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-amber-600/10 blur-3xl" />
