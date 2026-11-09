@@ -152,6 +152,139 @@ function RegionsSpotlight({ regions }: { regions: CmsState["regions"] }) {
   );
 }
 
+function editorialByline(article: CmsArticle) {
+  const author = article.author || "Afakpress Desk";
+  const dateStr = article.publishDate || article.publishedAt;
+  let formatted = "RECENT";
+  if (dateStr) {
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        formatted = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      }
+    } catch {
+      formatted = dateStr;
+    }
+  }
+  return `${author.toUpperCase()} — ${formatted}`;
+}
+
+function EditorialStoryCard({
+  article,
+  badgeText,
+  badgeIcon,
+  commentCount = 1,
+}: {
+  article: CmsArticle;
+  badgeText?: string;
+  badgeIcon?: string;
+  commentCount?: number;
+}) {
+  return (
+    <Link
+      href={`/article/${encodeURIComponent(article.slug)}`}
+      aria-label={article.title}
+      className="group flex flex-col bg-white overflow-hidden shadow-sm hover:shadow-md transition h-full"
+    >
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-200">
+        <Image
+          src={imageFor(article)}
+          alt=""
+          fill
+          sizes="(min-width: 768px) 33vw, 100vw"
+          className="object-cover transition duration-300 group-hover:scale-105"
+        />
+        {badgeText ? (
+          <div className="absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 bg-white px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-slate-900 shadow-sm border border-slate-200/80">
+            <span>{badgeText}</span>
+            {badgeIcon ? <span className="text-emerald-600 font-bold">{badgeIcon}</span> : null}
+          </div>
+        ) : article.category ? (
+          <div className="absolute left-2.5 top-2.5 z-10 flex items-center gap-1 bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-900 shadow-sm border border-slate-200/80">
+            <span>{article.category}</span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex-1 bg-white p-4 flex flex-col justify-between">
+        <div>
+          <h3
+            className="font-serif text-[16px] sm:text-[18px] font-bold text-slate-950 leading-snug group-hover:text-red-700 transition line-clamp-3"
+            dir="auto"
+          >
+            {article.title}
+          </h3>
+          <p className="mt-2 text-xs text-slate-600 leading-relaxed line-clamp-2" dir="auto">
+            {article.excerpt}
+          </p>
+        </div>
+        <p className="mt-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-red-600 font-mono">
+          {editorialByline(article)}
+        </p>
+      </div>
+
+      <div className="h-6 w-full bg-[#d4d4d4] flex items-center justify-center relative border-t border-slate-300/60">
+        <span className="rounded-full bg-[#52525b] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-inner tabular-nums leading-none">
+          {commentCount}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function EditorialFeaturedCard({
+  article,
+  commentCount = 0,
+}: {
+  article: CmsArticle;
+  commentCount?: number;
+}) {
+  return (
+    <Link
+      href={`/article/${encodeURIComponent(article.slug)}`}
+      aria-label={article.title}
+      className="group relative flex flex-col justify-end overflow-hidden bg-slate-900 shadow-sm hover:shadow-md transition min-h-[380px] sm:min-h-[440px] md:h-full md:col-span-2"
+    >
+      <Image
+        src={imageFor(article)}
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 768px) 66vw, 100vw"
+        className="object-cover transition duration-500 group-hover:scale-105"
+      />
+
+      <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 bg-white px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-900 shadow border border-slate-200/80">
+        <span className="text-amber-500 text-sm">★</span>
+        <span>FEATURE STORY</span>
+      </div>
+
+      <div className="relative z-10 bg-black/85 backdrop-blur-sm p-4 sm:p-6 text-white border-t border-white/10">
+        <h2
+          className="font-serif text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight tracking-tight group-hover:text-amber-300 transition line-clamp-3"
+          dir="auto"
+        >
+          {article.title}
+        </h2>
+        {article.excerpt ? (
+          <p className="mt-1.5 text-xs sm:text-sm font-medium text-emerald-400 italic line-clamp-2" dir="auto">
+            {article.excerpt}
+          </p>
+        ) : null}
+        <p className="mt-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-red-500 font-mono">
+          {editorialByline(article)}
+        </p>
+      </div>
+
+      <div className="relative z-10 h-6 w-full bg-[#d4d4d4] flex items-center justify-center border-t border-slate-300/60">
+        <span className="rounded-full bg-[#52525b] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-inner tabular-nums leading-none">
+          {commentCount}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 export function CmsHomePage() {
   const { state, isLoading, error, hasLoadedFromSupabase } = useCms();
   const published = publishedArticles(state);
@@ -161,6 +294,11 @@ export function CmsHomePage() {
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
   const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
+  const otherArticles = homepageArticles.filter((article) => article.id !== featured?.id);
+  const story1 = otherArticles[0] ?? homepageArticles[1] ?? featured;
+  const story2 = otherArticles[1] ?? homepageArticles[2] ?? featured;
+  const story3 = otherArticles[2] ?? homepageArticles[3] ?? featured;
+  const story4 = otherArticles[3] ?? homepageArticles[4] ?? featured;
   const markedMostRead = homepageArticles.filter((article) => article.mostRead);
   const mostReadFallback = homepageArticles.filter((article) => article.id !== featured?.id);
   const mostRead = (markedMostRead.length ? markedMostRead : mostReadFallback.length ? mostReadFallback : homepageArticles).slice(0, 5);
@@ -189,28 +327,43 @@ export function CmsHomePage() {
     <div className="space-y-14">
       {isLoading ? <p className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">Loading latest newsroom data...</p> : null}
       {error ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">{error}</p> : null}
-      {show("Featured Slider") ? <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_420px]">
-        <Link href={`/article/${encodeURIComponent(featured.slug)}`} aria-label={featured.title} className="group relative min-h-[430px] overflow-hidden rounded-xl bg-slate-950 text-white shadow-sm md:min-h-[560px]">
-          <Image src={imageFor(featured)} alt="" fill priority sizes="(min-width: 1280px) 980px, 100vw" className="object-cover brightness-[0.68] transition duration-500 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
-          <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-8">
-            <div className="flex flex-wrap gap-2">
-              <ArticleTag tone="dark">{featured.category}</ArticleTag>
-              <ArticleTag tone="dark">Top story</ArticleTag>
-            </div>
-            <div className="max-w-3xl">
-              <h1 className="text-3xl font-black leading-tight tracking-normal md:text-5xl" dir="auto">{featured.title}</h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-white/85 md:text-lg">{featured.excerpt}</p>
-              <div className="mt-5">
-                <ArticleMeta article={featured} tone="dark" />
+      {show("Featured Slider") && featured ? (
+        <section className="bg-[#e5e5e5] p-3 sm:p-4 rounded-xl border border-slate-300 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+            {/* Row 1, Col 1: Story 1 (Latest Stories) */}
+            {story1 ? (
+              <div className="col-span-1">
+                <EditorialStoryCard
+                  article={story1}
+                  badgeText="LATEST STORIES"
+                  badgeIcon="↳"
+                  commentCount={22}
+                />
               </div>
-            </div>
+            ) : null}
+
+            {/* Row 1, Col 2 & 3: Featured Story (col-span-2) */}
+            <EditorialFeaturedCard article={featured} commentCount={0} />
+
+            {/* Row 2: 3 Equal Columns */}
+            {story2 ? (
+              <div className="col-span-1">
+                <EditorialStoryCard article={story2} commentCount={1} />
+              </div>
+            ) : null}
+            {story3 ? (
+              <div className="col-span-1">
+                <EditorialStoryCard article={story3} commentCount={12} />
+              </div>
+            ) : null}
+            {story4 ? (
+              <div className="col-span-1">
+                <EditorialStoryCard article={story4} commentCount={45} />
+              </div>
+            ) : null}
           </div>
-        </Link>
-        <aside className="grid content-start gap-4">
-          {homepageArticles.slice(1, 5).map((article) => <ArticleCard key={article.id} article={article} compact />)}
-        </aside>
-      </section> : null}
+        </section>
+      ) : null}
 
       {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
         <SectionBlock title="Latest news" href="/category/national" articles={homepageArticles.slice(1, 5)} />
