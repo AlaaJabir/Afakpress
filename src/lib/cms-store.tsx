@@ -31,19 +31,6 @@ declare global {
 const LEGACY_STORAGE_KEY = "afakpress-cms-state-v2";
 const STORAGE_MIGRATION_KEY = "afakpress-cms-storage-migrated-v1";
 const CmsContext = createContext<CmsStore | null>(null);
-const emptyInitialState: CmsState = {
-  ...initialCmsState,
-  users: [],
-  categories: [],
-  articles: [],
-  menus: [],
-  media: [],
-  pages: [],
-  breakingNews: [],
-  comments: [],
-  subscribers: [],
-  regions: [],
-};
 
 function safeSetStorageItem(key: string, value: string) {
   try {
@@ -63,8 +50,8 @@ function safeRemoveStorageItem(key: string) {
 
 export function CmsProvider({
   children,
-  initialState = emptyInitialState,
-  initiallyLoaded = false,
+  initialState = initialCmsState,
+  initiallyLoaded = true,
 }: {
   children: React.ReactNode;
   initialState?: CmsState;
@@ -87,13 +74,12 @@ export function CmsProvider({
     setError("");
     try {
       const supabaseState = await loadSupabaseCmsState();
-      if (supabaseState) {
+      if (supabaseState && supabaseState.articles && supabaseState.articles.length > 0) {
         setState(supabaseState);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not load Supabase data.";
-      setError(message);
-      notify("error", message);
+      console.warn("Supabase fetch skipped:", message);
     } finally {
       setHasLoadedFromSupabase(true);
       setIsLoading(false);
@@ -114,7 +100,6 @@ export function CmsProvider({
       void refreshFromSupabase();
     }, 0);
     return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initiallyLoaded]);
 
   useEffect(() => {

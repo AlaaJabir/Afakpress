@@ -117,7 +117,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function CmsShell({ children, initialState, initiallyLoaded = false }: { children: React.ReactNode; initialState?: CmsState; initiallyLoaded?: boolean }) {
+export function CmsShell({ children, initialState, initiallyLoaded = true }: { children: React.ReactNode; initialState?: CmsState; initiallyLoaded?: boolean }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
 
