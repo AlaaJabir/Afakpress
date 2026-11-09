@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCms } from "@/lib/cms-store";
-import { getPublishedArticles, type CmsArticle, type CmsState } from "@/lib/cms";
+import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState } from "@/lib/cms";
 import { moroccoRegions } from "@/data/morocco-regions";
 import { sanitizeArticleHtml } from "@/lib/article-html";
 
@@ -155,9 +155,9 @@ function RegionsSpotlight({ regions }: { regions: CmsState["regions"] }) {
 export function CmsHomePage() {
   const { state, isLoading, error, hasLoadedFromSupabase } = useCms();
   const published = publishedArticles(state);
-  const homepageArticles = published;
-  const homepageCategories = state.categories;
-  const homepageRegions = state.regions;
+  const homepageArticles = published.length > 0 ? published : initialCmsState.articles;
+  const homepageCategories = state.categories.length > 0 ? state.categories : initialCmsState.categories;
+  const homepageRegions = state.regions.length > 0 ? state.regions : initialCmsState.regions;
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
   const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
@@ -281,7 +281,7 @@ export function CmsHomePage() {
 
 export function CmsArticlePage({ slug }: { slug: string }) {
   const { state, hasLoadedFromSupabase } = useCms();
-  const article = publishedArticles(state).find((item) => item.slug === slug);
+  const article = publishedArticles(state).find((item) => item.slug === slug) ?? initialCmsState.articles.find((item) => item.slug === slug);
   const articleRegion = article ? articleRegionSlug(state, article) : "";
   const region = state.regions.find((item) => item.slug === articleRegion);
 
