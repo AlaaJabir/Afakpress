@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
+const defaultSupabaseHostname = "zqzwevynueggpyieabzi.supabase.co";
 const supabaseHostname = (() => {
   try {
-    return process.env.NEXT_PUBLIC_SUPABASE_URL
-      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
-      : null;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return url ? new URL(url).hostname : defaultSupabaseHostname;
   } catch {
-    return null;
+    return defaultSupabaseHostname;
   }
 })();
 
@@ -33,16 +33,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
-      ...(supabaseHostname
-        ? [
-            {
-              protocol: "https" as const,
-              hostname: supabaseHostname,
-              port: "",
-              pathname: "/storage/v1/object/public/media/**",
-            },
-          ]
-        : []),
+      {
+        protocol: "https",
+        hostname: supabaseHostname,
+        pathname: "/**",
+      },
     ],
   },
   turbopack: {

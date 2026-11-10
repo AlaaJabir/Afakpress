@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Flame, Clock, Pause, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Pause, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CmsBreakingNews, CmsArticle } from "@/lib/cms";
 
 export type ArabicNewsItem = {
@@ -257,13 +257,13 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
       <div className="mx-auto flex h-11 sm:h-12 w-full max-w-[1600px] items-stretch justify-between overflow-hidden">
         {/* Right Badge: "شريط الأنباء العاجلة" */}
         <div className="relative z-20 flex shrink-0 items-center gap-2 bg-[#b91c1c] px-3 sm:px-5 text-white shadow-xl">
+          <span className="text-xs sm:text-sm font-black tracking-wide whitespace-nowrap">
+            شريط الأنباء العاجلة
+          </span>
+          <span className="text-sm">🔥</span>
           <span className="relative flex h-2.5 w-2.5 items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
-          </span>
-          <Flame className="size-4 shrink-0 fill-amber-300 text-amber-300" />
-          <span className="text-xs sm:text-sm font-black tracking-wide whitespace-nowrap">
-            شريط الأنباء العاجلة
           </span>
           {/* Subtle triangle point divider */}
           <div className="absolute -left-2 top-0 bottom-0 w-0 border-y-[22px] sm:border-y-[24px] border-y-transparent border-r-[8px] border-r-[#b91c1c] pointer-events-none" />

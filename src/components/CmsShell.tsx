@@ -47,7 +47,7 @@ function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedAr
           autoComplete="off"
           className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
         />
-        <button type="submit" disabled={!results.length} className="mr-1 rounded-full bg-slate-950 px-3 py-2 text-[11px] font-black uppercase text-white transition hover:bg-red-700 disabled:cursor-default disabled:opacity-35">
+        <button type="submit" disabled={!results.length} className="mr-1 rounded-full bg-slate-400 px-4 py-1.5 text-[11px] font-black uppercase text-white transition hover:bg-slate-600 disabled:cursor-default disabled:opacity-75">
           Chercher
         </button>
       </div>
@@ -91,8 +91,12 @@ function Chrome({ children }: { children: React.ReactNode }) {
             <div className="order-2 flex justify-center md:order-1 md:justify-start">
               <HeaderSearch articles={published} />
             </div>
-            <Link href="/" className="order-1 block h-[99px] w-[180px] justify-self-center md:order-2" aria-label="Afakpress">
-              <Image src="/afakpress-logo.png" alt="Afakpress" width={180} height={99} priority className="h-full w-full object-contain" />
+            <Link
+              href="/"
+              className="order-1 flex h-[82px] w-[195px] items-center justify-center rounded-xs border border-blue-600 bg-white p-1 justify-self-center shadow-xs md:order-2"
+              aria-label="Afakpress"
+            >
+              <Image src="/afakpress-logo.png" alt="Afakpress" width={190} height={78} priority className="h-full w-full object-contain" />
             </Link>
             <div className="order-3 flex items-center justify-center gap-1 text-sm font-semibold text-slate-700 md:justify-end">
               <Link href="/category/national" className="whitespace-nowrap rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-red-700">
