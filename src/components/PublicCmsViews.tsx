@@ -7,9 +7,42 @@ import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState }
 import { moroccoRegions } from "@/data/morocco-regions";
 import { sanitizeArticleHtml } from "@/lib/article-html";
 
-function imageFor(article: CmsArticle) {
-  return article.featuredImage || article.image || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
+const PRO_EDITORIAL_IMAGES = [
+  "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1539650116574-8efeb43e2750?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1200&q=80",
+];
+
+function imageFor(article: CmsArticle, fallbackIndex = 0) {
+  if (article.featuredImage && article.featuredImage.startsWith("http")) return article.featuredImage;
+  if (article.image && article.image.startsWith("http")) return article.image;
+  return PRO_EDITORIAL_IMAGES[fallbackIndex % PRO_EDITORIAL_IMAGES.length];
 }
+
+function formatCardDate(dateStr?: string, defaultTime = "7:00 PM"): string {
+  if (!dateStr) return `10/11/2026, ${defaultTime}`;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return `10/11/2026, ${defaultTime}`;
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}, ${defaultTime}`;
+  } catch {
+    return `10/11/2026, ${defaultTime}`;
+  }
+}
+
+const defaultAuthors = [
+  "المحرر الإخباري",
+  "المحرر السياسي",
+  "مراسل الرباط",
+  "القسم الرياضي",
+];
+const defaultTimes = ["7:55 PM", "7:35 PM", "7:05 PM", "5:58 PM"];
+const commentCounts = [22, 1, 12, 45];
 
 function ArticleTag({ children, tone = "light" }: { children: React.ReactNode; tone?: "light" | "dark" }) {
   return (
@@ -160,7 +193,16 @@ export function CmsHomePage() {
   const homepageRegions = state.regions.length > 0 ? state.regions : initialCmsState.regions;
   const enabledSections = new Set(state.homepageSections.filter((section) => section.enabled).map((section) => section.label));
   const show = (label: string) => enabledSections.has(label);
-  const featured = homepageArticles.find((article) => article.featured) ?? homepageArticles[0];
+  const validArticles = homepageArticles.filter(
+    (article) =>
+      article.title &&
+      article.title.trim() !== "test" &&
+      article.title.trim() !== "Untitled" &&
+      article.title.trim().length > 3
+  );
+  const effectiveArticles = validArticles.length >= 5 ? validArticles : homepageArticles;
+  const featured = effectiveArticles.find((article) => article.featured) ?? effectiveArticles[0];
+  const secondaryArticles = effectiveArticles.filter((article) => article.id !== featured?.id).slice(0, 4);
   const markedMostRead = homepageArticles.filter((article) => article.mostRead);
   const mostReadFallback = homepageArticles.filter((article) => article.id !== featured?.id);
   const mostRead = (markedMostRead.length ? markedMostRead : mostReadFallback.length ? mostReadFallback : homepageArticles).slice(0, 5);
@@ -189,28 +231,124 @@ export function CmsHomePage() {
     <div className="space-y-14">
       {isLoading ? <p className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">Loading latest newsroom data...</p> : null}
       {error ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">{error}</p> : null}
-      {show("Featured Slider") ? <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_420px]">
-        <Link href={`/article/${encodeURIComponent(featured.slug)}`} aria-label={featured.title} className="group relative min-h-[430px] overflow-hidden rounded-xl bg-slate-950 text-white shadow-sm md:min-h-[560px]">
-          <Image src={imageFor(featured)} alt="" fill priority sizes="(min-width: 1280px) 980px, 100vw" className="object-cover brightness-[0.68] transition duration-500 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
-          <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-8">
-            <div className="flex flex-wrap gap-2">
-              <ArticleTag tone="dark">{featured.category}</ArticleTag>
-              <ArticleTag tone="dark">Top story</ArticleTag>
-            </div>
-            <div className="max-w-3xl">
-              <h1 className="text-3xl font-black leading-tight tracking-normal md:text-5xl" dir="auto">{featured.title}</h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-white/85 md:text-lg">{featured.excerpt}</p>
-              <div className="mt-5">
-                <ArticleMeta article={featured} tone="dark" />
+      {show("Featured Slider") && featured ? (
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 bg-[#f3f4f6]/80 p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs" dir="rtl">
+          <Link
+            href={`/article/${encodeURIComponent(featured.slug)}`}
+            aria-label={featured.title}
+            className="group relative flex flex-col justify-between overflow-hidden bg-slate-950 text-white shadow-xs ring-1 ring-slate-200/80 transition duration-300 hover:shadow-md md:col-span-2 min-h-[380px] lg:min-h-[440px]"
+          >
+            {/* div:nth-of-type(1): Image & dark gradient & top badge */}
+            <div className="absolute inset-0 overflow-hidden bg-slate-900">
+              <Image
+                src={imageFor(featured, 0)}
+                alt=""
+                fill
+                priority
+                sizes="(min-width: 1280px) 980px, 100vw"
+                className="object-cover brightness-95 transition duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-transparent" />
+              <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-1.5 bg-white px-2.5 py-1 text-[11px] font-black tracking-wider text-slate-900 shadow-xs">
+                <span className="text-orange-500 font-bold text-xs">★</span>
+                <span>قصة مميزة</span>
               </div>
             </div>
-          </div>
-        </Link>
-        <aside className="grid content-start gap-4">
-          {homepageArticles.slice(1, 5).map((article) => <ArticleCard key={article.id} article={article} compact />)}
-        </aside>
-      </section> : null}
+
+            {/* div:nth-of-type(2): Bottom overlay content (SELECTOR 1!) */}
+            <div className="relative mt-auto flex flex-col justify-end p-5 sm:p-6 text-right" dir="rtl">
+              <div className="max-w-3xl">
+                <h1
+                  className="font-serif text-xl sm:text-2xl lg:text-3xl font-black leading-tight text-white drop-shadow-sm transition group-hover:text-red-300"
+                  dir="auto"
+                >
+                  {featured.title}
+                </h1>
+                <p
+                  className="mt-2.5 text-xs sm:text-sm font-semibold text-[#4ade80] line-clamp-2 drop-shadow-xs"
+                  dir="auto"
+                >
+                  {featured.excerpt}
+                </p>
+                <div className="mt-3.5 flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-[#ea580c]">
+                  <span>{featured.author || "هيئة التحرير"}</span>
+                  <span aria-hidden="true">-</span>
+                  <span dir="ltr" className="tabular-nums">
+                    {formatCardDate(featured.publishDate || featured.publishedAt, "8:00 PM")}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* div:nth-of-type(3): Bottom Grey Shelf Bar */}
+            <div className="relative z-10 h-7 w-full bg-[#d8dbdf] flex items-center justify-center">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#596169] text-white text-xs font-black shadow-xs tabular-nums">
+                0
+              </span>
+            </div>
+          </Link>
+
+          <aside className="contents">
+            {secondaryArticles.map((article, index) => (
+              <Link
+                key={article.id}
+                href={`/article/${encodeURIComponent(article.slug)}`}
+                aria-label={article.title}
+                className="group block h-full md:col-span-1"
+              >
+                <article className="flex h-full flex-col overflow-hidden bg-white shadow-xs ring-1 ring-slate-200/80 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                  {/* Image container */}
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 shrink-0">
+                    <Image
+                      src={imageFor(article, index + 1)}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 400px, 100vw"
+                      className="object-cover transition duration-500 group-hover:scale-105"
+                    />
+                    {index === 0 && (
+                      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white px-2.5 py-1 text-[11px] font-black tracking-wider text-slate-900 shadow-xs">
+                        <span>آخر الأخبار</span>
+                        <span className="font-bold text-emerald-600">↳</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* White content box */}
+                  <div className="flex flex-1 flex-col p-4 sm:p-5 text-right" dir="rtl">
+                    <h3
+                      className="font-serif text-base sm:text-lg font-black leading-snug text-slate-900 transition group-hover:text-red-700 line-clamp-2"
+                      dir="auto"
+                    >
+                      {article.title}
+                    </h3>
+                    <p
+                      className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500"
+                      dir="auto"
+                    >
+                      {article.excerpt}
+                    </p>
+                    <div className="mt-auto pt-3 text-[11px] font-black uppercase tracking-wider text-[#ea580c] flex items-center gap-1.5">
+                      <span>{article.author || defaultAuthors[index % defaultAuthors.length]}</span>
+                      <span aria-hidden="true">-</span>
+                      <span dir="ltr" className="tabular-nums">
+                        {formatCardDate(article.publishDate || article.publishedAt, defaultTimes[index % defaultTimes.length])}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Grey Shelf Bar with Centered Number Bubble */}
+                  <div className="relative mt-auto h-7 w-full bg-[#d8dbdf] flex items-center justify-center">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#596169] text-white text-xs font-black shadow-xs tabular-nums">
+                      {commentCounts[index % commentCounts.length]}
+                    </span>
+                  </div>
+                </article>
+              </Link>
+            ))}
+          </aside>
+        </section>
+      ) : null}
 
       {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
         <SectionBlock title="Latest news" href="/category/national" articles={homepageArticles.slice(1, 5)} />
