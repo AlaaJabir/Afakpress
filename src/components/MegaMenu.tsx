@@ -2,6 +2,18 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  BookOpen,
+  ChevronDown,
+  Landmark,
+  Layers,
+  MapPin,
+  Newspaper,
+  Palette,
+  TrendingUp,
+  Trophy,
+  Users,
+} from "lucide-react";
 import type { CmsRegion } from "@/lib/cms";
 
 type RegionSource = CmsRegion;
@@ -12,6 +24,65 @@ type MenuNode = {
   href: string;
   children: MenuNode[];
 };
+
+export const ARABIC_CATEGORIES = [
+  {
+    name: "أخبار وطنية",
+    slug: "وطنية",
+    icon: Newspaper,
+    description: "مستجدات الشأن الوطني والقرارات الكبرى",
+    color: "bg-red-50 text-red-700",
+  },
+  {
+    name: "سياسة ودبلوماسية",
+    slug: "سياسة",
+    icon: Landmark,
+    description: "الأحزاب، البرلمان، والدبلوماسية المغربية",
+    color: "bg-blue-50 text-blue-700",
+  },
+  {
+    name: "رياضة",
+    slug: "رياضة",
+    icon: Trophy,
+    description: "البطولة الوطنية، المحترفون، والمنتخبات",
+    color: "bg-emerald-50 text-emerald-700",
+  },
+  {
+    name: "اقتصاد ومال",
+    slug: "اقتصاد",
+    icon: TrendingUp,
+    description: "الأسواق، الاستثمارات، ومشاريع المملكة",
+    color: "bg-amber-50 text-amber-700",
+  },
+  {
+    name: "أخبار الجهات",
+    slug: "جهات",
+    icon: MapPin,
+    description: "تغطية ميدانية من كافة أقاليم وعمالات المغرب",
+    color: "bg-purple-50 text-purple-700",
+  },
+  {
+    name: "مجتمع وقضايا",
+    slug: "مجتمع",
+    icon: Users,
+    description: "نبض الشارع المغربي وشؤون المواطنين",
+    color: "bg-rose-50 text-rose-700",
+  },
+  {
+    name: "ثقافة وفنون",
+    slug: "ثقافة",
+    icon: Palette,
+    description: "التراث المغربي الأصيل، الأدب، والفنون",
+    color: "bg-indigo-50 text-indigo-700",
+  },
+  {
+    name: "آراء وتحليلات",
+    slug: "رأي",
+    icon: BookOpen,
+    description: "مقالات رأي بأقلام نخبة الكتاب والخبراء",
+    color: "bg-slate-100 text-slate-800",
+  },
+];
 
 function sourceId(prefix: string, fallback: string, id?: string) {
   return `${prefix}-${id || fallback}`;
@@ -92,6 +163,7 @@ export function MegaMenu({
   const regionItems = useMemo(() => buildRegionNodes(regions), [regions]);
   const [activeRegionId, setActiveRegionId] = useState("");
   const [activeProvinceId, setActiveProvinceId] = useState("");
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +173,7 @@ export function MegaMenu({
   const closeMenu = useCallback(() => {
     setActiveRegionId("");
     setActiveProvinceId("");
+    setCategoriesOpen(false);
   }, []);
 
   useEffect(() => {
@@ -116,7 +189,9 @@ export function MegaMenu({
 
   useEffect(() => {
     const closeFromOutside = (event: PointerEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) closeMenu();
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        closeMenu();
+      }
     };
     const closeFromEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -138,38 +213,126 @@ export function MegaMenu({
       closeMenu();
       return;
     }
+    setCategoriesOpen(false);
     setActiveRegionId(region.id);
     setActiveProvinceId(region.children[0]?.id ?? "");
   };
 
   return (
     <div ref={menuRef} className="relative z-[100] w-full">
-      <nav className="hidden w-full lg:block" aria-label="Primary regional navigation">
-        <div className="grid w-full grid-cols-12 items-center gap-1 py-2">
-          {regionItems.map((region) => (
+      <nav className="hidden w-full lg:block" aria-label="Primary regional navigation" dir="rtl">
+        <div className="flex w-full items-center gap-2 py-2">
+          {/* 1. National News & Categories Button */}
+          <div className="relative shrink-0">
             <button
-              key={region.id}
-              aria-expanded={activeRegionId === region.id}
-              aria-haspopup="menu"
-              dir="auto"
+              id="national-news-categories-btn"
               type="button"
-              onClick={() => toggleRegion(region)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") closeMenu();
-                if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-                  event.preventDefault();
-                  if (activeRegionId !== region.id) toggleRegion(region);
-                }
+              aria-expanded={categoriesOpen}
+              aria-haspopup="menu"
+              onClick={() => {
+                closeMenu();
+                setCategoriesOpen((prev) => !prev);
               }}
-              className={`flex min-h-10 items-center justify-center rounded-xl px-1.5 text-center text-[11px] font-bold leading-4 text-slate-700 transition focus:outline-none xl:px-2 ${
-                activeRegionId === region.id
-                  ? "bg-red-50 text-red-700"
-                  : "hover:bg-slate-100 hover:text-red-700 focus:bg-slate-100 focus:text-red-700"
+              className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-black transition-all shadow-sm ${
+                categoriesOpen
+                  ? "bg-red-700 text-white shadow-md ring-2 ring-red-600/40 ring-offset-1"
+                  : "bg-[#b91c1c] text-white hover:bg-red-800 active:scale-95"
               }`}
             >
-              <span dir="auto">{region.label}</span>
+              <Newspaper className="size-4 shrink-0" />
+              <span className="whitespace-nowrap tracking-wide">أخبار وطنية</span>
+              <ChevronDown
+                className={`size-3.5 shrink-0 transition-transform duration-200 ${
+                  categoriesOpen ? "rotate-180" : ""
+                }`}
+              />
             </button>
-          ))}
+
+            {/* Categories Dropdown Modal */}
+            {categoriesOpen && (
+              <div
+                className="absolute right-0 top-[calc(100%+8px)] z-[1100] w-[340px] sm:w-[440px] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-slate-900/5 transition-all animate-in fade-in zoom-in-95 duration-150"
+                role="menu"
+                dir="rtl"
+              >
+                <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-50 text-red-700">
+                      <Layers className="size-3.5" />
+                    </span>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      الأقسام والتغطيات الإخبارية
+                    </h3>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                    {ARABIC_CATEGORIES.length} أقسام
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {ARABIC_CATEGORIES.map((cat) => {
+                    const IconComponent = cat.icon;
+                    return (
+                      <Link
+                        key={cat.slug}
+                        href={`/category/${encodeURIComponent(cat.slug)}`}
+                        onClick={() => setCategoriesOpen(false)}
+                        className="group flex items-start gap-2.5 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 transition hover:-translate-y-0.5 hover:border-red-200 hover:bg-red-50/70 hover:shadow-sm"
+                      >
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${cat.color} shadow-xs transition group-hover:scale-105`}
+                        >
+                          <IconComponent className="size-4" />
+                        </div>
+                        <div className="min-w-0 flex-1 text-right">
+                          <p className="text-xs font-black text-slate-900 transition group-hover:text-red-700">
+                            {cat.name}
+                          </p>
+                          <p className="line-clamp-1 text-[10px] text-slate-500 transition group-hover:text-slate-600">
+                            {cat.description}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Vertical divider */}
+          <div className="h-6 w-px bg-slate-200 shrink-0 mx-1 hidden xl:block" />
+
+          {/* 2. 12 Moroccan Regions Navigation */}
+          <div className="grid flex-1 grid-cols-12 items-center gap-1">
+            {regionItems.map((region) => (
+              <button
+                key={region.id}
+                aria-expanded={activeRegionId === region.id}
+                aria-haspopup="menu"
+                dir="auto"
+                type="button"
+                onClick={() => {
+                  setCategoriesOpen(false);
+                  toggleRegion(region);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") closeMenu();
+                  if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+                    event.preventDefault();
+                    if (activeRegionId !== region.id) toggleRegion(region);
+                  }
+                }}
+                className={`flex min-h-10 items-center justify-center rounded-xl px-1 text-center text-[11px] font-bold leading-4 transition focus:outline-none ${
+                  activeRegionId === region.id
+                    ? "bg-red-50 text-red-700"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-red-700 focus:bg-slate-100 focus:text-red-700"
+                }`}
+              >
+                <span dir="auto" className="line-clamp-1">{region.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </nav>
 
@@ -249,16 +412,58 @@ export function MegaMenu({
         </div>
       ) : null}
 
-      <nav className="w-full lg:hidden" aria-label="Mobile regional navigation">
-        <button
-          aria-expanded={mobileOpen}
-          className="flex min-h-12 w-full items-center justify-between px-1 text-sm font-black uppercase text-slate-900"
-          onClick={() => setMobileOpen((current) => !current)}
-          type="button"
-        >
-          <span>المناطق</span>
-          <span aria-hidden="true" className="text-xl text-red-700">{mobileOpen ? "-" : "+"}</span>
-        </button>
+      {/* Mobile Navigation */}
+      <nav className="w-full lg:hidden" aria-label="Mobile navigation" dir="rtl">
+        <div className="flex items-center justify-between gap-2 py-2">
+          {/* Mobile Categories Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setCategoriesOpen((prev) => !prev);
+              setMobileOpen(false);
+            }}
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#b91c1c] px-3 py-2 text-xs font-black text-white shadow-sm"
+          >
+            <Newspaper className="size-4 shrink-0" />
+            <span>أخبار وطنية (الأقسام)</span>
+            <ChevronDown className={`size-3.5 transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Mobile Regions Toggle */}
+          <button
+            aria-expanded={mobileOpen}
+            className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-800"
+            onClick={() => {
+              setMobileOpen((current) => !current);
+              setCategoriesOpen(false);
+            }}
+            type="button"
+          >
+            <span>المناطق (12 جهة)</span>
+            <span aria-hidden="true" className="text-base text-red-700">{mobileOpen ? "▲" : "▼"}</span>
+          </button>
+        </div>
+
+        {/* Mobile Categories Dropdown */}
+        {categoriesOpen && (
+          <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-lg">
+            <p className="text-xs font-black text-slate-900 mb-2.5">الأقسام الإخبارية:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {ARABIC_CATEGORIES.map((cat) => (
+                <Link
+                  key={cat.slug}
+                  href={`/category/${encodeURIComponent(cat.slug)}`}
+                  onClick={() => setCategoriesOpen(false)}
+                  className="flex items-center gap-2 rounded-lg bg-slate-50 p-2 text-xs font-bold text-slate-800 transition hover:bg-red-50 hover:text-red-700"
+                >
+                  <span className="h-2 w-2 rounded-full bg-red-600" />
+                  <span>{cat.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {mobileOpen ? (
           <ul
             className="-mx-4 grid max-h-[calc(100dvh-12rem)] gap-1 overflow-y-auto overscroll-contain border-y border-slate-200 bg-white px-4 py-2 shadow-lg sm:-mx-6 sm:px-6"

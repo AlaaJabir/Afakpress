@@ -81,12 +81,12 @@ function Chrome({ children }: { children: React.ReactNode }) {
     <>
       <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-xl">
         <div className="border-b border-slate-200 bg-slate-950 text-white">
-          <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-4 py-2 text-xs font-bold sm:px-6">
+          <div className="mx-auto flex max-w-[1536px] 2xl:max-w-[1600px] items-center justify-between gap-4 px-3 py-2 text-xs font-bold sm:px-6">
             <span className="uppercase tracking-[0.18em] text-white/80">Presse marocaine indépendante</span>
             <span suppressHydrationWarning className="hidden capitalize text-slate-300 md:inline">{today}</span>
           </div>
         </div>
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+        <div className="mx-auto max-w-[1536px] 2xl:max-w-[1600px] px-3 sm:px-6">
           <div className="grid min-h-28 grid-cols-1 items-center gap-3 py-3 md:grid-cols-[1fr_auto_1fr]">
             <div className="order-2 flex justify-center md:order-1 md:justify-start">
               <HeaderSearch articles={published} />
@@ -109,13 +109,13 @@ function Chrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="border-y border-slate-200 bg-white">
-          <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="mx-auto max-w-[1536px] 2xl:max-w-[1600px] px-3 sm:px-6">
             <MegaMenu regions={state.regions} />
           </div>
         </div>
         <ArabicBreakingNewsTicker breakingNews={state.breakingNews} articles={state.articles} />
       </header>
-      <main className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6">{children}</main>
+      <main className="mx-auto w-full max-w-[1536px] 2xl:max-w-[1600px] px-3 py-8 sm:px-6">{children}</main>
       <AfakFooter />
     </>
   );
