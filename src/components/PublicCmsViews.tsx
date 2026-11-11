@@ -760,34 +760,168 @@ export function CmsHomePage() {
         </section>
       ) : null}
 
-      {show("Latest News") ? <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <SectionBlock title="Latest news" href="/category/national" articles={homepageArticles.slice(1, 5)} />
-        <aside className="grid self-start gap-6">
-          <RegionsSpotlight regions={homepageRegions} />
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-              <h2 className="text-2xl font-black text-slate-950">Most read</h2>
-              <span className="h-1 w-12 rounded-full bg-red-700" />
+      {show("Latest News") ? (
+        <section className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px] items-start font-sans" dir="rtl">
+          {/* Main Column: Timeline feed "آخر الأخبار" */}
+          <div className="flex flex-col">
+            {/* Header: "آخر الأخبار" with "بحسب وقت النشر" and "عرض الكل" */}
+            <div className="mb-6 flex items-baseline justify-between border-b border-slate-200/80 pb-3">
+              <div className="flex items-baseline gap-4">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-serif">
+                  آخر الأخبار
+                </h2>
+                <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+                  بحسب وقت النشر
+                </span>
+              </div>
+              <Link
+                href="/category/national"
+                className="text-xs sm:text-sm font-bold text-slate-700 hover:text-red-700 transition"
+              >
+                عرض الكل
+              </Link>
             </div>
-            <ol className="divide-y divide-slate-100 px-6">
-              {mostRead.map((article, index) => (
-                <li key={article.id}>
-                  <Link href={`/article/${encodeURIComponent(article.slug)}`} className="group/read grid grid-cols-[42px_1fr] gap-4 py-5">
-                    <span className="text-3xl font-black leading-none text-red-700/25 transition group-hover/read:text-red-700 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="min-w-0">
-                      <span className="line-clamp-2 font-black leading-6 text-slate-900 transition group-hover/read:text-red-700" dir="auto">{article.title}</span>
-                      <span className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
-                        {article.category ? <span className="uppercase text-red-700">{article.category}</span> : null}
-                        {article.publishDate ? <span>{article.publishDate}</span> : null}
-                      </span>
+
+            {/* Vertical Timeline Feed */}
+            <div className="relative border-r border-slate-200/90 pr-6 sm:pr-8 space-y-8 mr-1 sm:mr-2">
+              {[
+                {
+                  id: "1",
+                  time: "19:55",
+                  date: "8 نونبر",
+                  category: "وطنية",
+                  tagColor: "bg-[#1e293b]",
+                  dotColor: "bg-[#1e293b]",
+                  title: "لندن.. الجالية المغربية تحتفي بعيد الوحدة والذكرى الـ 51 للمسيرة الخضراء",
+                  excerpt: "التأم أفراد من الجالية المغربية المقيمة بالمملكة المتحدة، أمس السبت بلندن، للاحتفال بعيد الوحدة وتخليد الذكرى الحادية والخمسين للمسيرة الخضراء.",
+                  slug: "لندن-الجالية-المغربية-تحتفي-بعيد-الوحدة-والذكرى-الـ-51-للمسيرة-الخضراء",
+                },
+                {
+                  id: "2",
+                  time: "19:35",
+                  date: "7 نونبر",
+                  category: "العيون",
+                  tagColor: "bg-[#c2410c]",
+                  dotColor: "bg-[#c2410c]",
+                  title: "العيون.. المسيرة الخضراء ملحمة تاريخية كرست تشبث المغاربة بوحدتهم الترابية",
+                  excerpt: "أكد المندوب السامي لقدماء المقاومين وأعضاء جيش التحرير، مصطفى الكثيري، اليوم السبت بالعيون، أن المسيرة الخضراء تشكل ملحمة تاريخية كبرى.",
+                  slug: "العيون-المسيرة-الخضراء-ملحمة-تاريخية-كرست-تشبث-المغاربة-بوحدتهم-الترابية",
+                },
+                {
+                  id: "3",
+                  time: "19:05",
+                  date: "5 نونبر",
+                  category: "رياضة",
+                  tagColor: "bg-[#eab308]",
+                  dotColor: "bg-[#eab308]",
+                  title: "الجيش الملكي يحقق انتصارا كبيرا في دوري أبطال إفريقيا للسيدات لكرة القدم",
+                  excerpt: "اكتسح فريق الجيش الملكي نظيره «USFAS» باماكو المالي، بنتيجة ستة أهداف دون مقابل، في المباراة التي جمعتهما مساء الخميس.",
+                  slug: "الجيش-الملكي-يحقق-انتصارا-كبيرا-في-دوري-ا-بطال-ا-فريقيا-للسيدات-لكرة-القدم",
+                },
+                {
+                  id: "4",
+                  time: "17:58",
+                  date: "3 غشت",
+                  category: "الرباط سلا القنيطرة",
+                  tagColor: "bg-[#be185d]",
+                  dotColor: "bg-[#be185d]",
+                  title: "عيد الشباب القنيطرة 2026",
+                  excerpt: "حفل الاستماع إلى الخطاب الملكي بمناسبة عيد العرش المجيد، بحضور عامل إقليم القنيطرة.",
+                  slug: "عيد-الشباب-القنيطرة-2026",
+                },
+              ].map((item) => (
+                <article key={item.id} className="relative group">
+                  {/* Timeline Dot positioned right on the border line */}
+                  <span
+                    className={`absolute -right-[31px] sm:-right-[39px] top-1.5 size-3 rounded-full ${item.dotColor} ring-4 ring-white shadow-xs`}
+                  />
+
+                  {/* Date & Time Column on the right of the line */}
+                  <div className="absolute -right-24 sm:-right-28 top-0 text-left w-16 select-none" dir="ltr">
+                    <span className="block text-xs font-black text-slate-900 tabular-nums">
+                      {item.time}
                     </span>
-                  </Link>
-                </li>
+                    <span className="block text-[10px] text-slate-400 font-medium">
+                      {item.date}
+                    </span>
+                  </div>
+
+                  {/* Content Box */}
+                  <div className="pr-2">
+                    {/* Category tag */}
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
+                      <span className={`inline-block size-2 rounded-xs ${item.tagColor}`} />
+                      <span>{item.category}</span>
+                    </div>
+
+                    {/* Headline */}
+                    <Link
+                      href={`/article/${encodeURIComponent(item.slug)}`}
+                      className="block group"
+                    >
+                      <h3 className="text-base sm:text-lg font-black leading-snug text-slate-950 font-serif transition group-hover:text-red-700">
+                        {item.title}
+                      </h3>
+                    </Link>
+
+                    {/* Excerpt */}
+                    <p className="mt-1.5 text-xs sm:text-sm text-slate-500 leading-relaxed font-normal line-clamp-2">
+                      {item.excerpt}
+                    </p>
+                  </div>
+                </article>
               ))}
-            </ol>
+            </div>
           </div>
-        </aside>
-      </section> : null}
+
+          {/* Aside Column: "الأكثر قراءة" Card matching screenshot */}
+          <aside className="self-start">
+            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs">
+              <h3 className="text-lg font-black text-slate-950 font-serif border-b border-slate-100 pb-3">
+                الأكثر قراءة
+              </h3>
+              <ol className="divide-y divide-slate-100">
+                {[
+                  {
+                    rank: 1,
+                    title: "لندن.. الجالية المغربية تحتفي بعيد الوحدة والذكرى الـ 51 للمسيرة الخضراء",
+                    slug: "لندن-الجالية-المغربية-تحتفي-بعيد-الوحدة-والذكرى-الـ-51-للمسيرة-الخضراء",
+                  },
+                  {
+                    rank: 2,
+                    title: "العيون.. المسيرة الخضراء ملحمة تاريخية كرست تشبث المغاربة بوحدتهم الترابية",
+                    slug: "العيون-المسيرة-الخضراء-ملحمة-تاريخية-كرست-تشبث-المغاربة-بوحدتهم-الترابية",
+                  },
+                  {
+                    rank: 3,
+                    title: "الذكرى 51 للمسيرة الخضراء المظفرة.. ملحمة وطنية متجددة",
+                    slug: "الذكرى-51-للمسيرة-الخضراء-المظفرة-ملحمة-وطنية-متجددة-ومكاسب-دبلوماسية-راسخة",
+                  },
+                  {
+                    rank: 4,
+                    title: "الجيش الملكي يحقق انتصارا كبيرا في دوري أبطال إفريقيا للسيدات",
+                    slug: "الجيش-الملكي-يحقق-انتصارا-كبيرا-في-دوري-ا-بطال-ا-فريقيا-للسيدات-لكرة-القدم",
+                  },
+                ].map((item) => (
+                  <li key={item.rank} className="py-3.5 first:pt-3 last:pb-1">
+                    <Link
+                      href={`/article/${encodeURIComponent(item.slug)}`}
+                      className="group flex items-start justify-between gap-3 text-right"
+                    >
+                      <span className="flex-1 text-xs sm:text-[13px] font-bold text-slate-800 leading-snug group-hover:text-red-700 transition">
+                        {item.title}
+                      </span>
+                      <span className="text-base sm:text-lg font-black text-slate-900 tabular-nums shrink-0 leading-none pt-0.5">
+                        {item.rank}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </aside>
+        </section>
+      ) : null}
 
       {show("Regional News") ? <section id="morocco-regions" className="mx-auto w-full max-w-screen-2xl scroll-mt-36">
         <div className="mb-6 flex items-end justify-between gap-4">
@@ -806,22 +940,137 @@ export function CmsHomePage() {
         </div>
       </section> : null}
 
-      <section className="grid gap-6 lg:grid-cols-3">
-        {homepageCategories.slice(0, 3).map((category) => {
-          const categoryArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === category.slug).slice(0, 2);
-          return (
-            <div key={category.id} className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-              <h2 className="text-2xl font-black text-slate-950">{category.name}</h2>
-              <p className="mt-4 text-sm leading-6 text-slate-600">{category.description}</p>
-              <div className="mt-5 space-y-4">{categoryArticles.map((article) => <ArticleCard key={article.id} article={article} />)}</div>
-            </div>
-          );
-        })}
-      </section>
+      {/* Section: اقتصاد matching screenshot 2026-11-11 17.02.13 */}
+      <section className="font-sans pt-4" dir="rtl">
+        {/* Header: "اقتصاد" with subtitle and "عرض الكل" */}
+        <div className="mb-6 flex items-baseline justify-between border-b border-slate-200/80 pb-3">
+          <div className="flex items-baseline gap-4">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-serif">
+              اقتصاد
+            </h2>
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+              الأسواق والاستثمار والتشغيل والفلاحة والمالية العمومية
+            </span>
+          </div>
+          <Link
+            href="/category/economy"
+            className="text-xs sm:text-sm font-bold text-slate-700 hover:text-red-700 transition"
+          >
+            عرض الكل
+          </Link>
+        </div>
 
-      <section className="grid gap-8 xl:grid-cols-2">
-        <SectionBlock title="Regional news" href="/category/regions" articles={regionalArticles} />
-        {show("Economy") || show("Opinion") ? <SectionBlock title="Economy and opinion" href="/category/economy" articles={[...economyArticles, ...opinionArticles].slice(0, 3)} /> : null}
+        {/* 2-Column Economy Layout matching screenshot */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+          {/* Right Column: Hero Economy Article */}
+          <Link
+            href="/article/البنك-الدولي-يخصص-250-مليون-دولار-لدعم-الزراعة-المغربية-تحليل-الا-ثار-والا-فاق-المستقبلية-في-ظل-الا-زمة-الاقتصادية-والمالية"
+            className="group block"
+          >
+            {/* Emerald Geometric Pattern Artwork Banner */}
+            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#105949] to-[#0a382e] p-6 flex items-center justify-center shadow-md">
+              <svg className="w-full h-full opacity-35" viewBox="0 0 600 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="islamic-grid-emerald" width="50" height="50" patternUnits="userSpaceOnUse">
+                    <rect x="25" y="0" width="25" height="25" fill="none" stroke="#6ee7b7" strokeWidth="1" transform="rotate(45 25 12.5)" />
+                    <circle cx="25" cy="25" r="18" fill="none" stroke="#a7f3d0" strokeWidth="1" />
+                    <rect x="10" y="10" width="30" height="30" fill="none" stroke="#34d399" strokeWidth="1" />
+                  </pattern>
+                </defs>
+                <rect width="600" height="340" fill="url(#islamic-grid-emerald)" />
+              </svg>
+            </div>
+
+            {/* Content under artwork */}
+            <div className="mt-4 text-right">
+              {/* Category tag */}
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#059669]">
+                <span className="inline-block size-2 rounded-xs bg-[#059669]" />
+                <span>تحليل</span>
+              </div>
+
+              {/* Title */}
+              <h3 className="mt-2 text-xl sm:text-2xl font-black leading-snug text-slate-950 font-serif transition group-hover:text-red-700">
+                البنك الدولي يخصص 250 مليون دولار لدعم الزراعة المغربية: تحليل الآثار والآفاق المستقبلية
+              </h3>
+
+              {/* Excerpt */}
+              <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                في وقتٍ تتزايد فيه التحديات البيئية والاقتصادية، أعلن البنك الدولي عن تخصيص 250 مليون دولار لدعم الزراعة المغربية في مواجهة التغيرات المناخية، في سياق يجمع بين تحديث القطاع وضمان الأمن الغذائي.
+              </p>
+
+              {/* Metadata */}
+              <div className="mt-3 text-xs font-semibold text-slate-400">
+                بقلم جمال السوسي · 28 يوليوز 2026
+              </div>
+            </div>
+          </Link>
+
+          {/* Left Column: 3 List items with geometric square thumbnails */}
+          <div className="divide-y divide-slate-100 flex flex-col">
+            {[
+              {
+                id: "1",
+                category: "مالية",
+                catColor: "bg-[#e5aa32]",
+                patternBg: "from-[#c6891e] to-[#8d5f0d]",
+                patternStroke: "#fde68a",
+                title: "المدونة العامة للضرائب 2025: إصلاحات جديدة أم أعباء إضافية على المستثمرين والمواطنين؟",
+                date: "28 يوليوز 2026",
+                slug: "المدونة-العامة-للضراي-ب-2025-ا-صلاحات-جديدة-ا-م-ا-عباء-ا-ضافية-على-المستثمرين-والمواطنين",
+              },
+              {
+                id: "2",
+                category: "طاقة",
+                catColor: "bg-[#a6632e]",
+                patternBg: "from-[#854d24] to-[#5a3315]",
+                patternStroke: "#fed7aa",
+                title: "إفريقيا على مفترق الطرق: دعوة لتحويل الثروة الجيولوجية إلى ازدهار مستدام",
+                date: "25 يوليوز 2026",
+                slug: "ا-فريقيا-على-مفترق-الطرق-دعوة-لتحويل-الثروة-الجيولوجية-ا-لى-ازدهار-مستدام",
+              },
+              {
+                id: "3",
+                category: "مقاولات",
+                catColor: "bg-[#337a97]",
+                patternBg: "from-[#205b73] to-[#143949]",
+                patternStroke: "#bae6fd",
+                title: "المغرب 2026: بين وعود الحكومة وغرق المقاولات الصغيرة",
+                date: "25 يوليوز 2026",
+                slug: "المغرب-2026-بين-وعود-الحكومة-وغرق-المقاولات-الصغيرة",
+              },
+            ].map((item) => (
+              <Link
+                key={item.id}
+                href={`/article/${encodeURIComponent(item.slug)}`}
+                className="group flex items-start gap-4 py-5 first:pt-0"
+              >
+                {/* Text Content */}
+                <div className="flex-1 text-right">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1">
+                    <span className={`inline-block size-2 rounded-xs ${item.catColor}`} />
+                    <span>{item.category}</span>
+                  </div>
+                  <h4 className="text-sm sm:text-base font-black leading-snug text-slate-900 font-serif transition group-hover:text-red-700">
+                    {item.title}
+                  </h4>
+                  <span className="mt-2 block text-xs text-slate-400 font-medium tabular-nums">
+                    {item.date}
+                  </span>
+                </div>
+
+                {/* Square Geometric Pattern Artwork matching screenshot */}
+                <div className={`size-20 sm:size-24 rounded-xl bg-gradient-to-br ${item.patternBg} shrink-0 overflow-hidden shadow-xs flex items-center justify-center`}>
+                  <svg className="size-full opacity-40 p-2" viewBox="0 0 80 80" fill="none">
+                    <circle cx="40" cy="40" r="28" stroke={item.patternStroke} strokeWidth="1.5" />
+                    <rect x="20" y="20" width="40" height="40" stroke={item.patternStroke} strokeWidth="1.5" transform="rotate(45 40 40)" />
+                    <rect x="26" y="26" width="28" height="28" stroke={item.patternStroke} strokeWidth="1" />
+                  </svg>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
     </div>
   );

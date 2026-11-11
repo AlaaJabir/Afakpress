@@ -1,6 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { Cairo, Tajawal } from "next/font/google";
 import "./globals.css";
 import { CmsShell } from "@/components/CmsShell";
+
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  weight: ["400", "600", "700", "800", "900"],
+  variable: "--font-cairo",
+  display: "swap",
+});
+
+const tajawal = Tajawal({
+  subsets: ["arabic"],
+  weight: ["400", "500", "700", "800", "900"],
+  variable: "--font-tajawal",
+  display: "swap",
+});
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +43,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="ar" dir="rtl" className={`${cairo.variable} ${tajawal.variable}`}>
+      <body className="font-sans antialiased">
         <CmsShell>{children}</CmsShell>
       </body>
     </html>
