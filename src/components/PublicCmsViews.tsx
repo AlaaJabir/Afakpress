@@ -652,15 +652,16 @@ export function CmsHomePage() {
               href={`/article/${encodeURIComponent(featured.slug)}`}
               className="group block"
             >
-              {/* Sahara Sunset Artwork Illustration */}
+              {/* Featured Article Exact Image */}
               <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-slate-900 shadow-md">
                 <Image
-                  src="/sahara-hero-sunset.jpg"
-                  alt="الذكرى 51 للمسيرة الخضراء المظفرة"
+                  src={imageFor(featured, 0)}
+                  alt={featured.title || "صورة المقال"}
                   fill
                   priority
                   sizes="(min-width: 1024px) 850px, 100vw"
                   className="object-cover transition duration-700 group-hover:scale-105"
+                  referrerPolicy="no-referrer"
                 />
               </div>
 
