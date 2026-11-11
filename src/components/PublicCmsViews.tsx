@@ -923,22 +923,116 @@ export function CmsHomePage() {
         </section>
       ) : null}
 
-      {show("Regional News") ? <section id="morocco-regions" className="mx-auto w-full max-w-screen-2xl scroll-mt-36">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <h2 className="text-3xl font-black text-slate-950">Morocco regions</h2>
-          <Link href="/category/regions" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700">
-            Regional desk
-          </Link>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-4">
-          {homepageRegions.slice(0, 8).map((region) => (
-            <Link key={region.slug} href={`/region/${region.slug}`} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-red-200">
-              <span className="block text-lg font-black text-slate-950">{region.name}</span>
-              <span className="mt-3 block text-sm leading-6 text-slate-600">{region.provinces.map((province) => province.name).join(" / ")}</span>
+      {show("Regional News") ? (
+        <section id="morocco-regions" className="mx-auto w-full max-w-screen-2xl scroll-mt-36 font-sans" dir="rtl">
+          {/* Header matching site style */}
+          <div className="mb-6 flex items-baseline justify-between border-b border-slate-200/80 pb-3">
+            <div className="flex items-baseline gap-4">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-serif">
+                أخبار الجهات والوطن
+              </h2>
+              <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+                أحدث التغطيات والمستجدات من مختلف جهات وأقاليم المملكة
+              </span>
+            </div>
+            <Link
+              href="/category/regions"
+              className="text-xs sm:text-sm font-bold text-slate-700 hover:text-red-700 transition"
+            >
+              عرض الكل
             </Link>
-          ))}
-        </div>
-      </section> : null}
+          </div>
+
+          {/* Cards Grid: 3 columns with dark text overlays matching Screenshot 2026-11-11 17.13.16 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              {
+                id: "card-1",
+                title: "لندن.. الجالية المغربية تحتفي بعيد الوحدة والذكرى الـ 51 للمسيرة الخضراء",
+                category: "مغاربة العالم",
+                region: "الجهة 13",
+                slug: "لندن-الجالية-المغربية-تحتفي-بعيد-الوحدة-والذكرى-الـ-51-للمسيرة-الخضراء",
+                image: "https://zqzwevynueggpyieabzi.supabase.co/storage/v1/object/public/media/articles/2026-11-08/ce331728-42ed-4814-aad1-67fe13788e74.jpg",
+                tagColor: "bg-[#1e293b]",
+              },
+              {
+                id: "card-2",
+                title: "العيون.. المسيرة الخضراء ملحمة تاريخية كرست تشبث المغاربة بوحدتهم الترابية",
+                category: "وطنية",
+                region: "العيون الساقية الحمراء",
+                slug: "العيون-المسيرة-الخضراء-ملحمة-تاريخية-كرست-تشبث-المغاربة-بوحدتهم-الترابية",
+                image: "https://zqzwevynueggpyieabzi.supabase.co/storage/v1/object/public/media/articles/2026-11-07/7c179e7b-5039-478f-9b5f-664b41d9bc7a.jpg",
+                tagColor: "bg-[#c2410c]",
+              },
+              {
+                id: "card-3",
+                title: "الجيش الملكي يحقق انتصارا كبيرا في دوري أبطال إفريقيا للسيدات لكرة القدم",
+                category: "رياضة",
+                region: "الرباط سلا القنيطرة",
+                slug: "الجيش-الملكي-يحقق-انتصارا-كبيرا-في-دوري-ا-بطال-ا-فريقيا-للسيدات-لكرة-القدم",
+                image: "https://zqzwevynueggpyieabzi.supabase.co/storage/v1/object/public/media/articles/2026-11-05/853e2141-79aa-4858-865a-f2a90d3a60cb.jpg",
+                tagColor: "bg-[#be185d]",
+              },
+              {
+                id: "card-4",
+                title: "الداخلة.. وتيرة متسارعة لأشغال ميناء الداخلة الأطلسي الاستراتيجي",
+                category: "جهات",
+                region: "الداخلة وادي الذهب",
+                slug: "جدول-مباريات-كا-س-ا-مم-ا-فريقيا-المغرب-2025",
+                image: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=800&q=80",
+                tagColor: "bg-[#25b5a8]",
+              },
+              {
+                id: "card-5",
+                title: "طنجة.. افتتاح معرض الاقتصاد الأزرق المتوسطي بمشاركة دولية وازنة",
+                category: "جهات",
+                region: "طنجة تطوان الحسيمة",
+                slug: "عيد-الشباب-القنيطرة-2026",
+                image: "https://images.unsplash.com/photo-1539650116574-8efeb43e2750?auto=format&fit=crop&w=800&q=80",
+                tagColor: "bg-[#5b9bd5]",
+              },
+              {
+                id: "card-6",
+                title: "مراكش.. انتعاش سياحي استثنائي مع بداية موسم المؤتمرات الدولية",
+                category: "اقتصاد",
+                region: "مراكش آسفي",
+                slug: "توجيهات-سامية-لجلالة-الملك-محمد-السادس-في-مجلس-وزاري-بالقصر-الملكي-العامر-بالعصمة-بالعاصمة-الرباط-قراءة-تحليلية-لمشروع-قانون-المالية-2026",
+                image: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=800&q=80",
+                tagColor: "bg-[#cf4d75]",
+              },
+            ].map((article) => (
+              <Link
+                key={article.id}
+                href={`/article/${encodeURIComponent(article.slug)}`}
+                className="group relative block aspect-[16/10] sm:aspect-[16/11] overflow-hidden rounded-xl bg-slate-900 shadow-sm transition hover:shadow-md"
+              >
+                {/* Background Image with zoom effect */}
+                <Image
+                  src={article.image}
+                  alt={article.title}
+                  fill
+                  sizes="(min-width: 1024px) 440px, 100vw"
+                  className="object-cover brightness-90 transition duration-500 group-hover:scale-105"
+                  referrerPolicy="no-referrer"
+                />
+
+                {/* Top Badge: Region or Category */}
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-sm bg-black/60 backdrop-blur-xs px-2 py-0.5 text-[11px] font-bold text-white">
+                  <span className={`inline-block size-1.5 rounded-full ${article.tagColor}`} />
+                  <span>{article.region}</span>
+                </div>
+
+                {/* Bottom Dark Gradient and Text Overlay with Black Box Banner matching Screenshot */}
+                <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/95 via-black/85 to-transparent pt-10 pb-3 px-3.5 sm:px-4 text-right">
+                  <h3 className="text-sm sm:text-[15px] font-bold leading-snug text-white transition group-hover:text-red-300 line-clamp-2">
+                    {article.title}
+                  </h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Section: اقتصاد matching screenshot 2026-11-11 17.02.13 */}
       <section className="font-sans pt-4" dir="rtl">
