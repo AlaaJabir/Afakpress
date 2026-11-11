@@ -11,6 +11,8 @@ import { ArabicBreakingNewsTicker } from "@/components/ArabicBreakingNewsTicker"
 import { AfakFooter } from "@/components/AfakFooter";
 import type { CmsState } from "@/lib/cms";
 
+import { FileText, Home, Search, Sun } from "lucide-react";
+
 function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedArticles> }) {
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -22,53 +24,73 @@ function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedAr
     : [];
 
   return (
-    <form
-      className="relative w-full max-w-sm md:max-w-[285px]"
-      role="search"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (results[0]) window.location.assign(`/article/${encodeURIComponent(results[0].slug)}`);
-      }}
-    >
-      <label htmlFor="header-search" className="sr-only">Rechercher dans Afakpress</label>
-      <div className="flex h-11 items-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm transition focus-within:border-red-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-red-50">
-        <svg aria-hidden="true" className="ml-4 size-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-4-4" />
-        </svg>
-        <input
-          id="header-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => window.setTimeout(() => setIsFocused(false), 150)}
-          placeholder="Rechercher un article…"
-          autoComplete="off"
-          className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-        />
-        <button type="submit" disabled={!results.length} className="mr-1 rounded-full bg-slate-400 px-4 py-1.5 text-[11px] font-black uppercase text-white transition hover:bg-slate-600 disabled:cursor-default disabled:opacity-75">
-          Chercher
-        </button>
+    <div className="flex items-center gap-2.5">
+      {/* 1. Professional Magazine Feature: Digital Edition (PDF) */}
+      <a
+        href="#digital-edition"
+        className="hidden xl:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+        title="تصفح النسخة الورقية بصيغة PDF"
+      >
+        <FileText className="size-3.5 text-red-700" />
+        <span>النسخة الرقمية</span>
+        <span className="rounded bg-red-100 px-1 py-0.2 text-[9px] font-bold text-red-700">PDF</span>
+      </a>
+
+      {/* 2. Professional Magazine Feature: Weather in Rabat */}
+      <div className="hidden lg:flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+        <Sun className="size-3.5 text-amber-500" />
+        <span>الرباط 21°C</span>
       </div>
-      {isFocused && query.trim() ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[2000] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-          {results.length ? (
-            <ul>
-              {results.map((article) => (
-                <li key={article.id}>
-                  <Link href={`/article/${encodeURIComponent(article.slug)}`} className="block rounded-xl px-3 py-2.5 text-sm font-bold leading-5 text-slate-800 transition hover:bg-red-50 hover:text-red-700" dir="auto">
-                    {article.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="px-3 py-4 text-center text-sm font-semibold text-slate-500">Aucun article trouvé</p>
-          )}
+
+      {/* 3. Search Bar made as an elegant icon-focused input */}
+      <form
+        className="relative"
+        role="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (results[0]) window.location.assign(`/article/${encodeURIComponent(results[0].slug)}`);
+        }}
+      >
+        <label htmlFor="header-search" className="sr-only">Rechercher dans Afakpress</label>
+        <div className="flex h-10 items-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-xs transition-all duration-200 focus-within:w-64 focus-within:border-red-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-red-100 w-10 sm:w-48">
+          <button
+            type="submit"
+            aria-label="بحث"
+            className="flex size-10 shrink-0 items-center justify-center text-slate-500 transition hover:text-red-700"
+          >
+            <Search className="size-4" />
+          </button>
+          <input
+            id="header-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => window.setTimeout(() => setIsFocused(false), 150)}
+            placeholder="بحث..."
+            autoComplete="off"
+            className="h-full min-w-0 flex-1 bg-transparent pr-2 text-xs font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+          />
         </div>
-      ) : null}
-    </form>
+        {isFocused && query.trim() ? (
+          <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[2000] min-w-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+            {results.length ? (
+              <ul>
+                {results.map((article) => (
+                  <li key={article.id}>
+                    <Link href={`/article/${encodeURIComponent(article.slug)}`} className="block rounded-xl px-3 py-2 text-xs font-bold leading-5 text-slate-800 transition hover:bg-red-50 hover:text-red-700" dir="auto">
+                      {article.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-3 py-3 text-center text-xs font-semibold text-slate-500">لا توجد نتائج</p>
+            )}
+          </div>
+        ) : null}
+      </form>
+    </div>
   );
 }
 
@@ -93,18 +115,66 @@ function Chrome({ children }: { children: React.ReactNode }) {
             </div>
             <Link
               href="/"
-              className="order-1 flex h-[82px] w-[195px] items-center justify-center rounded-xs border border-blue-600 bg-white p-1 justify-self-center shadow-xs md:order-2"
+              className="order-1 flex h-[82px] w-[210px] items-center justify-center p-1 justify-self-center transition hover:opacity-95 md:order-2"
               aria-label="Afakpress"
             >
-              <Image src="/afakpress-logo.png" alt="Afakpress" width={190} height={78} priority className="h-full w-full object-contain" />
+              <Image src="/afakpress-logo.png" alt="Afakpress" width={200} height={78} priority className="h-full w-full object-contain" />
             </Link>
-            <div className="order-3 flex items-center justify-center gap-1 text-sm font-semibold text-slate-700 md:justify-end">
-              <Link href="/category/national" className="whitespace-nowrap rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-red-700">
-                À la une
+            <div className="order-3 flex items-center justify-center gap-2 md:justify-end" dir="rtl">
+              {/* Home link in Arabic with Home icon */}
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-800 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+              >
+                <Home className="size-4 text-red-700 shrink-0" />
+                <span>الرئيسية</span>
               </Link>
-              <Link href="/#newsletter" className="whitespace-nowrap rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-red-700">
-                Newsletter
-              </Link>
+
+              <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+
+              {/* Professional Social Media Icons */}
+              <div className="flex items-center gap-1.5">
+                <a
+                  href="https://facebook.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Facebook"
+                  aria-label="Facebook"
+                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-[#1877f2] hover:bg-[#1877f2] hover:text-white"
+                >
+                  f
+                </a>
+                <a
+                  href="https://x.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="X"
+                  aria-label="X"
+                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-black hover:bg-black hover:text-white"
+                >
+                  𝕏
+                </a>
+                <a
+                  href="https://youtube.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="YouTube"
+                  aria-label="YouTube"
+                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-[#ff0000] hover:bg-[#ff0000] hover:text-white"
+                >
+                  ▶
+                </a>
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Instagram"
+                  aria-label="Instagram"
+                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-[#e4405f] hover:bg-[#e4405f] hover:text-white"
+                >
+                  in
+                </a>
+              </div>
             </div>
           </div>
         </div>

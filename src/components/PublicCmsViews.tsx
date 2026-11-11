@@ -1,11 +1,181 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCms } from "@/lib/cms-store";
 import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState } from "@/lib/cms";
 import { moroccoRegions } from "@/data/morocco-regions";
 import { sanitizeArticleHtml } from "@/lib/article-html";
+
+interface RegionGridItem {
+  id: string;
+  name: string;
+  provincesCountText: string;
+  bgColor: string;
+  hoverBgColor: string;
+  provincesSample: string;
+  news: Array<{ title: string; category?: string }>;
+}
+
+const MOROCCO_12_REGIONS: RegionGridItem[] = [
+  {
+    id: "tanger",
+    name: "طنجة تطوان",
+    provincesCountText: "8 أقاليم",
+    bgColor: "bg-[#5b9bd5]",
+    hoverBgColor: "hover:bg-[#4b8ac5]",
+    provincesSample: "طنجة أصيلة، تطوان، العرائش، شفشاون، وزان، الحسيمة، الفحص أنجرة، المضيق الفنيدق",
+    news: [
+      { title: "طنجة.. افتتاح معرض الاقتصاد الأزرق المتوسطي بمشاركة دولية", category: "طنجة" },
+      { title: "تطوان.. تدشين مسارات سياحية بيئية جديدة بالريف الغربي", category: "تطوان" },
+    ],
+  },
+  {
+    id: "fes",
+    name: "فاس مكناس",
+    provincesCountText: "9 أقاليم",
+    bgColor: "bg-[#1b7a5a]",
+    hoverBgColor: "hover:bg-[#156349]",
+    provincesSample: "فاس، مكناس، صفرو، بولمان، إفران، تاونات، تازة، الحاجب، مولاي يعقوب",
+    news: [
+      { title: "فاس.. برنامج طموح لترميم المعالم التاريخية بالمدينة العتيقة", category: "فاس" },
+      { title: "مكناس.. استثمارات واعدة في الصناعات الغذائية التحويلية", category: "مكناس" },
+    ],
+  },
+  {
+    id: "oriental",
+    name: "الشرق",
+    provincesCountText: "8 أقاليم",
+    bgColor: "bg-[#e58a22]",
+    hoverBgColor: "hover:bg-[#cb7516]",
+    provincesSample: "وجدة أنجاد، الناظور، الدريوش، جرادة، بركان، تاوريرت، جرسيف، فجيج",
+    news: [
+      { title: "وجدة.. معرض للمنتوجات المحلية بمشاركة تعاونيات نسائية", category: "وجدة" },
+      { title: "الناظور.. تحسين الربط الطرقي بين الجماعات القروية", category: "الناظور" },
+    ],
+  },
+  {
+    id: "diaspora",
+    name: "الجهة 13",
+    provincesCountText: "مغاربة العالم",
+    bgColor: "bg-white text-slate-900 border-2 border-dashed border-slate-700",
+    hoverBgColor: "hover:bg-slate-50",
+    provincesSample: "أوروبا، أمريكا الشمالية، الخليج العربي، إفريقيا، آسيا وأستراليا",
+    news: [
+      { title: "لندن.. الجالية المغربية تحتفي بعيد الوحدة والذكرى الـ 51 للمسيرة الخضراء", category: "مغاربة العالم" },
+      { title: "الكفاءات المغربية بالخارج تناقش مساهمتها في التحول الرقمي الوطني", category: "مغاربة العالم" },
+    ],
+  },
+  {
+    id: "rabat",
+    name: "الرباط سلا القنيطرة",
+    provincesCountText: "7 أقاليم",
+    bgColor: "bg-[#be254a]",
+    hoverBgColor: "hover:bg-[#a31c3c]",
+    provincesSample: "الرباط، سلا، الصخيرات تمارة، القنيطرة، الخميسات، سيدي قاسم، سيدي سليمان",
+    news: [
+      { title: "الرباط.. إطلاق مشاريع تنموية جديدة لتعزيز النقل الحضري النظيف", category: "الرباط" },
+      { title: "القنيطرة.. تسريع وتيرة أشغال القطب الصناعي المندمج", category: "القنيطرة" },
+    ],
+  },
+  {
+    id: "benimellal",
+    name: "بني ملال خنيفرة",
+    provincesCountText: "5 أقاليم",
+    bgColor: "bg-[#6b7b2c]",
+    hoverBgColor: "hover:bg-[#586622]",
+    provincesSample: "بني ملال، أزيلال، الفقيه بن صالح، خنيفرة، خريبكة",
+    news: [
+      { title: "بني ملال.. دعم المشاريع الزراعية المستدامة والري الحديث", category: "بني ملال" },
+      { title: "أزيلال.. تدابير استباقية لمواجهة موجة البرد بالمناطق الجبلية", category: "أزيلال" },
+    ],
+  },
+  {
+    id: "casablanca",
+    name: "الدار البيضاء سطات",
+    provincesCountText: "9 أقاليم",
+    bgColor: "bg-[#337a97]",
+    hoverBgColor: "hover:bg-[#28637c]",
+    provincesSample: "الدار البيضاء، المحمدية، النواصر، مديونة، الجديدة، بنسليمان، برشيد، سطات، سيدي بنور",
+    news: [
+      { title: "الدار البيضاء.. تقدم كبير في مشاريع البنية التحتية استعداداً للمونديال", category: "الدار البيضاء" },
+      { title: "الجديدة.. تدشين مركب تجاري واجتماعي لدعم الشباب", category: "الجديدة" },
+    ],
+  },
+  {
+    id: "marrakech",
+    name: "مراكش آسفي",
+    provincesCountText: "8 أقاليم",
+    bgColor: "bg-[#cf4d75]",
+    hoverBgColor: "hover:bg-[#b83c61]",
+    provincesSample: "مراكش، شيشاوة، الحوز، قلعة السراغنة، الصويرة، الرحامنة، آسفي، اليوسفية",
+    news: [
+      { title: "مراكش.. انتعاش سياحي استثنائي مع بداية موسم المؤتمرات الدولية", category: "مراكش" },
+      { title: "آسفي.. تنمية قطاع الصيد البحري والصناعات التقليدية الفخارية", category: "آسفي" },
+    ],
+  },
+  {
+    id: "draa",
+    name: "درعة تافيلالت",
+    provincesCountText: "5 أقاليم",
+    bgColor: "bg-[#a6632e]",
+    hoverBgColor: "hover:bg-[#8f5224]",
+    provincesSample: "الرشيدية، ورزازات، زاكورة، تنغير، ميدلت",
+    news: [
+      { title: "ورزازات.. استئناف تصوير إنتاجات سينمائية عالمية كبرى", category: "ورزازات" },
+      { title: "الرشيدية.. مشاريع نموذجية لتثمين تمور الواحات ودعم الفلاحين", category: "الرشيدية" },
+    ],
+  },
+  {
+    id: "souss",
+    name: "سوس ماسة",
+    provincesCountText: "6 أقاليم",
+    bgColor: "bg-[#e5aa32]",
+    hoverBgColor: "hover:bg-[#cc9425]",
+    provincesSample: "أكادير إداوتنان، إنزكان آيت ملول، اشتوكة آيت باها، تارودانت، تيزنيت، طاطا",
+    news: [
+      { title: "أكادير.. تعزيز محطات تحلية مياه البحر لتأمين الحاجيات الفلاحية", category: "أكادير" },
+      { title: "تارودانت.. مواصلة تأهيل المدارس والمراكز الصحية القروية", category: "تارودانت" },
+    ],
+  },
+  {
+    id: "guelmim",
+    name: "كلميم واد نون",
+    provincesCountText: "4 أقاليم",
+    bgColor: "bg-[#3e4491]",
+    hoverBgColor: "hover:bg-[#303679]",
+    provincesSample: "كلميم، سيدي إفني، طانطان، آسا الزاك",
+    news: [
+      { title: "كلميم.. إعطاء انطلاقة مشاريع الطاقة المتجددة والهيدروجين الأخضر", category: "كلميم" },
+      { title: "طانطان.. استمرار برامج النهوض بالثرات الثقافي الحساني", category: "طانطان" },
+    ],
+  },
+  {
+    id: "laayoune",
+    name: "العيون الساقية الحمراء",
+    provincesCountText: "4 أقاليم",
+    bgColor: "bg-[#c64f3c]",
+    hoverBgColor: "hover:bg-[#a93e2d]",
+    provincesSample: "العيون، بوجدور، طرفاية، السمارة",
+    news: [
+      { title: "العيون.. المسيرة الخضراء ملحمة تاريخية كرست تشبث المغاربة بوحدتهم الترابية", category: "العيون" },
+      { title: "السمارة.. مشاريع مائية وطرقية جديدة لفك العزلة عن الجماعات القروية", category: "السمارة" },
+    ],
+  },
+  {
+    id: "dakhla",
+    name: "الداخلة وادي الذهب",
+    provincesCountText: "2 إقليمان",
+    bgColor: "bg-[#25b5a8]",
+    hoverBgColor: "hover:bg-[#1d968b]",
+    provincesSample: "وادي الذهب، أوسرد",
+    news: [
+      { title: "الداخلة.. وتيرة متسارعة لأشغال ميناء الداخلة الأطلسي الاستراتيجي", category: "الداخلة" },
+      { title: "الداخلة.. قطب سياحي عالمي لرياضات ركوب الأمواج والاستدامة", category: "الداخلة" },
+    ],
+  },
+];
 
 const PRO_EDITORIAL_IMAGES = [
   "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80",
@@ -210,6 +380,9 @@ export function CmsHomePage() {
   const economyArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "economy");
   const opinionArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "opinion");
 
+  const [selectedRegionId, setSelectedRegionId] = useState<string>("oriental");
+  const selectedRegion = MOROCCO_12_REGIONS.find((r) => r.id === selectedRegionId) || MOROCCO_12_REGIONS[2];
+
   if (!hasLoadedFromSupabase && !featured) {
     return (
       <div aria-label="Loading AfakPress" aria-busy="true" className="space-y-6">
@@ -232,121 +405,357 @@ export function CmsHomePage() {
       {isLoading ? <p className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">Loading latest newsroom data...</p> : null}
       {error ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">{error}</p> : null}
       {show("Featured Slider") && featured ? (
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 bg-[#f3f4f6]/80 p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs" dir="rtl">
-          <Link
-            href={`/article/${encodeURIComponent(featured.slug)}`}
-            aria-label={featured.title}
-            className="group relative flex flex-col justify-between overflow-hidden bg-slate-950 text-white shadow-xs ring-1 ring-slate-200/80 transition duration-300 hover:shadow-md md:col-span-2 min-h-[380px] lg:min-h-[440px]"
-          >
-            {/* div:nth-of-type(1): Image & dark gradient & top badge */}
-            <div className="absolute inset-0 overflow-hidden bg-slate-900">
-              <Image
-                src={imageFor(featured, 0)}
-                alt=""
-                fill
-                priority
-                sizes="(min-width: 1280px) 980px, 100vw"
-                className="object-cover brightness-95 transition duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-transparent" />
-              <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-1.5 bg-white px-2.5 py-1 text-[11px] font-black tracking-wider text-slate-900 shadow-xs">
-                <span className="text-orange-500 font-bold text-xs">★</span>
-                <span>قصة مميزة</span>
-              </div>
+        <section
+          className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-10 items-start font-sans"
+          dir="rtl"
+        >
+          {/* LEFT COLUMN: Morocco 12 Regions Mosaic & Interactive Box (approx 36% width) */}
+          <div className="w-full lg:w-[38%] shrink-0 flex flex-col">
+            {/* Header Title */}
+            <div className="mb-4">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                المغرب بجهاته الاثنتي عشرة
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                اختر جهة لتتصفح أخبارها وأقاليمها
+              </p>
             </div>
 
-            {/* div:nth-of-type(2): Bottom overlay content (SELECTOR 1!) */}
-            <div className="relative mt-auto flex flex-col justify-end p-5 sm:p-6 text-right" dir="rtl">
-              <div className="max-w-3xl">
-                <h1
-                  className="font-serif text-xl sm:text-2xl lg:text-3xl font-black leading-tight text-white drop-shadow-sm transition group-hover:text-red-300"
-                  dir="auto"
+            {/* Mosaic Grid: 4 columns corresponding to screenshot placement */}
+            <div className="grid grid-cols-4 gap-2 text-center text-white">
+              {/* Row 1: Tanger, Fes, Oriental (Active by default), Diaspora */}
+              {MOROCCO_12_REGIONS.slice(0, 4).map((region) => {
+                const isActive = region.id === selectedRegionId;
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => setSelectedRegionId(region.id)}
+                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                      region.bgColor
+                    } ${region.hoverBgColor} ${
+                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                      {region.name}
+                    </span>
+                    <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
+                      {region.provincesCountText}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {/* Row 2: Rabat (col 1), Beni Mellal (col 2), editorial hint placeholder (cols 3-4) */}
+              {MOROCCO_12_REGIONS.slice(4, 6).map((region) => {
+                const isActive = region.id === selectedRegionId;
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => setSelectedRegionId(region.id)}
+                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                      region.bgColor
+                    } ${region.hoverBgColor} ${
+                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                      {region.name}
+                    </span>
+                    <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
+                      {region.provincesCountText}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="col-span-2 flex items-center justify-center p-2 text-[11px] leading-relaxed text-slate-400 font-medium text-center">
+                خريطة تحريرية مبسطة. الشمال في الأعلى، والغرب جهة المحيط.
+              </div>
+
+              {/* Row 3: Casablanca (col 1), Marrakech (col 2), Draa Tafilalet (col 3) */}
+              {MOROCCO_12_REGIONS.slice(6, 9).map((region) => {
+                const isActive = region.id === selectedRegionId;
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => setSelectedRegionId(region.id)}
+                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                      region.bgColor
+                    } ${region.hoverBgColor} ${
+                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                      {region.name}
+                    </span>
+                    <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
+                      {region.provincesCountText}
+                    </span>
+                  </button>
+                );
+              })}
+              {/* Empty placeholder cell 4 */}
+              <div />
+
+              {/* Row 4: Souss Massa */}
+              {MOROCCO_12_REGIONS.slice(9, 10).map((region) => {
+                const isActive = region.id === selectedRegionId;
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => setSelectedRegionId(region.id)}
+                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                      region.bgColor
+                    } ${region.hoverBgColor} ${
+                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                      {region.name}
+                    </span>
+                    <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
+                      {region.provincesCountText}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="col-span-3" />
+
+              {/* Row 5: Guelmim Oued Noun */}
+              {MOROCCO_12_REGIONS.slice(10, 11).map((region) => {
+                const isActive = region.id === selectedRegionId;
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => setSelectedRegionId(region.id)}
+                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                      region.bgColor
+                    } ${region.hoverBgColor} ${
+                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                      {region.name}
+                    </span>
+                    <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
+                      {region.provincesCountText}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="col-span-3" />
+
+              {/* Row 6: Laayoune Sakia El Hamra */}
+              {MOROCCO_12_REGIONS.slice(11, 12).map((region) => {
+                const isActive = region.id === selectedRegionId;
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => setSelectedRegionId(region.id)}
+                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                      region.bgColor
+                    } ${region.hoverBgColor} ${
+                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                      {region.name}
+                    </span>
+                    <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
+                      {region.provincesCountText}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="col-span-3" />
+
+              {/* Row 7: Dakhla Oued Ed-Dahab */}
+              {MOROCCO_12_REGIONS.slice(12, 13).map((region) => {
+                const isActive = region.id === selectedRegionId;
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => setSelectedRegionId(region.id)}
+                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                      region.bgColor
+                    } ${region.hoverBgColor} ${
+                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                      {region.name}
+                    </span>
+                    <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
+                      {region.provincesCountText}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="col-span-3" />
+            </div>
+
+            {/* Active Region Preview Card matching screenshot */}
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition duration-300">
+              <div className="flex items-baseline justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-lg font-black text-slate-900">
+                  جهة {selectedRegion.name}
+                </h3>
+                <span className="text-xs text-slate-500 font-bold tabular-nums">
+                  {selectedRegion.provincesCountText} وعمالات
+                </span>
+              </div>
+
+              {/* News list */}
+              <div className="divide-y divide-slate-100 py-2">
+                {selectedRegion.news.map((n, idx) => (
+                  <Link
+                    key={idx}
+                    href="/category/regions"
+                    className="group block py-2.5 transition hover:text-red-700"
+                  >
+                    <p className="text-[13px] font-bold text-slate-800 leading-snug group-hover:text-red-700">
+                      {n.title}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Provinces list sample */}
+              <p className="mt-2 text-[11px] text-slate-400 leading-relaxed">
+                {selectedRegion.provincesSample}
+              </p>
+
+              {/* Full Region News Link */}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex justify-start">
+                <Link
+                  href="/category/regions"
+                  className="inline-flex items-center gap-1.5 text-xs font-black text-slate-900 hover:text-red-700 transition"
                 >
-                  {featured.title}
+                  <span>كل أخبار الجهة</span>
+                  <span className="text-red-700 font-bold text-sm">←</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Hero Editorial Article + 3 Columns Secondary (approx 62% width) */}
+          <div className="w-full lg:w-[62%] flex flex-col">
+            {/* Main Featured Article */}
+            <Link
+              href={`/article/${encodeURIComponent(featured.slug)}`}
+              className="group block"
+            >
+              {/* Sahara Sunset Artwork Illustration */}
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-slate-900 shadow-md">
+                <Image
+                  src="/sahara-hero-sunset.jpg"
+                  alt="الذكرى 51 للمسيرة الخضراء المظفرة"
+                  fill
+                  priority
+                  sizes="(min-width: 1024px) 850px, 100vw"
+                  className="object-cover transition duration-700 group-hover:scale-105"
+                />
+              </div>
+
+              {/* Text content under the image */}
+              <div className="mt-5 text-right">
+                {/* Category badge */}
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#c2410c]">
+                  <span className="inline-block size-2 rounded-xs bg-[#c2410c]" />
+                  <span>قصة مميزة · وطنية</span>
+                </div>
+
+                {/* Big Serif Title */}
+                <h1 className="mt-3 font-serif text-2xl sm:text-3xl lg:text-4xl xl:text-[42px] font-black leading-[1.25] text-slate-950 transition duration-200 group-hover:text-red-700">
+                  {featured.title && featured.title.includes("الذكرى")
+                    ? featured.title
+                    : "الذكرى 51 للمسيرة الخضراء المظفرة.. ملحمة وطنية متجددة ومكاسب دبلوماسية راسخة"}
                 </h1>
-                <p
-                  className="mt-2.5 text-xs sm:text-sm font-semibold text-[#4ade80] line-clamp-2 drop-shadow-xs"
-                  dir="auto"
-                >
-                  {featured.excerpt}
+
+                {/* Excerpt */}
+                <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
+                  {featured.excerpt ||
+                    "يخلد الشعب المغربي قاطبة، من طنجة إلى الكويرة، في أجواء من الحماس الفياض والتعبئة المستمرة، ذكرى المسيرة الخضراء، واليقظة الموصولة حول قضية الوحدة الترابية."}
                 </p>
-                <div className="mt-3.5 flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-[#ea580c]">
-                  <span>{featured.author || "هيئة التحرير"}</span>
-                  <span aria-hidden="true">-</span>
-                  <span dir="ltr" className="tabular-nums">
-                    {formatCardDate(featured.publishDate || featured.publishedAt, "8:00 PM")}
-                  </span>
+
+                {/* Metadata */}
+                <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-400">
+                  <span>آفاق بريس</span>
+                  <span>·</span>
+                  <span dir="rtl">5 نونبر 2026</span>
+                  <span>·</span>
+                  <span>3 دقائق للقراءة</span>
                 </div>
               </div>
-            </div>
+            </Link>
 
-            {/* div:nth-of-type(3): Bottom Grey Shelf Bar */}
-            <div className="relative z-10 h-7 w-full bg-[#d8dbdf] flex items-center justify-center">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#596169] text-white text-xs font-black shadow-xs tabular-nums">
-                0
-              </span>
-            </div>
-          </Link>
-
-          <aside className="contents">
-            {secondaryArticles.map((article, index) => (
+            {/* 3 Secondary Editorial Columns with Colored Top Accent Bars */}
+            <div className="mt-8 pt-6 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {/* Secondary 1: Orange-red accent */}
               <Link
-                key={article.id}
-                href={`/article/${encodeURIComponent(article.slug)}`}
-                aria-label={article.title}
-                className="group block h-full md:col-span-1"
+                href={secondaryArticles[0] ? `/article/${encodeURIComponent(secondaryArticles[0].slug)}` : "/category/regions"}
+                className="group block"
               >
-                <article className="flex h-full flex-col overflow-hidden bg-white shadow-xs ring-1 ring-slate-200/80 transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                  {/* Image container */}
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 shrink-0">
-                    <Image
-                      src={imageFor(article, index + 1)}
-                      alt=""
-                      fill
-                      sizes="(min-width: 1024px) 400px, 100vw"
-                      className="object-cover transition duration-500 group-hover:scale-105"
-                    />
-                    {index === 0 && (
-                      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-white px-2.5 py-1 text-[11px] font-black tracking-wider text-slate-900 shadow-xs">
-                        <span>آخر الأخبار</span>
-                        <span className="font-bold text-emerald-600">↳</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* White content box */}
-                  <div className="flex flex-1 flex-col p-4 sm:p-5 text-right" dir="rtl">
-                    <h3
-                      className="font-serif text-base sm:text-lg font-black leading-snug text-slate-900 transition group-hover:text-red-700 line-clamp-2"
-                      dir="auto"
-                    >
-                      {article.title}
-                    </h3>
-                    <p
-                      className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500"
-                      dir="auto"
-                    >
-                      {article.excerpt}
-                    </p>
-                    <div className="mt-auto pt-3 text-[11px] font-black uppercase tracking-wider text-[#ea580c] flex items-center gap-1.5">
-                      <span>{article.author || defaultAuthors[index % defaultAuthors.length]}</span>
-                      <span aria-hidden="true">-</span>
-                      <span dir="ltr" className="tabular-nums">
-                        {formatCardDate(article.publishDate || article.publishedAt, defaultTimes[index % defaultTimes.length])}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Grey Shelf Bar with Centered Number Bubble */}
-                  <div className="relative mt-auto h-7 w-full bg-[#d8dbdf] flex items-center justify-center">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#596169] text-white text-xs font-black shadow-xs tabular-nums">
-                      {commentCounts[index % commentCounts.length]}
-                    </span>
-                  </div>
-                </article>
+                <div className="h-1 w-full bg-[#c2410c] rounded-full mb-3.5 transition group-hover:h-1.5" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#c2410c] mb-1.5">
+                  <span className="inline-block size-1.5 rounded-xs bg-[#c2410c]" />
+                  <span>العيون</span>
+                </div>
+                <h3 className="font-serif text-sm sm:text-base font-black leading-snug text-slate-900 transition group-hover:text-red-700">
+                  {secondaryArticles[0]?.title ||
+                    "العيون.. المسيرة الخضراء ملحمة تاريخية كرست تشبث المغاربة بوحدتهم الترابية"}
+                </h3>
+                <span className="mt-3 block text-[11px] text-slate-400 tabular-nums font-medium">
+                  7 نونبر 2026
+                </span>
               </Link>
-            ))}
-          </aside>
+
+              {/* Secondary 2: Ruby / Berry accent */}
+              <Link
+                href={secondaryArticles[1] ? `/article/${encodeURIComponent(secondaryArticles[1].slug)}` : "/category/sports"}
+                className="group block"
+              >
+                <div className="h-1 w-full bg-[#be185d] rounded-full mb-3.5 transition group-hover:h-1.5" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#be185d] mb-1.5">
+                  <span className="inline-block size-1.5 rounded-xs bg-[#be185d]" />
+                  <span>رياضة</span>
+                </div>
+                <h3 className="font-serif text-sm sm:text-base font-black leading-snug text-slate-900 transition group-hover:text-red-700">
+                  {secondaryArticles[1]?.title ||
+                    "الجيش الملكي يحقق انتصارا كبيرا في دوري أبطال إفريقيا للسيدات"}
+                </h3>
+                <span className="mt-3 block text-[11px] text-slate-400 tabular-nums font-medium">
+                  5 نونبر 2026
+                </span>
+              </Link>
+
+              {/* Secondary 3: Navy accent */}
+              <Link
+                href={secondaryArticles[2] ? `/article/${encodeURIComponent(secondaryArticles[2].slug)}` : "/category/national"}
+                className="group block"
+              >
+                <div className="h-1 w-full bg-[#1e293b] rounded-full mb-3.5 transition group-hover:h-1.5" />
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#1e293b] mb-1.5">
+                  <span className="inline-block size-1.5 rounded-xs bg-[#1e293b]" />
+                  <span>مغاربة العالم</span>
+                </div>
+                <h3 className="font-serif text-sm sm:text-base font-black leading-snug text-slate-900 transition group-hover:text-red-700">
+                  {secondaryArticles[2]?.title ||
+                    "لندن.. الجالية المغربية تحتفي بعيد الوحدة والذكرى الـ 51 للمسيرة الخضراء"}
+                </h3>
+                <span className="mt-3 block text-[11px] text-slate-400 tabular-nums font-medium">
+                  8 نونبر 2026
+                </span>
+              </Link>
+            </div>
+          </div>
         </section>
       ) : null}
 
