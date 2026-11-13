@@ -185,10 +185,25 @@ const PRO_EDITORIAL_IMAGES = [
   "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1200&q=80",
 ];
 
+function isValidImageUrl(url?: string) {
+  return Boolean(url && (url.startsWith("http") || url.startsWith("/") || url.startsWith("data:image/")));
+}
+
 function imageFor(article: CmsArticle, fallbackIndex = 0) {
-  if (article.featuredImage && article.featuredImage.startsWith("http")) return article.featuredImage;
-  if (article.image && article.image.startsWith("http")) return article.image;
+  if (isValidImageUrl(article.featuredImage)) return article.featuredImage;
+  if (isValidImageUrl(article.image)) return article.image;
   return PRO_EDITORIAL_IMAGES[fallbackIndex % PRO_EDITORIAL_IMAGES.length];
+}
+
+function formatArabicLatinDate(dateStr?: string) {
+  if (!dateStr) return "";
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return dateStr;
+  return new Intl.DateTimeFormat("ar-MA-u-nu-latn", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
 }
 
 function formatCardDate(dateStr?: string, defaultTime = "7:00 PM"): string {
@@ -377,7 +392,33 @@ export function CmsHomePage() {
   const mostReadFallback = homepageArticles.filter((article) => article.id !== featured?.id);
   const mostRead = (markedMostRead.length ? markedMostRead : mostReadFallback.length ? mostReadFallback : homepageArticles).slice(0, 5);
   const regionalArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "regions");
-  const economyArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "economy");
+  const isEconomyArticle = (article: CmsArticle) => {
+    const rawCat = articleCategorySlug(state, article).trim().toLowerCase();
+    const matchedCat = homepageCategories.find(
+      (c) => c.id === article.categoryId || c.slug.toLowerCase() === rawCat || c.name.toLowerCase() === rawCat
+    );
+    return (
+      rawCat === "economy" ||
+      rawCat === "اقتصاد" ||
+      matchedCat?.slug.toLowerCase() === "economy" ||
+      matchedCat?.slug === "اقتصاد" ||
+      matchedCat?.name === "اقتصاد"
+    );
+  };
+  const economyArticles = effectiveArticles.filter(isEconomyArticle);
+  const economyKeywordPattern = /اقتصاد|مالية|المالية|الضرائب|المقاولات|استثمار|الزراعة|البنك|التعاونيات|رواد الأعمال/;
+  const economyRelatedFallback = effectiveArticles.filter(
+    (article) =>
+      !economyArticles.some((e) => e.id === article.id || e.slug === article.slug) &&
+      (economyKeywordPattern.test(article.title) || economyKeywordPattern.test(article.excerpt || ""))
+  );
+  const economyDisplayArticles = dedupeArticles([
+    ...economyArticles,
+    ...economyRelatedFallback,
+    ...effectiveArticles,
+  ]).slice(0, 4);
+  const heroEconomyArticle = economyDisplayArticles[0];
+  const sideEconomyArticles = economyDisplayArticles.slice(1, 4);
   const opinionArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "opinion");
 
   const [selectedRegionId, setSelectedRegionId] = useState<string>("oriental");
@@ -1034,7 +1075,7 @@ export function CmsHomePage() {
         </section>
       ) : null}
 
-      {/* Section: اقتصاد matching screenshot 2026-11-11 17.02.13 */}
+      {/* Section: اقتصاد */}
       <section className="font-sans pt-4" dir="rtl">
         {/* Header: "اقتصاد" with subtitle and "عرض الكل" */}
         <div className="mb-6 flex items-baseline justify-between border-b border-slate-200/80 pb-3">
@@ -1054,115 +1095,93 @@ export function CmsHomePage() {
           </Link>
         </div>
 
-        {/* 2-Column Economy Layout matching screenshot */}
+        {/* 2-Column Economy Layout with Real Category Articles & Real Photos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
           {/* Right Column: Hero Economy Article */}
-          <Link
-            href="/article/البنك-الدولي-يخصص-250-مليون-دولار-لدعم-الزراعة-المغربية-تحليل-الا-ثار-والا-فاق-المستقبلية-في-ظل-الا-زمة-الاقتصادية-والمالية"
-            className="group block"
-          >
-            {/* Emerald Geometric Pattern Artwork Banner */}
-            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#105949] to-[#0a382e] p-6 flex items-center justify-center shadow-md">
-              <svg className="w-full h-full opacity-35" viewBox="0 0 600 340" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <pattern id="islamic-grid-emerald" width="50" height="50" patternUnits="userSpaceOnUse">
-                    <rect x="25" y="0" width="25" height="25" fill="none" stroke="#6ee7b7" strokeWidth="1" transform="rotate(45 25 12.5)" />
-                    <circle cx="25" cy="25" r="18" fill="none" stroke="#a7f3d0" strokeWidth="1" />
-                    <rect x="10" y="10" width="30" height="30" fill="none" stroke="#34d399" strokeWidth="1" />
-                  </pattern>
-                </defs>
-                <rect width="600" height="340" fill="url(#islamic-grid-emerald)" />
-              </svg>
-            </div>
-
-            {/* Content under artwork */}
-            <div className="mt-4 text-right">
-              {/* Category tag */}
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#059669]">
-                <span className="inline-block size-2 rounded-xs bg-[#059669]" />
-                <span>تحليل</span>
+          {heroEconomyArticle ? (
+            <Link
+              href={`/article/${encodeURIComponent(heroEconomyArticle.slug)}`}
+              className="group block"
+            >
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-slate-100 shadow-md ring-1 ring-slate-200/80">
+                <Image
+                  src={imageFor(heroEconomyArticle, 0)}
+                  alt={heroEconomyArticle.title}
+                  fill
+                  sizes="(min-width: 1024px) 660px, 100vw"
+                  className="object-cover transition duration-500 group-hover:scale-105"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-60 transition group-hover:opacity-40" />
               </div>
 
-              {/* Title */}
-              <h3 className="mt-2 text-xl sm:text-2xl font-black leading-snug text-slate-950 font-serif transition group-hover:text-red-700">
-                البنك الدولي يخصص 250 مليون دولار لدعم الزراعة المغربية: تحليل الآثار والآفاق المستقبلية
-              </h3>
+              <div className="mt-4 text-right">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#059669]">
+                  <span className="inline-block size-2 rounded-xs bg-[#059669]" />
+                  <span>{articleCategorySlug(state, heroEconomyArticle) || "اقتصاد"}</span>
+                </div>
 
-              {/* Excerpt */}
-              <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                في وقتٍ تتزايد فيه التحديات البيئية والاقتصادية، أعلن البنك الدولي عن تخصيص 250 مليون دولار لدعم الزراعة المغربية في مواجهة التغيرات المناخية، في سياق يجمع بين تحديث القطاع وضمان الأمن الغذائي.
-              </p>
+                <h3 className="mt-2 text-xl sm:text-2xl font-black leading-snug text-slate-950 font-serif transition group-hover:text-red-700">
+                  {heroEconomyArticle.title}
+                </h3>
 
-              {/* Metadata */}
-              <div className="mt-3 text-xs font-semibold text-slate-400">
-                بقلم جمال السوسي · 28 يوليوز 2026
+                {heroEconomyArticle.excerpt ? (
+                  <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-normal line-clamp-3">
+                    {heroEconomyArticle.excerpt}
+                  </p>
+                ) : null}
+
+                <div className="mt-3 text-xs font-semibold text-slate-400 tabular-nums">
+                  {heroEconomyArticle.author ? `بقلم ${heroEconomyArticle.author} · ` : ""}
+                  {formatArabicLatinDate(heroEconomyArticle.publishDate || heroEconomyArticle.publishedAt)}
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+          ) : null}
 
-          {/* Left Column: 3 List items with geometric square thumbnails */}
+          {/* Left Column: 3 Real Articles with Real Thumbnails */}
           <div className="divide-y divide-slate-100 flex flex-col">
-            {[
-              {
-                id: "1",
-                category: "مالية",
-                catColor: "bg-[#e5aa32]",
-                patternBg: "from-[#c6891e] to-[#8d5f0d]",
-                patternStroke: "#fde68a",
-                title: "المدونة العامة للضرائب 2025: إصلاحات جديدة أم أعباء إضافية على المستثمرين والمواطنين؟",
-                date: "28 يوليوز 2026",
-                slug: "المدونة-العامة-للضراي-ب-2025-ا-صلاحات-جديدة-ا-م-ا-عباء-ا-ضافية-على-المستثمرين-والمواطنين",
-              },
-              {
-                id: "2",
-                category: "طاقة",
-                catColor: "bg-[#a6632e]",
-                patternBg: "from-[#854d24] to-[#5a3315]",
-                patternStroke: "#fed7aa",
-                title: "إفريقيا على مفترق الطرق: دعوة لتحويل الثروة الجيولوجية إلى ازدهار مستدام",
-                date: "25 يوليوز 2026",
-                slug: "ا-فريقيا-على-مفترق-الطرق-دعوة-لتحويل-الثروة-الجيولوجية-ا-لى-ازدهار-مستدام",
-              },
-              {
-                id: "3",
-                category: "مقاولات",
-                catColor: "bg-[#337a97]",
-                patternBg: "from-[#205b73] to-[#143949]",
-                patternStroke: "#bae6fd",
-                title: "المغرب 2026: بين وعود الحكومة وغرق المقاولات الصغيرة",
-                date: "25 يوليوز 2026",
-                slug: "المغرب-2026-بين-وعود-الحكومة-وغرق-المقاولات-الصغيرة",
-              },
-            ].map((item) => (
-              <Link
-                key={item.id}
-                href={`/article/${encodeURIComponent(item.slug)}`}
-                className="group flex items-start gap-4 py-5 first:pt-0"
-              >
-                {/* Text Content */}
-                <div className="flex-1 text-right">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1">
-                    <span className={`inline-block size-2 rounded-xs ${item.catColor}`} />
-                    <span>{item.category}</span>
+            {sideEconomyArticles.map((item, idx) => {
+              const dotColors = ["bg-[#e5aa32]", "bg-[#059669]", "bg-[#337a97]"];
+              const catLabel = articleCategorySlug(state, item) || "اقتصاد";
+              const dateLabel = formatArabicLatinDate(item.publishDate || item.publishedAt);
+              return (
+                <Link
+                  key={item.id || item.slug}
+                  href={`/article/${encodeURIComponent(item.slug)}`}
+                  className="group flex items-start gap-4 py-5 first:pt-0 last:pb-0"
+                >
+                  <div className="flex-1 text-right min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1">
+                      <span className={`inline-block size-2 rounded-xs ${dotColors[idx % dotColors.length]}`} />
+                      <span>{catLabel}</span>
+                    </div>
+                    <h4 className="text-sm sm:text-base font-black leading-snug text-slate-900 font-serif transition group-hover:text-red-700 line-clamp-2">
+                      {item.title}
+                    </h4>
+                    {item.excerpt ? (
+                      <p className="mt-1.5 text-xs text-slate-500 leading-relaxed line-clamp-2">
+                        {item.excerpt}
+                      </p>
+                    ) : null}
+                    <span className="mt-2 block text-xs text-slate-400 font-medium tabular-nums">
+                      {dateLabel}
+                    </span>
                   </div>
-                  <h4 className="text-sm sm:text-base font-black leading-snug text-slate-900 font-serif transition group-hover:text-red-700">
-                    {item.title}
-                  </h4>
-                  <span className="mt-2 block text-xs text-slate-400 font-medium tabular-nums">
-                    {item.date}
-                  </span>
-                </div>
 
-                {/* Square Geometric Pattern Artwork matching screenshot */}
-                <div className={`size-20 sm:size-24 rounded-xl bg-gradient-to-br ${item.patternBg} shrink-0 overflow-hidden shadow-xs flex items-center justify-center`}>
-                  <svg className="size-full opacity-40 p-2" viewBox="0 0 80 80" fill="none">
-                    <circle cx="40" cy="40" r="28" stroke={item.patternStroke} strokeWidth="1.5" />
-                    <rect x="20" y="20" width="40" height="40" stroke={item.patternStroke} strokeWidth="1.5" transform="rotate(45 40 40)" />
-                    <rect x="26" y="26" width="28" height="28" stroke={item.patternStroke} strokeWidth="1" />
-                  </svg>
-                </div>
-              </Link>
-            ))}
+                  <div className="relative h-20 w-28 sm:h-24 sm:w-32 rounded-xl bg-slate-100 shrink-0 overflow-hidden shadow-xs ring-1 ring-slate-200/80">
+                    <Image
+                      src={imageFor(item, idx + 1)}
+                      alt={item.title}
+                      fill
+                      sizes="(min-width: 640px) 128px, 112px"
+                      className="object-cover transition duration-300 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

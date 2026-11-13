@@ -254,7 +254,7 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
       className="relative z-40 w-full border-b border-red-950/40 bg-[#0b0e17] text-white shadow-md select-none font-sans"
       aria-label="شريط الأنباء العاجلة"
     >
-      <div className="mx-auto flex h-11 sm:h-12 w-full max-w-7xl px-4 sm:px-6 lg:px-8 items-stretch justify-between overflow-hidden">
+      <div className="mx-auto flex h-11 sm:h-12 w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 items-stretch justify-between overflow-hidden">
         {/* Right Badge: "شريط الأنباء العاجلة" */}
         <div className="relative z-20 flex shrink-0 items-center gap-2 bg-[#b91c1c] px-3 sm:px-5 text-white shadow-xl">
           <span className="text-xs sm:text-sm font-black tracking-wide whitespace-nowrap">
