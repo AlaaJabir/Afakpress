@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Mail,
   MapPin,
@@ -168,8 +169,14 @@ export function AfakFooter() {
             <div>
               {/* Brand Logo & Name */}
               <Link href="/" className="inline-flex items-center gap-3 group">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-900 text-white shadow-lg ring-1 ring-white/20 transition group-hover:scale-105">
-                  <span className="font-serif text-2xl font-black text-amber-300">أ</span>
+                <div className="flex h-12 w-24 shrink-0 items-center justify-center rounded-xl bg-white px-2 py-1 shadow-lg ring-1 ring-white/20 transition group-hover:scale-105">
+                  <Image
+                    src="/afakpress-logo.png"
+                    alt="Afakpress"
+                    width={140}
+                    height={77}
+                    className="h-full w-full object-contain"
+                  />
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-white tracking-wide group-hover:text-red-400 transition">

@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 import { useCms } from "@/lib/cms-store";
 import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState } from "@/lib/cms";
 import { moroccoRegions } from "@/data/morocco-regions";
 import { sanitizeArticleHtml } from "@/lib/article-html";
+import { ArticleComments } from "@/components/ArticleComments";
+import { FALLBACK_13EME_ARTICLES, type ThirteenthRegionArticle } from "@/lib/thirteenth-region";
+import type { PublicComment } from "@/lib/comments-store";
 
 interface RegionGridItem {
   id: string;
@@ -419,10 +423,68 @@ export function CmsHomePage() {
   ]).slice(0, 4);
   const heroEconomyArticle = economyDisplayArticles[0];
   const sideEconomyArticles = economyDisplayArticles.slice(1, 4);
-  const opinionArticles = homepageArticles.filter((article) => articleCategorySlug(state, article) === "opinion");
+  const opinionMatches = effectiveArticles.filter((article) => {
+    const rawCat = articleCategorySlug(state, article).trim().toLowerCase();
+    return (
+      rawCat === "opinion" ||
+      rawCat === "رأي" ||
+      /قراءة تحليلية|المقاربة الدبلوماسية|كواد|مفترق الطرق|الضرائب|وعود الحكومة/.test(article.title)
+    );
+  });
+  const opinionDisplayArticles = dedupeArticles([
+    ...opinionMatches,
+    ...effectiveArticles,
+  ]).slice(0, 3);
 
   const [selectedRegionId, setSelectedRegionId] = useState<string>("oriental");
   const selectedRegion = MOROCCO_12_REGIONS.find((r) => r.id === selectedRegionId) || MOROCCO_12_REGIONS[2];
+  const [thirteenthRegionArticles, setThirteenthRegionArticles] = useState<ThirteenthRegionArticle[]>(
+    FALLBACK_13EME_ARTICLES.slice(0, 4),
+  );
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [recentCommentsByArticle, setRecentCommentsByArticle] = useState<Record<string, PublicComment[]>>({});
+  const [openCommentArticleId, setOpenCommentArticleId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/external/13eme-region")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!active || !Array.isArray(payload?.articles) || payload.articles.length === 0) return;
+        setThirteenthRegionArticles((payload.articles as ThirteenthRegionArticle[]).slice(0, 4));
+      })
+      .catch(() => {
+        // Keep fallback 13eme-region snapshot on network failure
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/comments?summary=1")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!active || !payload) return;
+        if (payload.counts && typeof payload.counts === "object") {
+          setCommentCounts(payload.counts as Record<string, number>);
+        }
+        if (payload.recentByArticle && typeof payload.recentByArticle === "object") {
+          setRecentCommentsByArticle(payload.recentByArticle as Record<string, PublicComment[]>);
+        }
+      })
+      .catch(() => {
+        // Comments summary optional
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleOpinionCommentCount = useCallback((articleId: string, count: number) => {
+    setCommentCounts((prev) => (prev[articleId] === count ? prev : { ...prev, [articleId]: count }));
+  }, []);
 
   if (!hasLoadedFromSupabase && !featured) {
     return (
@@ -1190,6 +1252,175 @@ export function CmsHomePage() {
           </div>
         </div>
       </section>
+
+      {/* Section: آراء وقراءات */}
+      <section className="font-sans pt-4" dir="rtl">
+        <div className="mb-6 flex items-baseline justify-between border-b border-slate-200/80 pb-3">
+          <div className="flex items-baseline gap-4">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-serif">
+              آراء وقراءات
+            </h2>
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+              أوراق تحليلية ونقاش مدني
+            </span>
+          </div>
+          <Link
+            href="/category/opinion"
+            className="text-xs sm:text-sm font-bold text-slate-700 hover:text-red-700 transition"
+          >
+            عرض الكل
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-2">
+          {opinionDisplayArticles.map((item, idx) => {
+            const badgeColors = ["bg-[#0f172a]", "bg-[#1b5e73]", "bg-[#d9a01c]"];
+            const defaultAuthorNames = ["هيئة التحرير", "قلم الرأي", "متابعة وتحليل"];
+            const authorName =
+              item.author && item.author !== "Afakpress"
+                ? item.author
+                : defaultAuthorNames[idx % defaultAuthorNames.length];
+            const roleLabel = articleCategorySlug(state, item) || (idx === 1 ? "افتتاحية" : idx === 2 ? "مجتمع" : "تحليل");
+            const count = commentCounts[item.id] ?? 0;
+            const latestComment = recentCommentsByArticle[item.id]?.[0];
+            const isOpen = openCommentArticleId === item.id;
+
+            return (
+              <div
+                key={item.id || item.slug}
+                className="border-t border-slate-200/90 pt-5 flex flex-col text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-black text-white ${
+                      badgeColors[idx % badgeColors.length]
+                    }`}
+                  >
+                    {authorName.trim().slice(0, 1)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-slate-900 truncate">{authorName}</p>
+                    <p className="text-[11px] font-medium text-slate-500 truncate">{roleLabel}</p>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/article/${encodeURIComponent(item.slug)}`}
+                  className="group block mt-4"
+                >
+                  <h3 className="text-base sm:text-lg font-black leading-snug text-slate-950 font-serif transition group-hover:text-red-700 line-clamp-3">
+                    {item.title}
+                  </h3>
+                  {item.excerpt ? (
+                    <p className="mt-2.5 text-xs sm:text-[13px] leading-relaxed text-slate-500 line-clamp-2">
+                      {item.excerpt}
+                    </p>
+                  ) : null}
+                </Link>
+
+                {latestComment ? (
+                  <p className="mt-3 border-r-2 border-slate-300 pr-2.5 text-[11px] leading-relaxed text-slate-600 line-clamp-2">
+                    <span className="font-bold text-slate-800">{latestComment.author}: </span>
+                    {latestComment.content}
+                  </p>
+                ) : null}
+
+                <div className="mt-auto pt-3 flex items-center justify-between gap-2 text-[11px] font-bold text-slate-500">
+                  <button
+                    type="button"
+                    onClick={() => setOpenCommentArticleId(isOpen ? null : item.id)}
+                    className="inline-flex items-center gap-1.5 text-slate-600 hover:text-red-700 transition cursor-pointer"
+                  >
+                    <MessageSquare className="size-3.5" aria-hidden="true" />
+                    <span className="tabular-nums">
+                      {isOpen ? "إغلاق التعليقات" : `تعليقات القراء (${count})`}
+                    </span>
+                  </button>
+                  <Link
+                    href={`/article/${encodeURIComponent(item.slug)}#comments`}
+                    className="text-slate-400 hover:text-red-700 transition"
+                  >
+                    شارك برأيك
+                  </Link>
+                </div>
+
+                {isOpen ? (
+                  <ArticleComments
+                    articleId={item.id}
+                    articleTitle={item.title}
+                    compact
+                    onCountChange={(nextCount) => handleOpinionCommentCount(item.id, nextCount)}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Section: الجهة الثالثة عشرة (مغاربة العالم - 13emeregion.vercel.app) */}
+      <section className="font-sans pt-4" dir="rtl">
+        <div className="mb-6 flex items-baseline justify-between border-b border-slate-200/80 pb-3">
+          <div className="flex items-baseline gap-4">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-serif">
+              الجهة الثالثة عشرة
+            </h2>
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+              مغاربة العالم
+            </span>
+          </div>
+          <Link
+            href="/13eme-region"
+            className="text-xs sm:text-sm font-bold text-slate-700 hover:text-red-700 transition"
+          >
+            عرض الكل
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start pt-2">
+          {/* Right Column: Dashed 13 Card + Title + Description */}
+          <div className="lg:col-span-4 text-right">
+            <Link
+              href="/13eme-region"
+              className="group block rounded-xl border-2 border-dashed border-slate-800 bg-transparent p-6 min-h-[210px] flex flex-col justify-between transition hover:bg-white/70"
+            >
+              <span className="block text-6xl sm:text-7xl font-black tracking-tight text-slate-900 leading-none tabular-nums">
+                13
+              </span>
+              <span className="block text-xs sm:text-sm font-bold leading-snug text-slate-800 mt-10">
+                خارج الخريطة،
+                <br />
+                داخل الوطن
+              </span>
+            </Link>
+
+            <h3 className="mt-5 text-xl sm:text-2xl font-black leading-snug text-slate-950 font-serif">
+              أخبار الجالية من لندن إلى واشنطن
+            </h3>
+            <p className="mt-2 text-xs sm:text-sm leading-relaxed text-slate-500">
+              أخبار المغاربة المقيمين بالخارج: احتفالات وطنية، ريادة أعمال، وعلاقة الجالية بالمؤسسات.
+            </p>
+          </div>
+
+          {/* Left Column: 2x2 Grid of Live Articles from 13emeregion.vercel.app */}
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-7 lg:pt-8">
+            {thirteenthRegionArticles.slice(0, 4).map((item) => (
+              <Link
+                key={item.id}
+                href={`/13eme-region/${encodeURIComponent(item.id)}`}
+                className="group block border-t border-slate-200/90 pt-4 text-right"
+              >
+                <span className="block text-xs font-medium text-slate-500">
+                  --- {item.countryName}
+                </span>
+                <h4 className="mt-2 text-base sm:text-[17px] font-black leading-snug text-slate-950 font-serif transition group-hover:text-red-700 line-clamp-2">
+                  {item.title}
+                </h4>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1222,9 +1453,10 @@ export function CmsArticlePage({ slug }: { slug: string }) {
         </div>
       </div>
       <div className="relative mt-8 h-[420px] w-full overflow-hidden bg-slate-200 lg:h-[560px]">
-        <Image src={imageFor(article)} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" />
+        <Image src={imageFor(article)} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" referrerPolicy="no-referrer" />
       </div>
       <div className="article-content mt-8 text-lg text-slate-700" dir="auto" dangerouslySetInnerHTML={{ __html: content }} />
+      <ArticleComments articleId={article.id} articleTitle={article.title} />
     </article>
   );
 }
@@ -1232,7 +1464,15 @@ export function CmsArticlePage({ slug }: { slug: string }) {
 export function CmsCategoryPage({ slug }: { slug: string }) {
   const { state } = useCms();
   const category = state.categories.find((item) => item.slug === slug);
-  const categoryArticles = publishedArticles(state).filter((article) => articleCategorySlug(state, article) === slug);
+  const directMatches = publishedArticles(state).filter((article) => articleCategorySlug(state, article) === slug);
+  const categoryArticles =
+    directMatches.length > 0
+      ? directMatches
+      : slug === "opinion"
+        ? publishedArticles(state).filter((article) =>
+            /قراءة تحليلية|المقاربة الدبلوماسية|كواد|مفترق الطرق|الضرائب|وعود الحكومة/.test(article.title),
+          )
+        : [];
 
   if (!category) {
     return <p className="border border-slate-200 bg-white p-6 text-slate-600">Category not found.</p>;

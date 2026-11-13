@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { PublicArticle, PublicEntity, PublicLocation } from "@/lib/public-content";
 import { sanitizeArticleHtml } from "@/lib/article-html";
+import { ArticleComments } from "@/components/ArticleComments";
 
 const fallbackImage = "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
 const emptyMessage = "لا توجد مقالات منشورة في هذه الصفحة حالياً.";
@@ -106,10 +107,11 @@ export function PublicArticleView({ article }: { article: PublicArticle }) {
       </div>
       {article.featured_image ? (
         <div className="relative mt-8 h-[420px] w-full overflow-hidden bg-slate-200 lg:h-[560px]">
-          <Image src={article.featured_image} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" />
+          <Image src={article.featured_image} alt="" fill priority sizes="(min-width: 1024px) 896px, 100vw" className="object-cover" referrerPolicy="no-referrer" />
         </div>
       ) : null}
       <div className="article-content mt-8 text-lg text-slate-700" dir="auto" dangerouslySetInnerHTML={{ __html: content }} />
+      <ArticleComments articleId={article.id} articleTitle={article.title} />
     </article>
   );
 }

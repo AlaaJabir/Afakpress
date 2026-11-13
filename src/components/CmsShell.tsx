@@ -185,48 +185,50 @@ function Chrome({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Ultra-compact Mobile Single-Row Header (< md) */}
-        <div className="mx-auto flex h-12 max-w-[1400px] items-center justify-between px-3.5 md:hidden" dir="rtl">
-          <Link
-            href="/"
-            className="flex h-9 w-[112px] shrink-0 items-center justify-start"
-            aria-label="Afakpress"
-          >
-            <Image
-              src="/afakpress-logo.png"
-              alt="Afakpress"
-              width={112}
-              height={36}
-              priority
-              className="h-full w-full object-contain object-right"
-            />
-          </Link>
-
-          <div className="flex items-center gap-1">
+        {/* Ultra-compact Sticky Mobile Single-Row Header (< md) */}
+        <div className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur-md md:hidden">
+          <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-3.5" dir="rtl">
             <Link
               href="/"
-              aria-label="الرئيسية"
-              className="flex size-9 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 hover:text-red-700"
+              className="flex shrink-0 items-center py-0.5"
+              aria-label="Afakpress"
             >
-              <Home className="size-[18px] text-red-700" />
+              <Image
+                src="/afakpress-logo.png"
+                alt="Afakpress"
+                width={160}
+                height={88}
+                priority
+                className="h-12 w-auto object-contain"
+              />
             </Link>
-            <button
-              type="button"
-              onClick={() => setMobileSearchOpen((prev) => !prev)}
-              aria-label="بحث"
-              aria-expanded={mobileSearchOpen}
-              className={`flex size-9 items-center justify-center rounded-lg transition ${
-                mobileSearchOpen ? "bg-red-50 text-red-700" : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              {mobileSearchOpen ? <X className="size-[18px]" /> : <Search className="size-[18px]" />}
-            </button>
-          </div>
-        </div>
 
-        {mobileSearchOpen ? (
-          <MobileSearchDrawer articles={published} onClose={() => setMobileSearchOpen(false)} />
-        ) : null}
+            <div className="flex items-center gap-1">
+              <Link
+                href="/"
+                aria-label="الرئيسية"
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 hover:text-red-700"
+              >
+                <Home className="size-[18px] text-red-700" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen((prev) => !prev)}
+                aria-label="بحث"
+                aria-expanded={mobileSearchOpen}
+                className={`flex size-9 items-center justify-center rounded-lg transition ${
+                  mobileSearchOpen ? "bg-red-50 text-red-700" : "text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {mobileSearchOpen ? <X className="size-[18px]" /> : <Search className="size-[18px]" />}
+              </button>
+            </div>
+          </div>
+
+          {mobileSearchOpen ? (
+            <MobileSearchDrawer articles={published} onClose={() => setMobileSearchOpen(false)} />
+          ) : null}
+        </div>
 
         {/* Desktop Header (>= md) */}
         <div className="mx-auto hidden max-w-[1400px] px-4 sm:px-6 md:block lg:px-8">

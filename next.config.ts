@@ -38,6 +38,11 @@ const nextConfig: NextConfig = {
         hostname: supabaseHostname,
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "13emeregion.vercel.app",
+        pathname: "/**",
+      },
     ],
   },
   turbopack: {
