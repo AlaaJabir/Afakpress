@@ -412,52 +412,73 @@ export function MegaMenu({
         </div>
       ) : null}
 
-      {/* Mobile Navigation */}
+      {/* Mobile Navigation: Ultra-slim single-line bar */}
       <nav className="w-full lg:hidden" aria-label="Mobile navigation" dir="rtl">
-        <div className="flex items-center justify-between gap-2 py-2">
-          {/* Mobile Categories Button */}
+        <div className="flex h-9 items-center justify-between gap-2">
+          {/* Quick Category Drawer Trigger */}
           <button
             type="button"
             onClick={() => {
               setCategoriesOpen((prev) => !prev);
               setMobileOpen(false);
             }}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#b91c1c] px-3 py-2 text-xs font-black text-white shadow-sm"
+            className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-black transition ${
+              categoriesOpen ? "bg-red-700 text-white" : "text-red-700 hover:bg-red-50"
+            }`}
           >
-            <Newspaper className="size-4 shrink-0" />
-            <span>أخبار وطنية (الأقسام)</span>
-            <ChevronDown className={`size-3.5 transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
+            <Newspaper className="size-3.5 shrink-0" />
+            <span>الأقسام</span>
+            <ChevronDown className={`size-3 transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
           </button>
 
-          {/* Mobile Regions Toggle */}
+          <span className="h-3.5 w-px shrink-0 bg-slate-200" />
+
+          {/* Fluid Single-Line Quick Links */}
+          <div className="no-scrollbar flex flex-1 items-center gap-3 overflow-x-auto whitespace-nowrap px-1 text-[11px] font-bold text-slate-600">
+            {ARABIC_CATEGORIES.slice(0, 5).map((cat) => (
+              <Link
+                key={cat.slug}
+                href={`/category/${encodeURIComponent(cat.slug)}`}
+                className="shrink-0 transition hover:text-red-700"
+              >
+                {cat.name.split(" ")[0]}
+              </Link>
+            ))}
+          </div>
+
+          <span className="h-3.5 w-px shrink-0 bg-slate-200" />
+
+          {/* Compact Regions Trigger */}
           <button
+            type="button"
             aria-expanded={mobileOpen}
-            className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-800"
             onClick={() => {
               setMobileOpen((current) => !current);
               setCategoriesOpen(false);
             }}
-            type="button"
+            className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-black transition ${
+              mobileOpen ? "bg-slate-900 text-white" : "text-slate-800 hover:bg-slate-100"
+            }`}
           >
-            <span>المناطق (12 جهة)</span>
-            <span aria-hidden="true" className="text-base text-red-700">{mobileOpen ? "▲" : "▼"}</span>
+            <MapPin className="size-3.5 shrink-0 text-red-700" />
+            <span>الجهات</span>
+            <ChevronDown className={`size-3 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
           </button>
         </div>
 
         {/* Mobile Categories Dropdown */}
         {categoriesOpen && (
-          <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-lg">
-            <p className="text-xs font-black text-slate-900 mb-2.5">الأقسام الإخبارية:</p>
-            <div className="grid grid-cols-2 gap-2">
+          <div className="mb-2.5 rounded-xl border border-slate-200 bg-white p-2.5 shadow-lg">
+            <div className="grid grid-cols-2 gap-1.5">
               {ARABIC_CATEGORIES.map((cat) => (
                 <Link
                   key={cat.slug}
                   href={`/category/${encodeURIComponent(cat.slug)}`}
                   onClick={() => setCategoriesOpen(false)}
-                  className="flex items-center gap-2 rounded-lg bg-slate-50 p-2 text-xs font-bold text-slate-800 transition hover:bg-red-50 hover:text-red-700"
+                  className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 text-xs font-bold text-slate-800 transition hover:bg-red-50 hover:text-red-700"
                 >
-                  <span className="h-2 w-2 rounded-full bg-red-600" />
-                  <span>{cat.name}</span>
+                  <span className="size-1.5 rounded-full bg-red-600 shrink-0" />
+                  <span className="truncate">{cat.name}</span>
                 </Link>
               ))}
             </div>
@@ -466,7 +487,7 @@ export function MegaMenu({
 
         {mobileOpen ? (
           <ul
-            className="-mx-4 grid max-h-[calc(100dvh-12rem)] gap-1 overflow-y-auto overscroll-contain border-y border-slate-200 bg-white px-4 py-2 shadow-lg sm:-mx-6 sm:px-6"
+            className="-mx-3.5 grid max-h-[65dvh] gap-0.5 overflow-y-auto overscroll-contain border-y border-slate-200 bg-white px-3.5 py-1.5 shadow-lg sm:-mx-6 sm:px-6"
             role="menu"
           >
             {regionItems.map((item) => (

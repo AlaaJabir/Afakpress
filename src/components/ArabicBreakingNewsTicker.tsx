@@ -158,17 +158,17 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
       aria-label="شريط الأنباء العاجلة"
     >
       {/* Top 12-region color stripe */}
-      <div className="grid h-[5px] w-full grid-cols-12">
+      <div className="grid h-[3px] sm:h-[5px] w-full grid-cols-12">
         {REGION_STRIPE_COLORS.map((color) => (
           <span key={color} style={{ backgroundColor: color }} />
         ))}
       </div>
 
       {/* Main Breaking News Bar */}
-      <div className="mx-auto flex h-11 w-full max-w-[1400px] items-stretch overflow-hidden px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-9 sm:h-11 w-full max-w-[1400px] items-stretch overflow-hidden px-3.5 sm:px-6 lg:px-8">
         {/* Right Solid Red Badge: "عاجل" */}
-        <div className="flex shrink-0 items-center justify-center bg-[#cc2828] px-5 sm:px-6 text-white">
-          <span className="text-sm sm:text-[15px] font-black tracking-wide whitespace-nowrap">
+        <div className="flex shrink-0 items-center justify-center bg-[#cc2828] px-3.5 sm:px-6 text-white">
+          <span className="text-xs sm:text-[15px] font-black tracking-wide whitespace-nowrap">
             عاجل
           </span>
         </div>
@@ -178,18 +178,18 @@ export function ArabicBreakingNewsTicker({ breakingNews = [], articles = [] }: A
           ref={scrollContainerRef}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="no-scrollbar flex flex-1 items-center overflow-x-hidden whitespace-nowrap pr-5 pl-2 cursor-pointer"
+          className="no-scrollbar flex flex-1 items-center overflow-x-hidden whitespace-nowrap pr-3.5 sm:pr-5 pl-2 cursor-pointer"
         >
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
             {displayedItems.map((item, index) => {
               const itemKey = `${item.id}-${index}`;
               const href = item.url || (item.slug ? `/article/${encodeURIComponent(item.slug)}` : null);
 
               return (
-                <div key={itemKey} className="inline-flex items-center gap-5 text-sm sm:text-[15px]">
+                <div key={itemKey} className="inline-flex items-center gap-3.5 sm:gap-5 text-xs sm:text-[15px]">
                   <span
                     aria-hidden="true"
-                    className="inline-block size-2 rotate-45 bg-[#d99b1e] shrink-0"
+                    className="inline-block size-1.5 sm:size-2 rotate-45 bg-[#d99b1e] shrink-0"
                   />
                   {href ? (
                     <Link

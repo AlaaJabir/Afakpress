@@ -442,12 +442,12 @@ export function CmsHomePage() {
   }
 
   return (
-    <div className="space-y-14">
+    <div className="space-y-8 sm:space-y-12 lg:space-y-14">
       {isLoading ? <p className="border border-slate-200 bg-white p-4 text-sm font-bold text-slate-600">Loading latest newsroom data...</p> : null}
       {error ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">{error}</p> : null}
       {show("Featured Slider") && featured ? (
         <section
-          className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-10 items-start font-sans"
+          className="flex flex-col-reverse lg:flex-row gap-6 sm:gap-8 lg:gap-10 items-start font-sans"
           dir="rtl"
         >
           {/* LEFT COLUMN: Morocco 12 Regions Mosaic & Interactive Box (approx 36% width) */}
@@ -462,8 +462,8 @@ export function CmsHomePage() {
               </p>
             </div>
 
-            {/* Mosaic Grid: 4 columns corresponding to screenshot placement */}
-            <div className="grid grid-cols-4 gap-2 text-center text-white">
+            {/* Mosaic Grid: 2 columns on mobile (clean compact grid), 4 columns geographic mosaic on sm+ */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 text-center text-white">
               {/* Row 1: Tanger, Fes, Oriental (Active by default), Diaspora */}
               {MOROCCO_12_REGIONS.slice(0, 4).map((region) => {
                 const isActive = region.id === selectedRegionId;
@@ -472,13 +472,13 @@ export function CmsHomePage() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                    className={`relative flex flex-col justify-between rounded-lg p-2 sm:p-2.5 transition duration-200 text-right cursor-pointer min-h-[64px] sm:min-h-[92px] ${
                       region.bgColor
                     } ${region.hoverBgColor} ${
-                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                      isActive ? "ring-2 sm:ring-3 ring-slate-900 shadow-md sm:scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
                     }`}
                   >
-                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                    <span className="text-xs sm:text-[13px] font-black leading-snug line-clamp-2">
                       {region.name}
                     </span>
                     <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
@@ -496,13 +496,13 @@ export function CmsHomePage() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                    className={`relative flex flex-col justify-between rounded-lg p-2 sm:p-2.5 transition duration-200 text-right cursor-pointer min-h-[64px] sm:min-h-[92px] ${
                       region.bgColor
                     } ${region.hoverBgColor} ${
-                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                      isActive ? "ring-2 sm:ring-3 ring-slate-900 shadow-md sm:scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
                     }`}
                   >
-                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                    <span className="text-xs sm:text-[13px] font-black leading-snug line-clamp-2">
                       {region.name}
                     </span>
                     <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
@@ -511,7 +511,7 @@ export function CmsHomePage() {
                   </button>
                 );
               })}
-              <div className="col-span-2 flex items-center justify-center p-2 text-[11px] leading-relaxed text-slate-400 font-medium text-center">
+              <div className="hidden sm:flex col-span-2 items-center justify-center p-2 text-[11px] leading-relaxed text-slate-400 font-medium text-center">
                 خريطة تحريرية مبسطة. الشمال في الأعلى، والغرب جهة المحيط.
               </div>
 
@@ -523,13 +523,13 @@ export function CmsHomePage() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                    className={`relative flex flex-col justify-between rounded-lg p-2 sm:p-2.5 transition duration-200 text-right cursor-pointer min-h-[64px] sm:min-h-[92px] ${
                       region.bgColor
                     } ${region.hoverBgColor} ${
-                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                      isActive ? "ring-2 sm:ring-3 ring-slate-900 shadow-md sm:scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
                     }`}
                   >
-                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                    <span className="text-xs sm:text-[13px] font-black leading-snug line-clamp-2">
                       {region.name}
                     </span>
                     <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
@@ -539,7 +539,7 @@ export function CmsHomePage() {
                 );
               })}
               {/* Empty placeholder cell 4 */}
-              <div />
+              <div className="hidden sm:block" />
 
               {/* Row 4: Souss Massa */}
               {MOROCCO_12_REGIONS.slice(9, 10).map((region) => {
@@ -549,13 +549,13 @@ export function CmsHomePage() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                    className={`relative flex flex-col justify-between rounded-lg p-2 sm:p-2.5 transition duration-200 text-right cursor-pointer min-h-[64px] sm:min-h-[92px] ${
                       region.bgColor
                     } ${region.hoverBgColor} ${
-                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                      isActive ? "ring-2 sm:ring-3 ring-slate-900 shadow-md sm:scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
                     }`}
                   >
-                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                    <span className="text-xs sm:text-[13px] font-black leading-snug line-clamp-2">
                       {region.name}
                     </span>
                     <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
@@ -564,7 +564,7 @@ export function CmsHomePage() {
                   </button>
                 );
               })}
-              <div className="col-span-3" />
+              <div className="hidden sm:block col-span-3" />
 
               {/* Row 5: Guelmim Oued Noun */}
               {MOROCCO_12_REGIONS.slice(10, 11).map((region) => {
@@ -574,13 +574,13 @@ export function CmsHomePage() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                    className={`relative flex flex-col justify-between rounded-lg p-2 sm:p-2.5 transition duration-200 text-right cursor-pointer min-h-[64px] sm:min-h-[92px] ${
                       region.bgColor
                     } ${region.hoverBgColor} ${
-                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                      isActive ? "ring-2 sm:ring-3 ring-slate-900 shadow-md sm:scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
                     }`}
                   >
-                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                    <span className="text-xs sm:text-[13px] font-black leading-snug line-clamp-2">
                       {region.name}
                     </span>
                     <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
@@ -589,7 +589,7 @@ export function CmsHomePage() {
                   </button>
                 );
               })}
-              <div className="col-span-3" />
+              <div className="hidden sm:block col-span-3" />
 
               {/* Row 6: Laayoune Sakia El Hamra */}
               {MOROCCO_12_REGIONS.slice(11, 12).map((region) => {
@@ -599,13 +599,13 @@ export function CmsHomePage() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                    className={`relative flex flex-col justify-between rounded-lg p-2 sm:p-2.5 transition duration-200 text-right cursor-pointer min-h-[64px] sm:min-h-[92px] ${
                       region.bgColor
                     } ${region.hoverBgColor} ${
-                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                      isActive ? "ring-2 sm:ring-3 ring-slate-900 shadow-md sm:scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
                     }`}
                   >
-                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                    <span className="text-xs sm:text-[13px] font-black leading-snug line-clamp-2">
                       {region.name}
                     </span>
                     <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
@@ -614,7 +614,7 @@ export function CmsHomePage() {
                   </button>
                 );
               })}
-              <div className="col-span-3" />
+              <div className="hidden sm:block col-span-3" />
 
               {/* Row 7: Dakhla Oued Ed-Dahab */}
               {MOROCCO_12_REGIONS.slice(12, 13).map((region) => {
@@ -624,13 +624,13 @@ export function CmsHomePage() {
                     key={region.id}
                     type="button"
                     onClick={() => setSelectedRegionId(region.id)}
-                    className={`relative flex flex-col justify-between rounded-lg p-2.5 transition duration-200 text-right cursor-pointer min-h-[92px] ${
+                    className={`relative flex flex-col justify-between rounded-lg p-2 sm:p-2.5 transition duration-200 text-right cursor-pointer min-h-[64px] sm:min-h-[92px] ${
                       region.bgColor
                     } ${region.hoverBgColor} ${
-                      isActive ? "ring-3 ring-slate-900 shadow-md scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
+                      isActive ? "ring-2 sm:ring-3 ring-slate-900 shadow-md sm:scale-[1.02] z-10" : "shadow-xs hover:opacity-95"
                     }`}
                   >
-                    <span className="text-[13px] font-black leading-snug line-clamp-2">
+                    <span className="text-xs sm:text-[13px] font-black leading-snug line-clamp-2">
                       {region.name}
                     </span>
                     <span className="text-[10px] opacity-90 font-bold block mt-auto tabular-nums">
@@ -639,7 +639,7 @@ export function CmsHomePage() {
                   </button>
                 );
               })}
-              <div className="col-span-3" />
+              <div className="hidden sm:block col-span-3" />
             </div>
 
             {/* Active Region Preview Card matching screenshot */}
@@ -824,7 +824,7 @@ export function CmsHomePage() {
             </div>
 
             {/* Vertical Timeline Feed */}
-            <div className="relative border-r border-slate-200/90 pr-6 sm:pr-8 space-y-8 mr-1 sm:mr-2">
+            <div className="relative border-r border-slate-200/90 pr-4 sm:pr-8 space-y-6 sm:space-y-8 mr-1.5 sm:mr-24">
               {[
                 {
                   id: "1",
@@ -872,13 +872,13 @@ export function CmsHomePage() {
                 },
               ].map((item) => (
                 <article key={item.id} className="relative group">
-                  {/* Timeline Dot positioned right on the border line */}
+                  {/* Timeline Dot positioned cleanly on the border line */}
                   <span
-                    className={`absolute -right-[31px] sm:-right-[39px] top-1.5 size-3 rounded-full ${item.dotColor} ring-4 ring-white shadow-xs`}
+                    className={`absolute -right-[21.5px] sm:-right-[38.5px] top-1.5 size-2.5 sm:size-3 rounded-full ${item.dotColor} ring-4 ring-white shadow-xs`}
                   />
 
-                  {/* Date & Time Column on the right of the line */}
-                  <div className="absolute -right-24 sm:-right-28 top-0 text-left w-16 select-none" dir="ltr">
+                  {/* Desktop Date & Time Column on the right of the line */}
+                  <div className="hidden sm:block absolute -right-28 top-0 text-left w-16 select-none" dir="ltr">
                     <span className="block text-xs font-black text-slate-900 tabular-nums">
                       {item.time}
                     </span>
@@ -888,11 +888,16 @@ export function CmsHomePage() {
                   </div>
 
                   {/* Content Box */}
-                  <div className="pr-2">
-                    {/* Category tag */}
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-1.5">
-                      <span className={`inline-block size-2 rounded-xs ${item.tagColor}`} />
-                      <span>{item.category}</span>
+                  <div className="pr-1 sm:pr-2">
+                    {/* Category tag + Mobile inline timestamp */}
+                    <div className="flex items-center justify-between gap-2 text-xs font-bold text-slate-700 mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-block size-2 rounded-xs ${item.tagColor}`} />
+                        <span>{item.category}</span>
+                      </div>
+                      <span className="sm:hidden text-[11px] font-semibold text-slate-400 tabular-nums" dir="ltr">
+                        {item.time} · {item.date}
+                      </span>
                     </div>
 
                     {/* Headline */}
