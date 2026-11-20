@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase";
 
 export type TerritoryKind = "region" | "province" | "commune";
@@ -74,7 +75,7 @@ async function fetchAll<T>(queryFactory: (from: number, to: number) => PromiseLi
   }
 }
 
-export async function getTerritoriesHomeData(): Promise<TerritoryResult<{
+async function loadTerritoriesHomeData(): Promise<TerritoryResult<{
   regions: Array<TerritoryEntity & { href: string; officialCount: number }>;
   searchItems: Array<{ name: string; nameAr: string; href: string; type: TerritoryKind }>;
   officials: TerritoryOfficial[];
@@ -120,7 +121,7 @@ export async function getTerritoriesHomeData(): Promise<TerritoryResult<{
   }
 }
 
-export async function getTerritoryPageData(input: {
+async function loadTerritoryPageData(input: {
   type: TerritoryKind;
   regionSlug: string;
   provinceSlug?: string;
@@ -225,4 +226,39 @@ export async function getTerritoryPageData(input: {
     if (process.env.NODE_ENV !== "production") console.error("[territories/page]", error);
     return { status: "error" };
   }
+}
+
+export function getTerritoriesHomeData() {
+  return unstable_cache(loadTerritoriesHomeData, ["afakpress-territories-home-v1"], {
+    revalidate: 300,
+    tags: ["territories", "officials"],
+  })();
+}
+
+export function getTerritoryPageData(input: {
+  type: TerritoryKind;
+  regionSlug: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+}) {
+  return unstable_cache(loadTerritoryPageData, ["afakpress-territory-page-v1"], {
+    revalidate: 300,
+    tags: ["territories", "officials", "articles"],
+  })(input);
+}
+
+export async function getTerritoryStaticParams(type: "region" | "province") {
+  const supabase = createServerSupabaseClient();
+  if (!supabase) return [];
+  if (type === "region") {
+    const { data, error } = await supabase.from("regions").select("slug").order("sort_order");
+    if (error) return [];
+    return (data ?? []).filter((item) => item.slug).map((item) => ({ region: item.slug as string }));
+  }
+  const { data, error } = await supabase.from("provinces").select("slug,region:regions!provinces_region_id_fkey(slug)").order("name");
+  if (error) return [];
+  return (data ?? []).flatMap((item) => {
+    const parent = item.region as unknown as { slug: string } | null;
+    return item.slug && parent?.slug ? [{ region: parent.slug, province: item.slug }] : [];
+  });
 }
