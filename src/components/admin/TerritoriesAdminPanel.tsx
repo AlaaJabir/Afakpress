@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { useCms } from "@/lib/cms-store";
 
@@ -104,7 +104,7 @@ export function TerritoriesAdminPanel() {
       .some((value) => value?.toLocaleLowerCase().includes(term));
   }), [officials, regionSearch]);
 
-  async function loadOfficials() {
+  const loadOfficials = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -117,9 +117,9 @@ export function TerritoriesAdminPanel() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function loadArticleLinks() {
+  const loadArticleLinks = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/article-territories", { cache: "no-store" });
       const result = await response.json();
@@ -128,7 +128,7 @@ export function TerritoriesAdminPanel() {
     } catch (loadError) {
       setError(messageFrom(loadError));
     }
-  }
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -136,7 +136,7 @@ export function TerritoriesAdminPanel() {
       void loadArticleLinks();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [loadOfficials, loadArticleLinks]);
 
   function editOfficial(official: Official) {
     const provinceEntry = official.province_id
