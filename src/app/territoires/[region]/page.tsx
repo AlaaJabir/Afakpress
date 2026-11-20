@@ -22,6 +22,6 @@ export default async function TerritoryRegionPage({ params }: Props) {
   const { region } = await params;
   const result = await getTerritoryPageData({ type: "region", regionSlug: region });
   if (result.status === "not-found") notFound();
-  if (result.status !== "ok") return <main className="mx-auto max-w-4xl px-4 py-20 text-center">Les données de cette région sont temporairement indisponibles.</main>;
+  if (result.status !== "ok") return <div className="mx-auto max-w-4xl px-4 py-20 text-center">Les données de cette région sont temporairement indisponibles.</div>;
   return <TerritoryDetailView data={result.data} />;
 }
