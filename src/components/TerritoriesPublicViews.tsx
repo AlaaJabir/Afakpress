@@ -86,7 +86,7 @@ export function TerritoriesHomeView({ regions, searchItems, officials }: {
   }, [query, searchItems]);
   const selectedOfficials = officials.filter((official) => official.region_id === selected?.id);
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" dir="ltr">
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" dir="ltr">
       <header className="mb-8">
         <p className="text-sm font-black uppercase tracking-[0.18em] text-red-700">Afakpress · Maroc</p>
         <h1 className="mt-3 text-4xl font-black text-slate-950 sm:text-5xl">{t.home}</h1>
@@ -123,7 +123,7 @@ export function TerritoriesHomeView({ regions, searchItems, officials }: {
           <Link href={selected.href} className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-red-700 px-4 text-sm font-bold text-white hover:bg-red-800">Consulter la région</Link>
         </aside> : null}
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -148,7 +148,7 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
   ];
   if (data.type === "commune") breadcrumb.push({ label: title, href: "#" });
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" dir="ltr">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" dir="ltr">
       <nav aria-label="Fil d’Ariane" className="mb-6 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
         {breadcrumb.map((item, index) => <span key={item.href + index} className="flex items-center gap-2"><Link href={item.href} className="hover:text-red-700">{item.label}</Link>{index < breadcrumb.length - 1 ? <span aria-hidden="true">/</span> : null}</span>)}
       </nav>
@@ -186,6 +186,6 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
         </div>
         {articles.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{articles.map((article) => <ArticleCard key={article.id} article={article} />)}</div> : <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{t.noNews}</p>}
       </section>
-    </main>
+    </div>
   );
 }
