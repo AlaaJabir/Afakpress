@@ -30,7 +30,7 @@ function validPayload(value: unknown) {
   const role = typeof input.role === "string" ? input.role.trim() : "";
   if (!fullName || !role || fullName.length > 180 || role.length > 180) return null;
   const house = input.house === "conseil" || input.house === "chambre_representants" || input.house === "chambre_conseillers" ? input.house : null;
-  const photoPath = typeof input.photo_path === "string" && input.photo_path.startsWith("officials/") ? input.photo_path : null;
+  const photoPath = typeof input.photo_path === "string" && /^officials\\/[0-9a-f-]+\\.(webp|png|jpg)$/i.test(input.photo_path) ? input.photo_path : null;
   return {
     territory_type: territoryType,
     region_id: regionId,
