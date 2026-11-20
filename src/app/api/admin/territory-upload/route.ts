@@ -30,7 +30,7 @@ export async function DELETE(request: Request) {
   if (!supabase) return Response.json({ error: "Supabase server configuration is missing." }, { status: 500 });
   const body = await request.json() as { path?: unknown };
   const path = typeof body.path === "string" ? body.path : "";
-  if (!path.startsWith("officials/") || path.includes("..")) return Response.json({ error: "Invalid storage path." }, { status: 400 });
+  if (!/^officials\\/[0-9a-f-]+\\.(webp|png|jpg)$/i.test(path)) return Response.json({ error: "Invalid storage path." }, { status: 400 });
   const { error } = await supabase.storage.from("territory-media").remove([path]);
   if (error) return Response.json({ error: error.message }, { status: 400 });
   return Response.json({ ok: true });
