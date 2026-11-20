@@ -3,11 +3,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getOfficialProfileData } from "@/lib/territories";
+import { supabaseProjectUrl } from "@/lib/supabase";
 
 type Props = PageProps<"/territoires/elus/[id]">;
 
 function imageUrl(path: string | null) {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const base = supabaseProjectUrl;
   return base && path ? `${base}/storage/v1/object/public/territory-media/${path.split("/").map(encodeURIComponent).join("/")}` : "";
 }
 
