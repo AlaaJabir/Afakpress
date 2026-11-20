@@ -40,6 +40,7 @@ import {
   type AdminResource,
 } from "@/lib/supabase-cms";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { TerritoriesAdminPanel } from "@/components/admin/TerritoriesAdminPanel";
 
 type Section =
   | "dashboard"
@@ -49,6 +50,7 @@ type Section =
   | "menus"
   | "breaking"
   | "regions"
+  | "territories"
   | "admins"
   | "authors"
   | "pages"
@@ -66,6 +68,7 @@ const sections: { id: Section; label: string }[] = [
   { id: "menus", label: "Menus" },
   { id: "breaking", label: "Breaking News" },
   { id: "regions", label: "Morocco Regions" },
+  { id: "territories", label: "Territories & Officials" },
   { id: "admins", label: "Admins" },
   { id: "authors", label: "Authors" },
   { id: "pages", label: "Pages" },
@@ -469,6 +472,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
           {active === "menus" ? <MenusPanel /> : null}
           {active === "breaking" ? <BreakingNewsPanel /> : null}
           {active === "regions" ? <RegionsPanel /> : null}
+          {active === "territories" ? <TerritoriesAdminPanel /> : null}
           {active === "admins" ? <AdminsPanel currentRole={adminSession.role} /> : null}
           {active === "authors" ? <AuthorsPanel /> : null}
           {active === "pages" ? <PagesPanel /> : null}
