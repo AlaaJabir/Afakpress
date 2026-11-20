@@ -257,10 +257,14 @@ export async function getTerritoryStaticParams(type: "region" | "province") {
     if (error) return [];
     return (data ?? []).filter((item) => item.slug).map((item) => ({ region: item.slug as string }));
   }
-  const { data, error } = await supabase.from("provinces").select("slug,region:regions!provinces_region_id_fkey(slug)").order("name");
-  if (error) return [];
-  return (data ?? []).flatMap((item) => {
-    const parent = item.region as unknown as { slug: string } | null;
-    return item.slug && parent?.slug ? [{ region: parent.slug, province: item.slug }] : [];
+  const [provinceResult, regionResult] = await Promise.all([
+    supabase.from("provinces").select("slug,region_id").order("name"),
+    supabase.from("regions").select("id,slug"),
+  ]);
+  if (provinceResult.error || regionResult.error) return [];
+  const regionSlugs = new Map((regionResult.data ?? []).map((region) => [region.id, region.slug]));
+  return (provinceResult.data ?? []).flatMap((item) => {
+    const parentSlug = item.region_id ? regionSlugs.get(item.region_id) : null;
+    return item.slug && parentSlug ? [{ region: parentSlug, province: item.slug }] : [];
   });
 }
