@@ -149,9 +149,11 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
   const visibleChildren = children.slice((childPage - 1) * childPageSize, childPage * childPageSize);
   const categories = [...new Set(data.articles.map((article) => article.category?.name).filter((value): value is string => Boolean(value)))];
   const articles = category === "all" ? data.articles : data.articles.filter((article) => article.category?.name === category);
-  const articlePageSize = 13;
-  const articlePageCount = Math.max(1, Math.ceil(articles.length / articlePageSize));
-  const visibleArticles = articles.slice((articlePage - 1) * articlePageSize, articlePage * articlePageSize);
+  const featuredArticle = articles.find((article) => article.is_featured) ?? articles[0];
+  const newsListArticles = featuredArticle ? articles.filter((article) => article.id !== featuredArticle.id) : articles;
+  const articlePageSize = 12;
+  const articlePageCount = Math.max(1, Math.ceil(newsListArticles.length / articlePageSize));
+  const visibleArticles = newsListArticles.slice((articlePage - 1) * articlePageSize, articlePage * articlePageSize);
   const title = label(data.entity);
   const typeLabel = data.type === "region" ? "Région" : data.type === "province" ? (data.entity.kind === "prefecture" ? "Préfecture" : "Province") : "Commune";
   const breadcrumb = [
@@ -213,10 +215,8 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
           </div>
         </div>
         {articles.length ? <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {articlePage === 1 ? <div className="md:col-span-2 xl:col-span-3">{visibleArticles.slice(0, 1).map((article) => <ArticleCard key={article.id} article={article} featured />)}</div> : null}
-            {(articlePage === 1 ? visibleArticles.slice(1) : visibleArticles).map((article) => <ArticleCard key={article.id} article={article} />)}
-          </div>
+          {articlePage === 1 && featuredArticle ? <div className="mb-4"><ArticleCard article={featuredArticle} featured /></div> : null}
+          {visibleArticles.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleArticles.map((article) => <ArticleCard key={article.id} article={article} />)}</div> : null}
           {articlePageCount > 1 ? <div className="mt-6 flex items-center justify-center gap-3"><button type="button" disabled={articlePage <= 1} onClick={() => setArticlePage((page) => page - 1)} className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-bold disabled:opacity-40">{t.previous}</button><span className="text-xs font-bold text-slate-500">{t.page} {articlePage} / {articlePageCount}</span><button type="button" disabled={articlePage >= articlePageCount} onClick={() => setArticlePage((page) => page + 1)} className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-bold disabled:opacity-40">{t.next}</button></div> : null}
         </> : <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{t.noNews}</p>}
       </section>
