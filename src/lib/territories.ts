@@ -41,6 +41,7 @@ export type TerritoryArticle = {
   featured_image: string | null;
   published_at: string | null;
   created_at: string | null;
+  is_featured: boolean | null;
   category?: { name: string | null; slug: string | null } | null;
 };
 export type TerritoryChild = TerritoryEntity & { href: string };
@@ -167,7 +168,7 @@ async function loadTerritoryPageData(input: {
       .select("id,territory_type,region_id,province_id,commune_id,full_name,full_name_ar,role,house,party,mandate_start,mandate_end,bio,photo_path,display_order")
       .eq("is_published", true).eq(targetColumn, targetId).order("display_order");
     const legacyArticleQuery = supabase.from("articles")
-      .select("id,title,slug,excerpt,featured_image,published_at,created_at,category:categories(name,slug)")
+      .select("id,title,slug,excerpt,featured_image,published_at,created_at,is_featured,category:categories(name,slug)")
       .eq("status", "published").eq(targetColumn, targetId)
       .order("published_at", { ascending: false, nullsFirst: false }).limit(500);
     const linkedRowsQuery = supabase.from("article_territories")
@@ -180,7 +181,7 @@ async function loadTerritoryPageData(input: {
     let linkedArticles: TerritoryArticle[] = [];
     if (linkedIds.length) {
       const { data, error } = await supabase.from("articles")
-        .select("id,title,slug,excerpt,featured_image,published_at,created_at,category:categories(name,slug)")
+        .select("id,title,slug,excerpt,featured_image,published_at,created_at,is_featured,category:categories(name,slug)")
         .eq("status", "published").in("id", linkedIds).order("published_at", { ascending: false, nullsFirst: false }).limit(500);
       if (error) throw new Error(error.message);
       linkedArticles = (data ?? []) as unknown as TerritoryArticle[];
