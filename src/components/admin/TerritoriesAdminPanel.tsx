@@ -130,7 +130,13 @@ export function TerritoriesAdminPanel() {
     }
   }
 
-  useEffect(() => { void loadOfficials(); void loadArticleLinks(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadOfficials();
+      void loadArticleLinks();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   function editOfficial(official: Official) {
     const provinceEntry = official.province_id
