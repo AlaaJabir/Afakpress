@@ -17,6 +17,6 @@ export default async function TerritoryCommunePage({ params }: Props) {
   const { region, province, commune } = await params;
   const result = await getTerritoryPageData({ type: "commune", regionSlug: region, provinceSlug: province, communeSlug: commune });
   if (result.status === "not-found") notFound();
-  if (result.status !== "ok") return <main className="mx-auto max-w-4xl px-4 py-20 text-center">Les données de cette commune sont temporairement indisponibles.</main>;
+  if (result.status !== "ok") return <div className="mx-auto max-w-4xl px-4 py-20 text-center">Les données de cette commune sont temporairement indisponibles.</div>;
   return <TerritoryDetailView data={result.data} />;
 }
