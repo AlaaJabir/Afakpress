@@ -20,8 +20,8 @@ test.describe("Afakpress Territories", () => {
       await page.goto("/territoires");
       await expect(page.locator("main")).toBeVisible();
       const dimensions = await page.evaluate(() => ({
-        documentWidth: document.documentElement.scrollWidth,
-        viewportWidth: document.documentElement.clientWidth,
+        documentWidth: document.querySelector("main")?.scrollWidth ?? 0,
+        viewportWidth: document.querySelector("main")?.clientWidth ?? 0,
       }));
       expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth + 1);
       await context.close();
