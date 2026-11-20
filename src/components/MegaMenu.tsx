@@ -350,6 +350,10 @@ export function MegaMenu({
               />
             </button>
           </div>
+          <Link href="/territoires" className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-800 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700">
+            <MapPin className="size-4 text-red-700" />
+            <span>Territoires</span>
+          </Link>
         </div>
       </nav>
 
@@ -544,6 +548,7 @@ export function MegaMenu({
                 {cat.name.split(" ")[0]}
               </Link>
             ))}
+            <Link href="/territoires" onClick={() => setMobileOpen(false)} className="shrink-0 font-black text-red-700">Territoires</Link>
           </div>
 
           <span className="h-3.5 w-px shrink-0 bg-slate-200" />
