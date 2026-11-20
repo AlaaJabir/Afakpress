@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { TerritoryArticle, TerritoryEntity, TerritoryOfficial, TerritoryPageData } from "@/lib/territories";
+import { supabaseProjectUrl } from "@/lib/supabase";
 
 const t = {
   home: "Territoires",
@@ -34,7 +35,7 @@ function label(item: TerritoryEntity) {
 }
 
 function storageImage(path: string | null) {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const base = supabaseProjectUrl;
   if (!base || !path) return "";
   return `${base}/storage/v1/object/public/territory-media/${path.split("/").map(encodeURIComponent).join("/")}`;
 }
