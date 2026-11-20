@@ -43,17 +43,17 @@ function storageImage(path: string | null) {
 function OfficialCard({ official }: { official: TerritoryOfficial }) {
   const photo = storageImage(official.photo_path);
   return (
-    <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <Link href={`/territoires/elus/${encodeURIComponent(official.id)}`} aria-label={`Profil de ${official.full_name}`} className="block min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">
       {photo ? <Image src={photo} alt={official.full_name} width={112} height={112} className="mx-auto h-24 w-24 rounded-full object-cover" /> : <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-2xl font-black text-slate-500">{official.full_name.slice(0, 1)}</div>}
       <h3 className="mt-3 text-center text-base font-black text-slate-950">{official.full_name}</h3>
-      {official.full_name_ar ? <p dir="ltr" className="mt-1 text-center text-sm text-slate-600">{official.full_name_ar}</p> : null}
+      {official.full_name_ar ? <p dir="rtl" className="mt-1 text-center text-sm text-slate-600">{official.full_name_ar}</p> : null}
       <p className="mt-2 text-center text-sm font-bold text-red-700">{official.role}</p>
       {official.party ? <p className="mt-1 text-center text-xs text-slate-500">{official.party}</p> : null}
       {official.mandate_start || official.mandate_end ? <p className="mt-2 text-center text-xs text-slate-500">{official.mandate_start ?? "—"} – {official.mandate_end ?? "—"}</p> : null}
-    </article>
+      <span className="mt-3 block text-center text-xs font-bold text-red-700">Voir le profil →</span>
+    </Link>
   );
 }
-
 function ArticleCard({ article }: { article: TerritoryArticle }) {
   const image = article.featured_image || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=900&q=80";
   return (
