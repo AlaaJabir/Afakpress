@@ -89,7 +89,9 @@ async function loadTerritoriesHomeData(): Promise<TerritoryResult<{
       fetchAll((from, to) => supabase.from("communes").select("id,name,name_fr,name_ar,slug,province_id,population,kind,sort_order").order("name").range(from, to)),
       supabase.from("officials").select("id,territory_type,region_id,province_id,commune_id,full_name,full_name_ar,role,house,party,mandate_start,mandate_end,bio,photo_path,display_order").eq("is_published", true).eq("territory_type", "region").order("display_order"),
     ]);
-    if (officialsResult.error) throw new Error(officialsResult.error.message);
+    if (officialsResult.error && process.env.NODE_ENV !== "production") {
+      console.warn("[territories/home] officials table unavailable; run the Territories migration to enable profile previews.");
+    }
     const regionRows = (regions.data ?? []) as TerritoryEntity[];
     const provinceRows = provinces as TerritoryEntity[];
     const communeRows = communes as TerritoryEntity[];
