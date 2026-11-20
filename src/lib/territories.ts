@@ -268,3 +268,57 @@ export async function getTerritoryStaticParams(type: "region" | "province") {
     return item.slug && parentSlug ? [{ region: parentSlug, province: item.slug }] : [];
   });
 }
+
+export async function getOfficialProfileData(id: string): Promise<TerritoryResult<{
+  official: TerritoryOfficial;
+  territory: TerritoryEntity;
+  region?: TerritoryEntity;
+  province?: TerritoryEntity;
+}>> {
+  const supabase = createServerSupabaseClient();
+  if (!supabase) return { status: "unconfigured" };
+  const { data, error } = await supabase.from("officials")
+    .select("id,territory_type,region_id,province_id,commune_id,full_name,full_name_ar,role,house,party,mandate_start,mandate_end,bio,photo_path,display_order")
+    .eq("id", id).eq("is_published", true).maybeSingle();
+  if (error) {
+    if (process.env.NODE_ENV !== "production") console.error("[territories/official]", error);
+    return { status: "error" };
+  }
+  if (!data) return { status: "not-found" };
+  const official = data as TerritoryOfficial;
+  let territory: TerritoryEntity | null = null;
+  let region: TerritoryEntity | undefined;
+  let province: TerritoryEntity | undefined;
+  if (official.territory_type === "region" && official.region_id) {
+    const result = await supabase.from("regions").select("id,name,name_fr,name_ar,slug,population").eq("id", official.region_id).maybeSingle();
+    if (result.error) return { status: "error" };
+    territory = result.data as TerritoryEntity | null;
+    region = territory ?? undefined;
+  } else if (official.territory_type === "province" && official.province_id) {
+    const result = await supabase.from("provinces").select("id,name,name_fr,name_ar,slug,region_id,population,kind").eq("id", official.province_id).maybeSingle();
+    if (result.error) return { status: "error" };
+    territory = result.data as TerritoryEntity | null;
+    if (territory?.region_id) {
+      const parent = await supabase.from("regions").select("id,name,name_fr,name_ar,slug,population").eq("id", territory.region_id).maybeSingle();
+      if (parent.error) return { status: "error" };
+      region = parent.data as TerritoryEntity | undefined;
+    }
+    province = territory ?? undefined;
+  } else if (official.territory_type === "commune" && official.commune_id) {
+    const result = await supabase.from("communes").select("id,name,name_fr,name_ar,slug,province_id,population,kind,address,phone,website").eq("id", official.commune_id).maybeSingle();
+    if (result.error) return { status: "error" };
+    territory = result.data as TerritoryEntity | null;
+    if (territory?.province_id) {
+      const parent = await supabase.from("provinces").select("id,name,name_fr,name_ar,slug,region_id,population,kind").eq("id", territory.province_id).maybeSingle();
+      if (parent.error) return { status: "error" };
+      province = parent.data as TerritoryEntity | undefined;
+      if (province?.region_id) {
+        const grandparent = await supabase.from("regions").select("id,name,name_fr,name_ar,slug,population").eq("id", province.region_id).maybeSingle();
+        if (grandparent.error) return { status: "error" };
+        region = grandparent.data as TerritoryEntity | undefined;
+      }
+    }
+  }
+  if (!territory) return { status: "not-found" };
+  return { status: "ok", data: { official, territory, region, province } };
+}
