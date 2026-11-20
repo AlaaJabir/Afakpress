@@ -42,6 +42,11 @@ const resourcePermission: Record<AdminResource, string> = {
   comments: "comments",
 };
 
+function revalidateTerritoryData() {
+  revalidatePath("/territoires");
+  revalidateTag("territories", { expire: 0 });
+}
+
 function unauthorized() {
   return Response.json({ error: "Unauthorized" }, { status: 401 });
 }
@@ -305,6 +310,7 @@ export async function POST(request: Request, context: { params: Promise<{ resour
     return Response.json({ error: error.message }, { status: 400 });
   }
   const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, data as ArticleCacheRow) : [];
+  if (table === "regions" || table === "provinces" || table === "communes") revalidateTerritoryData();
   return Response.json({ data, revalidatedPaths });
 }
 
@@ -352,6 +358,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
     return Response.json({ error: error.message }, { status: 400 });
   }
   const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, previousArticle, data as ArticleCacheRow) : [];
+  if (table === "regions" || table === "provinces" || table === "communes") revalidateTerritoryData();
   return Response.json({ data, revalidatedPaths });
 }
 
@@ -375,5 +382,6 @@ export async function DELETE(request: Request, context: { params: Promise<{ reso
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error) return Response.json({ error: error.message }, { status: 400 });
   const revalidatedPaths = table === "articles" ? await revalidateArticlePublishScope(supabase, previousArticle as ArticleCacheRow | null) : [];
+  if (table === "regions" || table === "provinces" || table === "communes") revalidateTerritoryData();
   return Response.json({ ok: true, revalidatedPaths });
 }
