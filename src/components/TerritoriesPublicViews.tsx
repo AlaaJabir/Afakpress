@@ -186,6 +186,7 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
         {data.entity.name_ar && data.entity.name_ar !== title ? <p dir="rtl" className="mt-2 text-2xl text-slate-600">{data.entity.name_ar}</p> : null}
         <div className="mt-6 flex flex-wrap gap-3">
           {data.entity.population !== null && data.entity.population !== undefined ? <div className="rounded-lg bg-slate-50 px-4 py-3"><span className="block text-xs text-slate-500">{t.population}</span><strong className="mt-1 block text-lg text-slate-950">{data.entity.population.toLocaleString("fr-FR")}</strong></div> : null}
+          {data.type !== "commune" ? <div className="rounded-lg bg-slate-50 px-4 py-3"><span className="block text-xs text-slate-500">{t.childrenCount}</span><strong className="mt-1 block text-lg text-slate-950">{data.children.length.toLocaleString("fr-FR")}</strong></div> : null}
           <div className="rounded-lg bg-slate-50 px-4 py-3"><span className="block text-xs text-slate-500">{t.profiles}</span><strong className="mt-1 block text-lg text-slate-950">{data.officials.length}</strong></div>
           <div className="rounded-lg bg-slate-50 px-4 py-3"><span className="block text-xs text-slate-500">{t.articles}</span><strong className="mt-1 block text-lg text-slate-950">{data.articles.length}</strong></div>
         </div>
