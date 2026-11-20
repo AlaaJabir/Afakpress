@@ -238,6 +238,35 @@ export function TerritoriesAdminPanel() {
     }
   }
 
+  async function reorderOfficial(sourceId: string, targetId: string) {
+    if (sourceId === targetId) return;
+    const reordered = [...officials];
+    const sourceIndex = reordered.findIndex((item) => item.id === sourceId);
+    const targetIndex = reordered.findIndex((item) => item.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    const normalized = reordered.map((item, index) => ({ ...item, display_order: index + 1 }));
+    setOfficials(normalized);
+    try {
+      await Promise.all(normalized.map(async (item) => {
+        const response = await fetch("/api/admin/territory-officials", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(item),
+        });
+        if (!response.ok) {
+          const result = await response.json();
+          throw new Error(result.error || "Could not reorder officials.");
+        }
+      }));
+      notify("success", "Official order updated.");
+    } catch (orderError) {
+      setError(messageFrom(orderError));
+      await loadOfficials();
+    }
+  }
+
   async function deleteOfficial(official: Official) {
     if (!window.confirm(`Delete ${official.full_name}? This also removes their uploaded photo.`)) return;
     try {
@@ -325,15 +354,15 @@ export function TerritoriesAdminPanel() {
               const supabase = createBrowserSupabaseClient();
               const photo = official.photo_path && supabase ? supabase.storage.from("territory-media").getPublicUrl(official.photo_path).data.publicUrl : "";
               return (
-                <article key={official.id} className="flex flex-wrap items-center gap-3 py-4">
+                <article key={official.id} draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", official.id); event.dataTransfer.effectAllowed = "move"; }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); void reorderOfficial(event.dataTransfer.getData("text/plain"), official.id); }} className="flex flex-wrap items-center gap-3 py-4">
                   {photo ? <Image src={photo} alt="" width={52} height={52} className="h-13 w-13 rounded-full object-cover" /> : <div className="flex h-13 w-13 items-center justify-center rounded-full bg-slate-100 text-lg font-black text-slate-500">{official.full_name.slice(0, 1)}</div>}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-black text-slate-900">{official.full_name}</p>
                     <p className="text-xs text-slate-500">{official.role} · {target || official.territory_type}</p>
                     <p className="text-xs text-slate-500">{official.is_published ? "Published" : "Draft"}</p>
                   </div>
-                  <button type="button" className="min-h-10 rounded-md border border-slate-300 px-3 text-xs font-bold" onClick={() => editOfficial(official)}>Edit</button>
-                  <button type="button" className="min-h-10 rounded-md border border-red-200 px-3 text-xs font-bold text-red-700" onClick={() => void deleteOfficial(official)}>Delete</button>
+                  <button type="button" className="min-h-11 rounded-md border border-slate-300 px-3 text-xs font-bold" onClick={() => editOfficial(official)}>Edit</button>
+                  <button type="button" className="min-h-11 rounded-md border border-red-200 px-3 text-xs font-bold text-red-700" onClick={() => void deleteOfficial(official)}>Delete</button>
                 </article>
               );
             })}
