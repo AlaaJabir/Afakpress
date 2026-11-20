@@ -35,12 +35,23 @@ export type CmsCommune = {
   id: string;
   name: string;
   slug: string;
+  nameFr?: string;
+  nameAr?: string;
+  kind?: "urbaine" | "rurale" | null;
+  population?: number | null;
+  address?: string | null;
+  phone?: string | null;
+  website?: string | null;
 };
 
 export type CmsProvince = {
   id: string;
   name: string;
   slug: string;
+  nameFr?: string;
+  nameAr?: string;
+  kind?: "province" | "prefecture" | null;
+  population?: number | null;
   communes: CmsCommune[];
 };
 
@@ -48,6 +59,9 @@ export type CmsRegion = {
   id: string;
   name: string;
   slug: string;
+  nameFr?: string;
+  nameAr?: string;
+  population?: number | null;
   provinces: CmsProvince[];
 };
 
