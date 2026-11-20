@@ -184,13 +184,6 @@ export function TerritoriesAdminPanel() {
         .from("territory-media")
         .uploadToSignedUrl(ticket.path, ticket.token, blob, { contentType: "image/webp", upsert: false });
       if (uploadError) throw uploadError;
-      if (draft.photo_path && draft.photo_path !== uploadedPath) {
-        await fetch("/api/admin/territory-upload", {
-          method: "DELETE",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ path: draft.photo_path }),
-        });
-      }
       setDraft((current) => ({ ...current, photo_path: uploadedPath }));
       setPhotoPreview(supabase.storage.from("territory-media").getPublicUrl(uploadedPath).data.publicUrl);
       notify("success", "Photo uploaded to Supabase Storage.");
