@@ -437,7 +437,7 @@ export function TerritoriesAdminPanel() {
               : link.territory_type === "province"
                 ? regions.flatMap((region) => region.provinces).find((item) => item.id === link.province_id)?.name
                 : regions.flatMap((region) => region.provinces.flatMap((province) => province.communes)).find((item) => item.id === link.commune_id)?.name;
-            return <div key={link.id} className="flex flex-wrap items-center gap-3 py-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{article?.title ?? link.article_id}</p><p className="text-xs text-slate-500">{target ?? link.territory_type} · {link.territory_type}</p></div><button type="button" onClick={() => void removeArticleLink(link)} className="min-h-10 rounded-md border border-red-200 px-3 text-xs font-bold text-red-700">Remove link</button></div>;
+            return <div key={link.id} className="flex flex-wrap items-center gap-3 py-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{article?.title ?? link.article_id}</p><p className="text-xs text-slate-500">{target ?? link.territory_type} · {link.territory_type}</p></div><button type="button" onClick={() => void removeArticleLink(link)} className="min-h-11 rounded-md border border-red-200 px-3 text-xs font-bold text-red-700">Remove link</button></div>;
           })}
           {!articleLinks.length ? <p className="py-6 text-center text-sm text-slate-500">No additional article-territory links yet.</p> : null}
         </div>
