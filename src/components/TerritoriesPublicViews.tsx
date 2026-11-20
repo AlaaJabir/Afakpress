@@ -17,7 +17,6 @@ const t = {
   communeChildren: "Communes",
   news: "Actualités du territoire",
   noNews: "Aucun article publié pour ce territoire pour le moment.",
-  allNews: "Voir les actualités",
   practical: "Informations pratiques",
   related: "Communes voisines",
   population: "Population",
@@ -54,16 +53,16 @@ function OfficialCard({ official }: { official: TerritoryOfficial }) {
     </Link>
   );
 }
-function ArticleCard({ article }: { article: TerritoryArticle }) {
+function ArticleCard({ article, featured = false }: { article: TerritoryArticle; featured?: boolean }) {
   const image = article.featured_image || "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=900&q=80";
   return (
     <Link href={`/article/${encodeURIComponent(article.slug ?? "")}`} className="group block overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="relative aspect-[16/9] bg-slate-100">
+      <div className={`relative bg-slate-100 ${featured ? "aspect-[21/9]" : "aspect-[16/9]"}`}>
         <Image src={image} alt="" fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition duration-300 group-hover:scale-105" />
       </div>
       <div className="p-4">
         {article.category?.name ? <p className="text-xs font-black text-red-700">{article.category.name}</p> : null}
-        <h3 className="mt-2 line-clamp-2 text-lg font-black leading-7 text-slate-950 group-hover:text-red-700">{article.title}</h3>
+        <h3 className={`mt-2 line-clamp-2 font-black leading-7 text-slate-950 group-hover:text-red-700 ${featured ? "text-2xl sm:text-3xl" : "text-lg"}`}>{article.title}</h3>
         {article.excerpt ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{article.excerpt}</p> : null}
         <time className="mt-4 block text-xs text-slate-500" dateTime={article.published_at ?? article.created_at ?? undefined}>{article.published_at ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(article.published_at)) : ""}</time>
       </div>
@@ -171,7 +170,7 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
         <div className="mb-5"><p className="text-xs font-black uppercase tracking-wider text-red-700">Découvrir</p><h2 className="mt-1 text-2xl font-black text-slate-950">{data.type === "region" ? t.regionChildren : t.communeChildren}</h2></div>
         <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
           <input aria-label={t.searchChildren} value={childQuery} onChange={(event) => setChildQuery(event.target.value)} placeholder={t.searchChildren} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-red-700 focus:ring-2 focus:ring-red-100" />
-          <select aria-label={t.filterAll} value={childKind} onChange={(event) => setChildKind(event.target.value)} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="all">{t.filterAll}</option><option value="province">Province</option><option value="prefecture">Préfecture</option><option value="urbaine">{t.urban}</option><option value="rurale">{t.rural}</option></select>
+          <select aria-label={t.filterAll} value={childKind} onChange={(event) => setChildKind(event.target.value)} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="all">{t.filterAll}</option>{data.type === "region" ? <><option value="province">Province</option><option value="prefecture">Préfecture</option></> : <><option value="urbaine">{t.urban}</option><option value="rurale">{t.rural}</option></>}</select>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{children.map((child) => <Link key={child.id} href={child.href} className="flex min-h-16 items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 hover:border-red-300 hover:text-red-700"><span>{label(child)}</span><span aria-hidden="true">←</span></Link>)}</div>
         {!children.length ? <p className="py-8 text-center text-sm text-slate-500">Aucun résultat.</p> : null}
@@ -184,7 +183,10 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wider text-red-700">Presse locale</p><h2 className="mt-1 text-2xl font-black text-slate-950">{t.news}</h2></div>
           <select aria-label={t.categoryAll} value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="all">{t.categoryAll}</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select>
         </div>
-        {articles.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{articles.map((article) => <ArticleCard key={article.id} article={article} />)}</div> : <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{t.noNews}</p>}
+        {articles.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="md:col-span-2 xl:col-span-3"><ArticleCard article={articles[0]} featured /></div>
+          {articles.slice(1).map((article) => <ArticleCard key={article.id} article={article} />)}
+        </div> : <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{t.noNews}</p>}
       </section>
     </div>
   );
