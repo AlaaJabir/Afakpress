@@ -130,6 +130,33 @@ export function TerritoriesHomeView({ regions, searchItems, officials }: {
   );
 }
 
+export function TerritoryNewsIndexView({ data }: { data: TerritoryPageData }) {
+  const [category, setCategory] = useState("all");
+  const [page, setPage] = useState(1);
+  const categories = [...new Set(data.articles.map((article) => article.category?.name).filter((value): value is string => Boolean(value)))];
+  const filtered = category === "all" ? data.articles : data.articles.filter((article) => article.category?.name === category);
+  const pageSize = 18;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const title = label(data.entity);
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" dir="ltr">
+      <nav aria-label="Breadcrumb" className="mb-6 text-xs font-bold text-slate-500">
+        <Link href="/territoires" className="hover:text-red-700">Territoires</Link>
+        <span className="mx-2">/</span>
+        <Link href={data.type === "region" ? `/territoires/${encodeURIComponent(data.region.slug)}` : data.type === "province" ? `/territoires/${encodeURIComponent(data.region.slug)}/${encodeURIComponent(data.entity.slug)}` : `/territoires/${encodeURIComponent(data.region.slug)}/${encodeURIComponent(data.province?.slug ?? "")}/${encodeURIComponent(data.entity.slug)}`} className="hover:text-red-700">{title}</Link>
+        <span className="mx-2">/</span><span>Actualités</span>
+      </nav>
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div><p className="text-xs font-black uppercase tracking-wider text-red-700">Afakpress · Presse locale</p><h1 className="mt-2 text-3xl font-black text-slate-950 sm:text-4xl">Actualités — {title}</h1><p className="mt-2 text-sm text-slate-500">{filtered.length} article(s)</p></div>
+        <select aria-label={t.categoryAll} value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="all">{t.categoryAll}</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+      </header>
+      {visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((article) => <ArticleCard key={article.id} article={article} />)}</div> : <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{t.noNews}</p>}
+      {pageCount > 1 ? <div className="mt-7 flex items-center justify-center gap-3"><button type="button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-bold disabled:opacity-40">{t.previous}</button><span className="text-xs font-bold text-slate-500">{t.page} {page} / {pageCount}</span><button type="button" disabled={page >= pageCount} onClick={() => setPage((value) => value + 1)} className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-bold disabled:opacity-40">{t.next}</button></div> : null}
+    </div>
+  );
+}
+
 export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
   const [childQuery, setChildQuery] = useState("");
   const [childKind, setChildKind] = useState("all");
@@ -205,7 +232,9 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
       </div> : null}
       <section id="actualites" className="mt-12">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wider text-red-700">Presse locale</p><h2 className="mt-1 text-2xl font-black text-slate-950">{t.news}</h2></div>
-          <select aria-label={t.categoryAll} value={category} onChange={(event) => { setCategory(event.target.value); setArticlePage(1); }} className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="all">{t.categoryAll}</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+          <div className="flex flex-wrap items-center gap-2"><Link href={data.type === "region" ? `/territoires/${encodeURIComponent(data.region.slug)}/actualites` : data.type === "province" ? `/territoires/${encodeURIComponent(data.region.slug)}/${encodeURIComponent(data.entity.slug)}/actualites` : `/territoires/${encodeURIComponent(data.region.slug)}/${encodeURIComponent(data.province?.slug ?? "")}/${encodeURIComponent(data.entity.slug)}/actualites`} className="inline-flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:border-red-300 hover:text-red-700">Voir toutes les actualités</Link>
+            <select aria-label={t.categoryAll} value={category} onChange={(event) => { setCategory(event.target.value); setArticlePage(1); }} className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="all">{t.categoryAll}</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+          </div>
         </div>
         {articles.length ? <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
