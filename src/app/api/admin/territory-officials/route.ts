@@ -16,8 +16,8 @@ async function authorize(request: Request) {
 function validPayload(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  const territoryType = input.territory_type;
-  if (!["region", "province", "commune"].includes(String(territoryType))) return null;
+  if (!["region", "province", "commune"].includes(String(input.territory_type))) return null;
+  const territoryType = input.territory_type as "region" | "province" | "commune";
   const regionId = typeof input.region_id === "string" ? input.region_id : null;
   const provinceId = typeof input.province_id === "string" ? input.province_id : null;
   const communeId = typeof input.commune_id === "string" ? input.commune_id : null;
