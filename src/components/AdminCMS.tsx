@@ -1212,12 +1212,13 @@ function RegionsPanel() {
 
       {activeRegion ? (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto_auto]">
-            <Field label="Region name"><input dir="auto" className={inputClass} value={activeRegion.name} onChange={(event) => updateRegion({ ...activeRegion, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <Field label="Legacy name"><input dir="auto" className={inputClass} value={activeRegion.name} onChange={(event) => updateRegion({ ...activeRegion, name: event.target.value })} /></Field>
+            <Field label="French name"><input className={inputClass} value={activeRegion.nameFr ?? ""} onChange={(event) => updateRegion({ ...activeRegion, nameFr: event.target.value })} /></Field>
+            <Field label="Arabic name"><input dir="rtl" className={inputClass} value={activeRegion.nameAr ?? ""} onChange={(event) => updateRegion({ ...activeRegion, nameAr: event.target.value })} /></Field>
             <Field label="Slug"><input className={inputClass} value={activeRegion.slug} onChange={(event) => updateRegion({ ...activeRegion, slug: event.target.value })} /></Field>
-            <button className={`${primaryButtonClass} self-end`} onClick={() => void saveRegion(activeRegion)} type="button">Save Region</button>
-            <button className={`${buttonClass} self-end`} onClick={() => void addProvince(activeRegion)} type="button">Add Province</button>
-            <button className={`${buttonClass} self-end`} onClick={() => void deleteRegion(activeRegion)} type="button">Delete Region</button>
+            <Field label="Population"><input type="number" min="0" className={inputClass} value={activeRegion.population ?? ""} onChange={(event) => updateRegion({ ...activeRegion, population: event.target.value ? Number(event.target.value) : null })} /></Field>
+            <div className="flex flex-wrap items-end gap-2"><button className={primaryButtonClass} onClick={() => void saveRegion(activeRegion)} type="button">Save Region</button><button className={buttonClass} onClick={() => void addProvince(activeRegion)} type="button">Add Province</button><button className={buttonClass} onClick={() => void deleteRegion(activeRegion)} type="button">Delete Region</button></div>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -1235,23 +1236,25 @@ function RegionsPanel() {
 
             {activeProvince ? (
               <div className="min-w-0">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto_auto]">
-                  <Field label="Province / Prefecture name"><input dir="auto" className={inputClass} value={activeProvince.name} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <Field label="Legacy name"><input dir="auto" className={inputClass} value={activeProvince.name} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, name: event.target.value })} /></Field>
+                  <Field label="French name"><input className={inputClass} value={activeProvince.nameFr ?? ""} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, nameFr: event.target.value })} /></Field>
+                  <Field label="Arabic name"><input dir="rtl" className={inputClass} value={activeProvince.nameAr ?? ""} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, nameAr: event.target.value })} /></Field>
                   <Field label="Slug"><input className={inputClass} value={activeProvince.slug} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, slug: event.target.value })} /></Field>
-                  <button className={`${primaryButtonClass} self-end`} onClick={() => void saveProvince(activeRegion, activeProvince)} type="button">Save Province</button>
-                  <button className={`${buttonClass} self-end`} onClick={() => void addCommune(activeRegion, activeProvince)} type="button">Add Commune</button>
-                  <button className={`${buttonClass} self-end`} onClick={() => void deleteProvince(activeRegion, activeProvince)} type="button">Delete Province</button>
+                  <Field label="Type"><select className={inputClass} value={activeProvince.kind ?? ""} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, kind: (event.target.value || null) as CmsProvince["kind"] })}><option value="">Not specified</option><option value="province">Province</option><option value="prefecture">Prefecture</option></select></Field>
+                  <Field label="Population"><input type="number" min="0" className={inputClass} value={activeProvince.population ?? ""} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, population: event.target.value ? Number(event.target.value) : null })} /></Field>
+                  <div className="flex flex-wrap items-end gap-2"><button className={primaryButtonClass} onClick={() => void saveProvince(activeRegion, activeProvince)} type="button">Save Province</button><button className={buttonClass} onClick={() => void addCommune(activeRegion, activeProvince)} type="button">Add Commune</button><button className={buttonClass} onClick={() => void deleteProvince(activeRegion, activeProvince)} type="button">Delete Province</button></div>
                 </div>
                 <div className="mt-5 max-h-[52vh] overflow-y-auto pr-1">
                   <div className="grid gap-2 md:grid-cols-2">
                     {activeProvince.communes.map((commune) => (
                       <div key={commune.id} className="grid gap-2 rounded-md border border-slate-200 p-3">
-                        <input dir="auto" className={inputClass} value={commune.name} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, name: event.target.value, slug: slugify(event.target.value) })} />
-                        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                          <input className={inputClass} value={commune.slug} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, slug: event.target.value })} />
-                          <button className={primaryButtonClass} onClick={() => void saveCommune(activeProvince, commune)} type="button">Save</button>
-                          <button className={buttonClass} onClick={() => void deleteCommune(activeRegion, activeProvince, commune)} type="button">Delete</button>
-                        </div>
+                        <Field label="Legacy name"><input dir="auto" className={inputClass} value={commune.name} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, name: event.target.value })} /></Field>
+                        <Field label="French name"><input className={inputClass} value={commune.nameFr ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, nameFr: event.target.value })} /></Field>
+                        <Field label="Arabic name"><input dir="rtl" className={inputClass} value={commune.nameAr ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, nameAr: event.target.value })} /></Field>
+                        <div className="grid gap-2 sm:grid-cols-2"><Field label="Type"><select className={inputClass} value={commune.kind ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, kind: (event.target.value || null) as CmsCommune["kind"] })}><option value="">Not specified</option><option value="urbaine">Urbaine</option><option value="rurale">Rurale</option></select></Field><Field label="Population"><input type="number" min="0" className={inputClass} value={commune.population ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, population: event.target.value ? Number(event.target.value) : null })} /></Field></div>
+                        <Field label="Slug"><input className={inputClass} value={commune.slug} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, slug: event.target.value })} /></Field>
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"><button className={primaryButtonClass} onClick={() => void saveCommune(activeProvince, commune)} type="button">Save</button><button className={buttonClass} onClick={() => void deleteCommune(activeRegion, activeProvince, commune)} type="button">Delete</button></div>
                       </div>
                     ))}
                   </div>
