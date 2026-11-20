@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { TerritoryArticle, TerritoryChild, TerritoryEntity, TerritoryOfficial, TerritoryPageData } from "@/lib/territories";
+import type { TerritoryArticle, TerritoryEntity, TerritoryOfficial, TerritoryPageData } from "@/lib/territories";
 
 const t = {
   home: "Territoires",
