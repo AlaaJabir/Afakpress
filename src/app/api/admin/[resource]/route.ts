@@ -155,24 +155,35 @@ function articlePaths(article: ArticleCacheRow, refs: ArticleCacheRefs) {
   const paths = new Set<string>(["/"]);
   if (article.slug) paths.add(`/article/${article.slug}`);
   if (refs.categorySlug) paths.add(`/category/${refs.categorySlug}`);
-  if (refs.regionSlug) paths.add(`/region/${refs.regionSlug}`);
-  if (refs.provinceSlug) paths.add(`/province/${refs.provinceSlug}`);
-  if (refs.communeSlug) paths.add(`/commune/${refs.communeSlug}`);
+  if (refs.regionSlug) {
+    paths.add(`/region/${refs.regionSlug}`);
+    paths.add(`/territoires/${encodeURIComponent(refs.regionSlug)}`);
+  }
+  if (refs.provinceSlug) {
+    paths.add(`/province/${refs.provinceSlug}`);
+    if (refs.regionSlug) paths.add(`/territoires/${encodeURIComponent(refs.regionSlug)}/${encodeURIComponent(refs.provinceSlug)}`);
+  }
+  if (refs.communeSlug) {
+    paths.add(`/commune/${refs.communeSlug}`);
+    if (refs.regionSlug && refs.provinceSlug) paths.add(`/territoires/${encodeURIComponent(refs.regionSlug)}/${encodeURIComponent(refs.provinceSlug)}/${encodeURIComponent(refs.communeSlug)}`);
+  }
   return paths;
 }
 
 async function revalidateArticlePublishScope(supabase: NonNullable<ReturnType<typeof createServiceSupabaseAdminClient>>, ...articles: (ArticleCacheRow | null | undefined)[]) {
-  const publishedArticles = articles.filter((article): article is ArticleCacheRow => article?.status === "published");
-  if (!publishedArticles.length) return [];
+  const changedArticles = articles.filter((article): article is ArticleCacheRow => Boolean(article));
+  if (!changedArticles.length) return [];
 
   const paths = new Set<string>();
-  for (const article of publishedArticles) {
+  for (const article of changedArticles) {
     const refs = await resolveArticleCacheRefs(supabase, article);
     for (const path of articlePaths(article, refs)) paths.add(path);
   }
 
   for (const path of paths) revalidatePath(path);
   revalidateTag("cms:articles", { expire: 0 });
+  revalidateTag("articles", { expire: 0 });
+  revalidateTag("territories", { expire: 0 });
   return [...paths];
 }
 
