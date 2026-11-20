@@ -29,9 +29,11 @@ const schema = {
   profiles: ["id", "name", "slug", "email", "role", "avatar", "created_at", "updated_at"],
   admin_users: ["id", "user_id", "email", "role", "status", "created_at", "updated_at"],
   categories: ["id", "name", "slug", "description", "parent_id", "order_index", "is_active", "created_at", "updated_at"],
-  regions: ["id", "name", "slug", "created_at", "updated_at"],
-  provinces: ["id", "region_id", "name", "slug", "created_at", "updated_at"],
-  communes: ["id", "province_id", "name", "slug", "created_at", "updated_at"],
+  regions: ["id", "name", "slug", "name_fr", "name_ar", "population", "sort_order", "created_at", "updated_at"],
+  provinces: ["id", "region_id", "name", "slug", "name_fr", "name_ar", "kind", "population", "sort_order", "created_at", "updated_at"],
+  communes: ["id", "province_id", "name", "slug", "name_fr", "name_ar", "kind", "population", "address", "phone", "website", "sort_order", "created_at", "updated_at"],
+  officials: ["id", "territory_type", "region_id", "province_id", "commune_id", "full_name", "full_name_ar", "role", "house", "party", "mandate_start", "mandate_end", "bio", "photo_path", "display_order", "is_published", "created_at", "updated_at"],
+  article_territories: ["id", "article_id", "territory_type", "region_id", "province_id", "commune_id", "created_at"],
   media: ["id", "name", "url", "type", "folder", "alt", "caption", "copyright", "optimized", "created_at", "updated_at"],
   articles: ["id", "title", "slug", "excerpt", "content", "featured_image", "category_id", "author_id", "geographic_scope", "region_id", "province_id", "commune_id", "status", "is_featured", "allow_comments", "views", "seo_title", "seo_description", "seo_keywords", "published_at", "created_at", "updated_at"],
   menus: ["id", "title", "slug", "parent_id", "level", "order_index", "is_active", "show_header", "show_footer", "created_at", "updated_at"],
@@ -44,11 +46,18 @@ const schema = {
 };
 
 const requiredLookupTables = ["categories", "profiles", "regions", "provinces", "communes"];
-const idTables = ["profiles", "admin_users", "categories", "regions", "provinces", "communes", "media", "articles", "menus", "pages", "tags", "comments", "breaking_news", "settings"];
+const idTables = ["profiles", "admin_users", "categories", "regions", "provinces", "communes", "officials", "article_territories", "media", "articles", "menus", "pages", "tags", "comments", "breaking_news", "settings"];
 const fkChecks = [
   { sourceTable: "categories", sourceColumn: "parent_id", targetTable: "categories" },
   { sourceTable: "provinces", sourceColumn: "region_id", targetTable: "regions" },
   { sourceTable: "communes", sourceColumn: "province_id", targetTable: "provinces" },
+  { sourceTable: "officials", sourceColumn: "region_id", targetTable: "regions" },
+  { sourceTable: "officials", sourceColumn: "province_id", targetTable: "provinces" },
+  { sourceTable: "officials", sourceColumn: "commune_id", targetTable: "communes" },
+  { sourceTable: "article_territories", sourceColumn: "article_id", targetTable: "articles" },
+  { sourceTable: "article_territories", sourceColumn: "region_id", targetTable: "regions" },
+  { sourceTable: "article_territories", sourceColumn: "province_id", targetTable: "provinces" },
+  { sourceTable: "article_territories", sourceColumn: "commune_id", targetTable: "communes" },
   { sourceTable: "articles", sourceColumn: "category_id", targetTable: "categories" },
   { sourceTable: "articles", sourceColumn: "author_id", targetTable: "profiles" },
   { sourceTable: "articles", sourceColumn: "region_id", targetTable: "regions" },
@@ -206,6 +215,40 @@ reportDuplicates(geographyRows.communes, "communes", slugValue, (row) => row.pro
 reportDuplicates(geographyRows.communes, "communes", nameValue, (row) => row.province_id);
 console.log(`Geography audit: ${geographyRows.regions.length} regions, ${geographyRows.provinces.length} provinces/prefectures, ${geographyRows.communes.length} communes.`);
 
+const officialRows = await fetchRows("officials", "id,territory_type,region_id,province_id,commune_id,photo_path");
+for (const official of officialRows) {
+  const targetCount = [official.region_id, official.province_id, official.commune_id].filter(Boolean).length;
+  const matchingTarget =
+    (official.territory_type === "region" && Boolean(official.region_id) && !official.province_id && !official.commune_id) ||
+    (official.territory_type === "province" && !official.region_id && Boolean(official.province_id) && !official.commune_id) ||
+    (official.territory_type === "commune" && !official.region_id && !official.province_id && Boolean(official.commune_id));
+  if (targetCount !== 1 || !matchingTarget) {
+    problem(`officials row ${official.id} does not reference exactly one matching territory.`);
+  }
+  if (official.photo_path && !/^officials\\/[0-9a-f-]+\\.(webp|png|jpg)$/i.test(official.photo_path)) {
+    problem(`officials.photo_path has an unexpected Storage path on row ${official.id}.`);
+  }
+}
+
+const articleTerritoryRows = await fetchRows("article_territories", "id,article_id,territory_type,region_id,province_id,commune_id");
+for (const link of articleTerritoryRows) {
+  const targetCount = [link.region_id, link.province_id, link.commune_id].filter(Boolean).length;
+  const matchingTarget =
+    (link.territory_type === "region" && Boolean(link.region_id) && !link.province_id && !link.commune_id) ||
+    (link.territory_type === "province" && !link.region_id && Boolean(link.province_id) && !link.commune_id) ||
+    (link.territory_type === "commune" && !link.region_id && !link.province_id && Boolean(link.commune_id));
+  if (targetCount !== 1 || !matchingTarget) {
+    problem(`article_territories row ${link.id} does not reference exactly one matching territory.`);
+  }
+}
+
+const { data: territoryBucket, error: territoryBucketError } = await supabase.storage.getBucket("territory-media");
+if (territoryBucketError || !territoryBucket) {
+  problem(`Storage bucket territory-media is unavailable: ${territoryBucketError?.message ?? "not found"}.`);
+} else if (!territoryBucket.public) {
+  problem("Storage bucket territory-media must be public for public profile photos.");
+}
+
 const articleRows = await fetchRows("articles", "id,status,published_at,slug,title,geographic_scope,region_id,province_id,commune_id");
 for (const article of articleRows) {
   if (!article.slug) problem(`articles.slug is empty for article ${article.id}`);
@@ -256,5 +299,5 @@ function reportAndExit() {
     process.exit(1);
   }
 
-  console.log("Afakpress DB check passed: schema, required lookup tables, UUID references, and core article constraints are synchronized.");
+  console.log("Afakpress DB check passed: core schema, geography counts, territory records, Storage bucket, UUID references, and article constraints are synchronized.");
 }
