@@ -184,7 +184,7 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
           <select aria-label={t.categoryAll} value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"><option value="all">{t.categoryAll}</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select>
         </div>
         {articles.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="md:col-span-2 xl:col-span-3"><ArticleCard article={articles[0]} featured /></div>
+          <div className="md:col-span-2 xl:col-span-3">{articles.slice(0, 1).map((article) => <ArticleCard key={article.id} article={article} featured />)}</div>
           {articles.slice(1).map((article) => <ArticleCard key={article.id} article={article} />)}
         </div> : <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">{t.noNews}</p>}
       </section>
