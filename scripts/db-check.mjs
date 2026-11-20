@@ -225,7 +225,7 @@ for (const official of officialRows) {
   if (targetCount !== 1 || !matchingTarget) {
     problem(`officials row ${official.id} does not reference exactly one matching territory.`);
   }
-  if (official.photo_path && !/^officials\\/[0-9a-f-]+\\.(webp|png|jpg)$/i.test(official.photo_path)) {
+  if (official.photo_path && !/^officials\/[0-9a-f-]+\.(webp|png|jpg)$/i.test(official.photo_path)) {
     problem(`officials.photo_path has an unexpected Storage path on row ${official.id}.`);
   }
 }
