@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { TerritoryDetailView } from "@/components/TerritoriesPublicViews";
-import { getTerritoryPageData } from "@/lib/territories";
+import { getTerritoryPageData, getTerritoryStaticParams } from "@/lib/territories";
 
 type Props = PageProps<"/territoires/[region]/[province]">;
+
+export const dynamicParams = true;
+export async function generateStaticParams() {
+  return getTerritoryStaticParams("province");
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { region, province } = await params;
