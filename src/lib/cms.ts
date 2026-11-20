@@ -193,7 +193,7 @@ export type CmsState = {
 };
 
 export const rolePermissions: Record<Role, string[]> = {
-  "Super Admin": ["dashboard", "articles", "categories", "media", "menus", "breaking", "regions", "authors", "pages", "homepage", "comments", "newsletter", "seo", "settings"],
+  "Super Admin": ["dashboard", "articles", "categories", "media", "menus", "breaking", "regions", "territories", "authors", "pages", "homepage", "comments", "newsletter", "seo", "settings"],
   Editor: ["dashboard", "articles", "categories", "media", "menus", "breaking", "homepage"],
   Journalist: ["dashboard", "articles", "media"],
   Moderator: ["dashboard", "articles", "comments"],
