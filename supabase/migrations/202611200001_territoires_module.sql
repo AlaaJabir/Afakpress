@@ -176,6 +176,7 @@ as $$
     select 1
     from public.admin_users au
     where au.status = 'active'
+      and au.role in ('super_admin', 'admin')
       and (
         au.user_id = auth.uid()
         or lower(au.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
