@@ -32,6 +32,7 @@ Review `supabase/migrations/202611200001_territoires_module.sql`. It extends exi
 - The browser compresses/resizes the selected image and uploads it using a short-lived signed upload token created by an admin-only API route.
 - The Supabase service-role key is used only in server-side routes; it is never sent to the browser.
 - Ensure the existing `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and server-only `SUPABASE_SERVICE_ROLE_KEY` environment variables are configured.
+- For the optional CI database audit, add GitHub Actions secrets `STAGING_SUPABASE_URL` and `STAGING_SUPABASE_SERVICE_ROLE_KEY`, then set the Actions repository variable `RUN_STAGING_DB_AUDIT=true`. These must point to a staging project, never production.
 - Ensure the first administrator exists in `admin_users`, is active, has role `super_admin` or `admin`, and is linked to the intended Supabase Auth user.
 
 ### Verification
