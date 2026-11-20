@@ -10,8 +10,8 @@ async function authorized(request: Request) {
 }
 
 function linkPayload(input: Record<string, unknown>) {
-  const type = input.territory_type;
-  if (!["region", "province", "commune"].includes(String(type))) return null;
+  if (!["region", "province", "commune"].includes(String(input.territory_type))) return null;
+  const type = input.territory_type as "region" | "province" | "commune";
   const regionId = typeof input.region_id === "string" ? input.region_id : null;
   const provinceId = typeof input.province_id === "string" ? input.province_id : null;
   const communeId = typeof input.commune_id === "string" ? input.commune_id : null;
