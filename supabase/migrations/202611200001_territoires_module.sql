@@ -50,11 +50,11 @@ alter table public.communes
   add column if not exists sort_order integer not null default 0,
   add column if not exists updated_at timestamptz not null default now();
 
--- Backfill French display names from the existing canonical name field.
--- Keep name unchanged because current application code depends on it.
-update public.regions set name_fr = name where name_fr is null;
-update public.provinces set name_fr = name where name_fr is null;
-update public.communes set name_fr = name where name_fr is null;
+-- The existing seed uses Arabic names. Preserve those as Arabic labels; do not
+-- mislabel Arabic source values as French translations.
+update public.regions set name_ar = name where name_ar is null;
+update public.provinces set name_ar = name where name_ar is null;
+update public.communes set name_ar = name where name_ar is null;
 
 do $$
 begin
