@@ -190,6 +190,9 @@ grant execute on function public.is_active_afakpress_admin() to anon, authentica
 alter table public.officials enable row level security;
 alter table public.article_territories enable row level security;
 
+grant select on public.officials, public.article_territories to anon, authenticated;
+grant insert, update, delete on public.officials, public.article_territories to authenticated;
+
 drop policy if exists "Public can read published officials" on public.officials;
 create policy "Public can read published officials"
 on public.officials for select to anon, authenticated
