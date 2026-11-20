@@ -26,6 +26,7 @@ type Official = {
 };
 
 type Draft = Omit<Official, "id"> & { id?: string };
+type ArticleTerritoryLink = { id: string; article_id: string; territory_type: TerritoryType; region_id: string | null; province_id: string | null; commune_id: string | null };
 const emptyDraft: Draft = {
   territory_type: "region",
   region_id: "",
@@ -79,12 +80,23 @@ export function TerritoriesAdminPanel() {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoPreview, setPhotoPreview] = useState("");
   const [regionSearch, setRegionSearch] = useState("");
+  const [articleLinks, setArticleLinks] = useState<ArticleTerritoryLink[]>([]);
+  const [linkArticleId, setLinkArticleId] = useState("");
+  const [linkType, setLinkType] = useState<TerritoryType>("region");
+  const [linkRegionId, setLinkRegionId] = useState("");
+  const [linkProvinceId, setLinkProvinceId] = useState("");
+  const [linkCommuneId, setLinkCommuneId] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
 
   const regions = state.regions;
   const selectedRegion = regions.find((item) => item.id === draft.region_id);
   const provinces = selectedRegion?.provinces ?? [];
   const selectedProvince = provinces.find((item) => item.id === draft.province_id);
   const communes = selectedProvince?.communes ?? [];
+  const linkRegion = regions.find((item) => item.id === linkRegionId);
+  const linkProvinces = linkRegion?.provinces ?? [];
+  const linkProvince = linkProvinces.find((item) => item.id === linkProvinceId);
+  const linkCommunes = linkProvince?.communes ?? [];
   const filteredOfficials = useMemo(() => officials.filter((official) => {
     const term = regionSearch.trim().toLocaleLowerCase();
     if (!term) return true;
@@ -107,7 +119,18 @@ export function TerritoriesAdminPanel() {
     }
   }
 
-  useEffect(() => { void loadOfficials(); }, []);
+  async function loadArticleLinks() {
+    try {
+      const response = await fetch("/api/admin/article-territories", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not load article-territory links.");
+      setArticleLinks(result.data ?? []);
+    } catch (loadError) {
+      setError(messageFrom(loadError));
+    }
+  }
+
+  useEffect(() => { void loadOfficials(); void loadArticleLinks(); }, []);
 
   function editOfficial(official: Official) {
     const provinceEntry = official.province_id
@@ -233,6 +256,47 @@ export function TerritoriesAdminPanel() {
     }
   }
 
+  async function createArticleLink(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLinkBusy(true);
+    setError("");
+    const payload = {
+      article_id: linkArticleId,
+      territory_type: linkType,
+      region_id: linkType === "region" ? linkRegionId : null,
+      province_id: linkType === "province" ? linkProvinceId : null,
+      commune_id: linkType === "commune" ? linkCommuneId : null,
+    };
+    try {
+      const response = await fetch("/api/admin/article-territories", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not link article.");
+      setArticleLinks((current) => [result.data, ...current]);
+      setLinkArticleId("");
+      notify("success", "Article linked to territory.");
+    } catch (linkError) {
+      setError(messageFrom(linkError));
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  async function removeArticleLink(link: ArticleTerritoryLink) {
+    try {
+      const response = await fetch(`/api/admin/article-territories?id=${encodeURIComponent(link.id)}`, { method: "DELETE" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not remove article link.");
+      setArticleLinks((current) => current.filter((item) => item.id !== link.id));
+      notify("success", "Article territory link removed.");
+    } catch (linkError) {
+      setError(messageFrom(linkError));
+    }
+  }
+
   const inputClass = "min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-red-700 focus:ring-2 focus:ring-red-100";
   const labelClass = "mb-1 block text-xs font-black text-slate-600";
 
@@ -324,6 +388,31 @@ export function TerritoriesAdminPanel() {
             <button type="button" className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-bold" onClick={() => { setDraft(emptyDraft); setPhotoPreview(""); }}>Clear</button>
           </div>
         </form>
+      </section>
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div><h2 className="text-xl font-black text-slate-950">Attach news to territories</h2><p className="mt-1 text-sm text-slate-500">One article can be displayed on several territory pages. Existing legacy article location fields remain unchanged.</p></div>
+        </div>
+        <form onSubmit={createArticleLink} className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <label><span className={labelClass}>Existing article</span><select required className={inputClass} value={linkArticleId} onChange={(event) => setLinkArticleId(event.target.value)}><option value="">Select article</option>{state.articles.map((article) => <option key={article.id} value={article.id}>{article.title}</option>)}</select></label>
+          <label><span className={labelClass}>Territory type</span><select className={inputClass} value={linkType} onChange={(event) => { setLinkType(event.target.value as TerritoryType); setLinkProvinceId(""); setLinkCommuneId(""); }}><option value="region">Region</option><option value="province">Province / Prefecture</option><option value="commune">Commune</option></select></label>
+          <label><span className={labelClass}>Region</span><select required className={inputClass} value={linkRegionId} onChange={(event) => { setLinkRegionId(event.target.value); setLinkProvinceId(""); setLinkCommuneId(""); }}><option value="">Select region</option>{regions.map((region) => <option key={region.id} value={region.id}>{region.name}</option>)}</select></label>
+          {linkType !== "region" ? <label><span className={labelClass}>Province / Prefecture</span><select required className={inputClass} value={linkProvinceId} onChange={(event) => { setLinkProvinceId(event.target.value); setLinkCommuneId(""); }}><option value="">Select province</option>{linkProvinces.map((province) => <option key={province.id} value={province.id}>{province.name}</option>)}</select></label> : null}
+          {linkType === "commune" ? <label><span className={labelClass}>Commune</span><select required className={inputClass} value={linkCommuneId} onChange={(event) => setLinkCommuneId(event.target.value)}><option value="">Select commune</option>{linkCommunes.map((commune) => <option key={commune.id} value={commune.id}>{commune.name}</option>)}</select></label> : null}
+          <button disabled={linkBusy} type="submit" className="min-h-11 self-end rounded-md bg-red-700 px-5 text-sm font-bold text-white disabled:opacity-50">{linkBusy ? "Linking…" : "Attach article"}</button>
+        </form>
+        <div className="mt-5 divide-y divide-slate-100">
+          {articleLinks.map((link) => {
+            const article = state.articles.find((item) => item.id === link.article_id);
+            const target = link.territory_type === "region"
+              ? regions.find((item) => item.id === link.region_id)?.name
+              : link.territory_type === "province"
+                ? regions.flatMap((region) => region.provinces).find((item) => item.id === link.province_id)?.name
+                : regions.flatMap((region) => region.provinces.flatMap((province) => province.communes)).find((item) => item.id === link.commune_id)?.name;
+            return <div key={link.id} className="flex flex-wrap items-center gap-3 py-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-slate-900">{article?.title ?? link.article_id}</p><p className="text-xs text-slate-500">{target ?? link.territory_type} · {link.territory_type}</p></div><button type="button" onClick={() => void removeArticleLink(link)} className="min-h-10 rounded-md border border-red-200 px-3 text-xs font-bold text-red-700">Remove link</button></div>;
+          })}
+          {!articleLinks.length ? <p className="py-6 text-center text-sm text-slate-500">No additional article-territory links yet.</p> : null}
+        </div>
       </section>
     </div>
   );
