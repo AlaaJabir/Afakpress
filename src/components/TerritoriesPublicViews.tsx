@@ -46,7 +46,7 @@ function OfficialCard({ official }: { official: TerritoryOfficial }) {
     <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       {photo ? <Image src={photo} alt={official.full_name} width={112} height={112} className="mx-auto h-24 w-24 rounded-full object-cover" /> : <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 text-2xl font-black text-slate-500">{official.full_name.slice(0, 1)}</div>}
       <h3 className="mt-3 text-center text-base font-black text-slate-950">{official.full_name}</h3>
-      {official.full_name_ar ? <p dir="rtl" className="mt-1 text-center text-sm text-slate-600">{official.full_name_ar}</p> : null}
+      {official.full_name_ar ? <p dir="ltr" className="mt-1 text-center text-sm text-slate-600">{official.full_name_ar}</p> : null}
       <p className="mt-2 text-center text-sm font-bold text-red-700">{official.role}</p>
       {official.party ? <p className="mt-1 text-center text-xs text-slate-500">{official.party}</p> : null}
       {official.mandate_start || official.mandate_end ? <p className="mt-2 text-center text-xs text-slate-500">{official.mandate_start ?? "—"} – {official.mandate_end ?? "—"}</p> : null}
@@ -86,7 +86,7 @@ export function TerritoriesHomeView({ regions, searchItems, officials }: {
   }, [query, searchItems]);
   const selectedOfficials = officials.filter((official) => official.region_id === selected?.id);
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" dir="rtl">
+    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8" dir="ltr">
       <header className="mb-8">
         <p className="text-sm font-black uppercase tracking-[0.18em] text-red-700">Afakpress · Maroc</p>
         <h1 className="mt-3 text-4xl font-black text-slate-950 sm:text-5xl">{t.home}</h1>
@@ -116,7 +116,7 @@ export function TerritoriesHomeView({ regions, searchItems, officials }: {
         {selected ? <aside className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-black uppercase tracking-wider text-red-700">Région sélectionnée</p>
           <h2 className="mt-2 text-2xl font-black text-slate-950">{label(selected)}</h2>
-          {selected.name_ar ? <p dir="rtl" className="mt-1 text-lg text-slate-600">{selected.name_ar}</p> : null}
+          {selected.name_ar && selected.name_ar !== label(selected) ? <p dir="rtl" className="mt-1 text-lg text-slate-600">{selected.name_ar}</p> : null}
           <div className="mt-5 space-y-3">
             {selectedOfficials.length ? selectedOfficials.slice(0, 3).map((official) => <div key={official.id} className="border-t border-slate-100 pt-3"><p className="font-bold text-slate-900">{official.full_name}</p><p className="text-xs text-slate-500">{official.role}</p></div>) : <p className="text-sm text-slate-500">{t.noOfficials}</p>}
           </div>
@@ -148,14 +148,14 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
   ];
   if (data.type === "commune") breadcrumb.push({ label: title, href: "#" });
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" dir="rtl">
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" dir="ltr">
       <nav aria-label="Fil d’Ariane" className="mb-6 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
         {breadcrumb.map((item, index) => <span key={item.href + index} className="flex items-center gap-2"><Link href={item.href} className="hover:text-red-700">{item.label}</Link>{index < breadcrumb.length - 1 ? <span aria-hidden="true">/</span> : null}</span>)}
       </nav>
       <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9">
         <p className="text-sm font-black uppercase tracking-wider text-red-700">{typeLabel} · Maroc</p>
         <h1 className="mt-3 text-3xl font-black text-slate-950 sm:text-5xl">{title}</h1>
-        {data.entity.name_ar ? <p dir="rtl" className="mt-2 text-2xl text-slate-600">{data.entity.name_ar}</p> : null}
+        {data.entity.name_ar && data.entity.name_ar !== title ? <p dir="rtl" className="mt-2 text-2xl text-slate-600">{data.entity.name_ar}</p> : null}
         <div className="mt-6 flex flex-wrap gap-3">
           {data.entity.population !== null && data.entity.population !== undefined ? <div className="rounded-lg bg-slate-50 px-4 py-3"><span className="block text-xs text-slate-500">{t.population}</span><strong className="mt-1 block text-lg text-slate-950">{data.entity.population.toLocaleString("fr-FR")}</strong></div> : null}
           <div className="rounded-lg bg-slate-50 px-4 py-3"><span className="block text-xs text-slate-500">{t.profiles}</span><strong className="mt-1 block text-lg text-slate-950">{data.officials.length}</strong></div>
