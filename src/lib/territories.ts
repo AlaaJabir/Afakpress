@@ -169,7 +169,7 @@ async function loadTerritoryPageData(input: {
     const legacyArticleQuery = supabase.from("articles")
       .select("id,title,slug,excerpt,featured_image,published_at,created_at,category:categories(name,slug)")
       .eq("status", "published").eq(targetColumn, targetId)
-      .order("published_at", { ascending: false, nullsFirst: false }).limit(50);
+      .order("published_at", { ascending: false, nullsFirst: false }).limit(500);
     const linkedRowsQuery = supabase.from("article_territories")
       .select("article_id").eq(targetColumn, targetId);
     const [officialsResult, legacyArticlesResult, linkedRowsResult] = await Promise.all([officialQuery, legacyArticleQuery, linkedRowsQuery]);
@@ -181,7 +181,7 @@ async function loadTerritoryPageData(input: {
     if (linkedIds.length) {
       const { data, error } = await supabase.from("articles")
         .select("id,title,slug,excerpt,featured_image,published_at,created_at,category:categories(name,slug)")
-        .eq("status", "published").in("id", linkedIds).order("published_at", { ascending: false, nullsFirst: false }).limit(50);
+        .eq("status", "published").in("id", linkedIds).order("published_at", { ascending: false, nullsFirst: false }).limit(500);
       if (error) throw new Error(error.message);
       linkedArticles = (data ?? []) as unknown as TerritoryArticle[];
     }
