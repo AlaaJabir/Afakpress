@@ -242,18 +242,32 @@ function buildRegionTree(regionRows: RegionRow[], provinceRows: ProvinceRow[], c
     id: region.id,
     name: region.name ?? "Untitled region",
     slug: region.slug ?? region.id,
+    nameFr: region.name_fr ?? "",
+    nameAr: region.name_ar ?? "",
+    population: region.population,
     provinces: provinceRows
       .filter((province) => province.region_id === region.id)
       .map((province) => ({
         id: province.id,
         name: province.name ?? "Untitled province",
         slug: province.slug ?? province.id,
+        nameFr: province.name_fr ?? "",
+        nameAr: province.name_ar ?? "",
+        kind: province.kind,
+        population: province.population,
         communes: communeRows
           .filter((commune) => commune.province_id === province.id)
           .map((commune) => ({
             id: commune.id,
             name: commune.name ?? "Untitled commune",
             slug: commune.slug ?? commune.id,
+            nameFr: commune.name_fr ?? "",
+            nameAr: commune.name_ar ?? "",
+            kind: commune.kind,
+            population: commune.population,
+            address: commune.address,
+            phone: commune.phone,
+            website: commune.website,
           })),
       })),
   }));
@@ -296,9 +310,9 @@ async function loadCmsStateFromSupabase(
     supabase.from("media").select("id,name,url,type,folder,alt,caption,copyright,optimized"),
     supabase.from("pages").select("id,title,slug,content,seo_title,seo_description,status"),
     supabase.from("breaking_news").select("id,title,article_id,url,is_active,order_index").order("order_index", { ascending: true }),
-    fetchAllGeographyRows(supabase, "regions", "id,name,slug"),
-    fetchAllGeographyRows(supabase, "provinces", "id,name,slug,region_id"),
-    fetchAllGeographyRows(supabase, "communes", "id,name,slug,province_id"),
+    fetchAllGeographyRows(supabase, "regions", "id,name,slug,name_fr,name_ar,population,sort_order"),
+    fetchAllGeographyRows(supabase, "provinces", "id,name,slug,region_id,name_fr,name_ar,kind,population,sort_order"),
+    fetchAllGeographyRows(supabase, "communes", "id,name,slug,province_id,name_fr,name_ar,kind,population,address,phone,website,sort_order"),
   ]);
 
   let articlesResult = joinedArticlesResult;
@@ -435,6 +449,9 @@ export function regionPayload(region: CmsRegion): Tables["regions"]["Insert"] {
   return {
     name: region.name,
     slug: region.slug,
+    name_fr: region.nameFr || null,
+    name_ar: region.nameAr || null,
+    population: region.population ?? null,
   };
 }
 
@@ -443,6 +460,10 @@ export function provincePayload(province: CmsProvince, regionId: string): Tables
     region_id: regionId,
     name: province.name,
     slug: province.slug,
+    name_fr: province.nameFr || null,
+    name_ar: province.nameAr || null,
+    kind: province.kind ?? null,
+    population: province.population ?? null,
   };
 }
 
@@ -451,6 +472,13 @@ export function communePayload(commune: CmsCommune, provinceId: string): Tables[
     province_id: provinceId,
     name: commune.name,
     slug: commune.slug,
+    name_fr: commune.nameFr || null,
+    name_ar: commune.nameAr || null,
+    kind: commune.kind ?? null,
+    population: commune.population ?? null,
+    address: commune.address ?? null,
+    phone: commune.phone ?? null,
+    website: commune.website ?? null,
   };
 }
 
