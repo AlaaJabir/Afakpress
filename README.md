@@ -34,3 +34,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+## Territories module
+
+The Territories module is developed on the `feature/territoires-maroc` branch. It adds public pages under `/territoires`, elected-official profiles, multi-territory article links, and admin management.
+
+See [Territories module setup and administration](docs/territoires-module.md) for the additive Supabase migration, staging-first deployment steps, Storage configuration, admin access requirements, and instructions for adding officials and news cards.
+
+**Important:** the migration is not applied automatically. Test it against staging before any production rollout.
