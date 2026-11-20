@@ -5,33 +5,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { TerritoryArticle, TerritoryEntity, TerritoryOfficial, TerritoryPageData } from "@/lib/territories";
 import { supabaseProjectUrl } from "@/lib/supabase";
+import { territoriesTranslations } from "@/lib/territories-translations";
 
-const t = {
-  home: "Territoires",
-  homeIntro: "Explorez les régions, provinces, préfectures et communes du Maroc.",
-  search: "Rechercher une région, province ou commune",
-  mapLabel: "Carte schématique des 12 régions",
-  officials: "Élus et représentants",
-  noOfficials: "Aucun profil publié pour ce territoire.",
-  children: "Explorer le territoire",
-  regionChildren: "Provinces et préfectures",
-  communeChildren: "Communes",
-  news: "Actualités du territoire",
-  noNews: "Aucun article publié pour ce territoire pour le moment.",
-  practical: "Informations pratiques",
-  related: "Communes voisines",
-  population: "Population",
-  profiles: "Profils publiés",
-  articles: "Articles",
-  filterAll: "Tous les types",
-  urban: "Urbaine",
-  rural: "Rurale",
-  searchChildren: "Rechercher dans la liste",
-  categoryAll: "Toutes les catégories",
-  previous: "Précédent",
-  next: "Suivant",
-  page: "Page",
-};
+const t = territoriesTranslations.fr;
 
 function label(item: TerritoryEntity) {
   return item.name_fr || item.name || item.slug;
@@ -68,7 +44,7 @@ function ArticleCard({ article, featured = false }: { article: TerritoryArticle;
         {article.category?.name ? <p className="text-xs font-black text-red-700">{article.category.name}</p> : null}
         <h3 className={`mt-2 line-clamp-2 font-black leading-7 text-slate-950 group-hover:text-red-700 ${featured ? "text-2xl sm:text-3xl" : "text-lg"}`}>{article.title}</h3>
         {article.excerpt ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{article.excerpt}</p> : null}
-        <time className="mt-4 block text-xs text-slate-500" dateTime={article.published_at ?? article.created_at ?? undefined}>{article.published_at ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(article.published_at)) : ""}</time>
+        <time className="mt-4 block text-xs text-slate-500" dateTime={article.published_at ?? article.created_at ?? undefined}>{article.published_at ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(article.published_at)) : ""}</time>
       </div>
     </Link>
   );
@@ -109,7 +85,7 @@ export function TerritoriesHomeView({ regions, searchItems, officials }: {
             <span className="text-xs font-bold text-slate-500">{regions.length} régions</span>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {regions.map((region, index) => <button key={region.id} type="button" onClick={() => setSelectedRegion(region.id)} className={`min-h-28 rounded-xl border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 ${selectedRegion === region.id ? "border-red-700 bg-red-50 shadow-sm" : "border-slate-200 bg-white hover:border-red-300"}`}>
+            {regions.map((region, index) => <button key={region.id} type="button" onClick={() => setSelectedRegion(region.id)} className={`min-h-28 rounded-xl border p-4 text-start transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 ${selectedRegion === region.id ? "border-red-700 bg-red-50 shadow-sm" : "border-slate-200 bg-white hover:border-red-300"}`}>
               <span className="text-xs font-black text-red-700">{String(index + 1).padStart(2, "0")}</span>
               <span className="mt-2 block text-sm font-black leading-6 text-slate-950">{label(region)}</span>
               <span className="mt-1 block text-xs text-slate-500">{region.officialCount} profil(s)</span>
