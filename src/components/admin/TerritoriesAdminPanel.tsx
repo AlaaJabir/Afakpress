@@ -110,9 +110,18 @@ export function TerritoriesAdminPanel() {
   useEffect(() => { void loadOfficials(); }, []);
 
   function editOfficial(official: Official) {
+    const provinceEntry = official.province_id
+      ? regions.map((region) => ({ region, province: region.provinces.find((item) => item.id === official.province_id) })).find((entry) => entry.province)
+      : null;
+    const communeEntry = official.commune_id
+      ? regions.map((region) => region.provinces.map((province) => ({ region, province, commune: province.communes.find((item) => item.id === official.commune_id) }))).flat().find((entry) => entry.commune)
+      : null;
+    const parentRegionId = official.territory_type === "region"
+      ? official.region_id ?? ""
+      : provinceEntry?.region.id ?? communeEntry?.region.id ?? "";
     setDraft({
       ...official,
-      region_id: official.region_id ?? "",
+      region_id: parentRegionId,
       province_id: official.province_id,
       commune_id: official.commune_id,
     });
