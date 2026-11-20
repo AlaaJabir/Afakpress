@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import { useCms } from "@/lib/cms-store";
 import { getPublishedArticles, initialCmsState, type CmsArticle, type CmsState } from "@/lib/cms";
 import { moroccoRegions } from "@/data/morocco-regions";
@@ -247,6 +247,111 @@ const defaultAuthors = [
 const defaultTimes = ["7:55 PM", "7:35 PM", "7:05 PM", "5:58 PM"];
 const commentCounts = [22, 1, 12, 45];
 
+interface HeroCategoryDefinition {
+  key: string;
+  name: string;
+  href: string;
+  aliases: string[];
+  accentBg: string;
+  accentText: string;
+  accentBorder: string;
+  keywordPattern: RegExp;
+}
+
+const HERO_NATIONAL_CATEGORIES: HeroCategoryDefinition[] = [
+  {
+    key: "وطنية",
+    name: "أخبار وطنية",
+    href: "/category/%D9%88%D8%B7%D9%86%D9%8A%D8%A9",
+    aliases: ["وطنية", "national", "أخبار وطنية"],
+    accentBg: "bg-[#b91c1c]",
+    accentText: "text-[#b91c1c]",
+    accentBorder: "border-[#b91c1c]",
+    keywordPattern: /المسيرة الخضراء|الصحراء|الملك|الحكومة|الوحدة الترابية|وطنية/,
+  },
+  {
+    key: "سياسة",
+    name: "سياسة ودبلوماسية",
+    href: "/category/%D8%B3%D9%8A%D8%A7%D8%B3%D8%A9",
+    aliases: ["سياسة", "politics", "سياسة ودبلوماسية"],
+    accentBg: "bg-[#1d4ed8]",
+    accentText: "text-[#1d4ed8]",
+    accentBorder: "border-[#1d4ed8]",
+    keywordPattern: /دبلوماسية|مجلس وزاري|الانتخابات|قنصل|البرلمان|الأحزاب|سياس/,
+  },
+  {
+    key: "رياضة",
+    name: "رياضة",
+    href: "/category/%D8%B1%D9%8A%D8%A7%D8%B6%D8%A9",
+    aliases: ["رياضة", "sport", "sports"],
+    accentBg: "bg-[#047857]",
+    accentText: "text-[#047857]",
+    accentBorder: "border-[#047857]",
+    keywordPattern: /رياض|كرة القدم|أبطال إفريقيا|كأس أمم|الجيش الملكي|المنتخب/,
+  },
+  {
+    key: "اقتصاد",
+    name: "اقتصاد ومال",
+    href: "/category/%D8%A7%D9%82%D8%AA%D8%B5%D8%A7%D8%AF",
+    aliases: ["اقتصاد", "economy", "اقتصاد ومال"],
+    accentBg: "bg-[#c2410c]",
+    accentText: "text-[#c2410c]",
+    accentBorder: "border-[#c2410c]",
+    keywordPattern: /اقتصاد|مالية|المالية|الضرائب|البنك|الزراعة|المقاولات|رواد الأعمال|استثمار/,
+  },
+  {
+    key: "جهات",
+    name: "أخبار الجهات",
+    href: "/category/%D8%AC%D9%87%D8%A7%D8%AA",
+    aliases: ["جهات", "regions", "أخبار الجهات"],
+    accentBg: "bg-[#6d28d9]",
+    accentText: "text-[#6d28d9]",
+    accentBorder: "border-[#6d28d9]",
+    keywordPattern: /إقليم|جهة|عمالة|القنيطرة|الفقيه بن صالح|أبي القنادل|العيون/,
+  },
+  {
+    key: "مجتمع",
+    name: "مجتمع وقضايا",
+    href: "/category/%D9%85%D8%AC%D8%AA%D9%85%D8%B9",
+    aliases: ["مجتمع", "society", "مجتمع وقضايا"],
+    accentBg: "bg-[#be123c]",
+    accentText: "text-[#be123c]",
+    accentBorder: "border-[#be123c]",
+    keywordPattern: /ساكنة|كواد|التعاونيات|المرأة|اجتماعي|شباب|المواطنين/,
+  },
+  {
+    key: "ثقافة",
+    name: "ثقافة وفنون",
+    href: "/category/%D8%AB%D9%82%D8%A7%D9%81%D8%A9",
+    aliases: ["ثقافة", "culture", "ثقافة وفنون"],
+    accentBg: "bg-[#4338ca]",
+    accentText: "text-[#4338ca]",
+    accentBorder: "border-[#4338ca]",
+    keywordPattern: /مسرح|ثقاف|فن|تكريم|شعر|تراث|احتفالية/,
+  },
+  {
+    key: "رأي",
+    name: "آراء وتحليلات",
+    href: "/category/%D8%B1%D8%A3%D9%8A",
+    aliases: ["رأي", "opinion", "آراء وتحليلات"],
+    accentBg: "bg-[#1e293b]",
+    accentText: "text-[#1e293b]",
+    accentBorder: "border-[#1e293b]",
+    keywordPattern: /قراءة تحليلية|مفترق الطرق|بين وعود|آفاق|تحليل/,
+  },
+];
+
+function formatReadingTimeAr(readingTime?: string) {
+  if (!readingTime) return "3 دقائق للقراءة";
+  const trimmed = readingTime.trim();
+  const minMatch = trimmed.match(/^(\d+)\s*(min|minutes?)$/i);
+  if (minMatch) {
+    const num = Number(minMatch[1]);
+    return num === 1 ? "دقيقة واحدة للقراءة" : num === 2 ? "دقيقتان للقراءة" : `${num} دقائق للقراءة`;
+  }
+  return trimmed;
+}
+
 function ArticleTag({ children, tone = "light" }: { children: React.ReactNode; tone?: "light" | "dark" }) {
   return (
     <span className={`rounded-full px-3 py-1 text-[11px] font-black uppercase ${tone === "dark" ? "bg-white/90 text-slate-950" : "bg-red-50 text-red-700"}`}>
@@ -459,6 +564,200 @@ export function CmsHomePage() {
   const [recentCommentsByArticle, setRecentCommentsByArticle] = useState<Record<string, PublicComment[]>>({});
   const [openCommentArticleId, setOpenCommentArticleId] = useState<string | null>(null);
 
+  const heroCategorySlides = (() => {
+    const sortedLatest = [...effectiveArticles].sort((a, b) =>
+      (b.publishedAt || b.publishDate || "").localeCompare(a.publishedAt || a.publishDate || ""),
+    );
+    const usedKeys = new Set<string>();
+    const markUsed = (article: CmsArticle) => {
+      usedKeys.add(article.id);
+      if (article.slug) usedKeys.add(article.slug);
+    };
+    const isUnused = (article: CmsArticle) =>
+      !usedKeys.has(article.id) && !(article.slug && usedKeys.has(article.slug));
+
+    const slidesByKey = new Map<
+      string,
+      {
+        categoryKey: string;
+        categoryName: string;
+        categoryHref: string;
+        accentBg: string;
+        accentText: string;
+        accentBorder: string;
+        article: CmsArticle;
+      }
+    >();
+
+    const matchesCategory = (article: CmsArticle, aliases: string[]) => {
+      const rawCat = (
+        article.category ||
+        homepageCategories.find((c) => c.id === article.categoryId)?.slug ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+      const catName = (
+        homepageCategories.find((c) => c.id === article.categoryId)?.name || ""
+      )
+        .trim()
+        .toLowerCase();
+      return aliases.some((alias) => {
+        const normalized = alias.toLowerCase();
+        return rawCat === normalized || catName === normalized;
+      });
+    };
+
+    // Pass 1: Strict match by each category's newest article
+    for (const def of HERO_NATIONAL_CATEGORIES) {
+      const match = sortedLatest.find((article) => isUnused(article) && matchesCategory(article, def.aliases));
+      if (match) {
+        markUsed(match);
+        slidesByKey.set(def.key, {
+          categoryKey: def.key,
+          categoryName: def.name,
+          categoryHref: def.href,
+          accentBg: def.accentBg,
+          accentText: def.accentText,
+          accentBorder: def.accentBorder,
+          article: match,
+        });
+      }
+    }
+
+    // Pass 2: Topic-matched newest unused article for national categories lacking explicit seed tags
+    for (const def of HERO_NATIONAL_CATEGORIES) {
+      if (slidesByKey.has(def.key)) continue;
+      const match = sortedLatest.find(
+        (article) =>
+          isUnused(article) &&
+          (def.keywordPattern.test(article.title) || def.keywordPattern.test(article.excerpt || "")),
+      );
+      if (match) {
+        markUsed(match);
+        slidesByKey.set(def.key, {
+          categoryKey: def.key,
+          categoryName: def.name,
+          categoryHref: def.href,
+          accentBg: def.accentBg,
+          accentText: def.accentText,
+          accentBorder: def.accentBorder,
+          article: match,
+        });
+      }
+    }
+
+    const orderedSlides = HERO_NATIONAL_CATEGORIES.map((def) => slidesByKey.get(def.key)).filter(
+      (item): item is NonNullable<typeof item> => Boolean(item),
+    );
+
+    // Pass 3: Include any extra CMS categories created by editors that have newer unused published articles
+    for (const cmsCat of homepageCategories) {
+      const alreadyIncluded = HERO_NATIONAL_CATEGORIES.some((def) =>
+        def.aliases.some(
+          (alias) =>
+            alias.toLowerCase() === cmsCat.slug.toLowerCase() ||
+            alias.toLowerCase() === cmsCat.name.toLowerCase(),
+        ),
+      );
+      if (alreadyIncluded) continue;
+      const match = sortedLatest.find(
+        (article) =>
+          isUnused(article) &&
+          (article.categoryId === cmsCat.id ||
+            article.category.toLowerCase() === cmsCat.slug.toLowerCase() ||
+            article.category.toLowerCase() === cmsCat.name.toLowerCase()),
+      );
+      if (match) {
+        markUsed(match);
+        orderedSlides.push({
+          categoryKey: cmsCat.slug,
+          categoryName: cmsCat.name,
+          categoryHref: `/category/${encodeURIComponent(cmsCat.slug)}`,
+          accentBg: "bg-[#b91c1c]",
+          accentText: "text-[#b91c1c]",
+          accentBorder: "border-[#b91c1c]",
+          article: match,
+        });
+      }
+    }
+
+    if (orderedSlides.length === 0 && featured) {
+      orderedSlides.push({
+        categoryKey: "وطنية",
+        categoryName: "أخبار وطنية",
+        categoryHref: "/category/%D9%88%D8%B7%D9%86%D9%8A%D8%A9",
+        accentBg: "bg-[#b91c1c]",
+        accentText: "text-[#b91c1c]",
+        accentBorder: "border-[#b91c1c]",
+        article: featured,
+      });
+    }
+
+    return orderedSlides;
+  })();
+
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
+  const [isHeroPaused, setIsHeroPaused] = useState(false);
+  const heroTrackRef = useRef<HTMLDivElement | null>(null);
+  const heroSlideRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const heroTouchStartXRef = useRef<number | null>(null);
+  const heroWheelLockRef = useRef<number>(0);
+
+  const heroSlidesCount = heroCategorySlides.length;
+  const safeActiveHeroSlide = heroSlidesCount > 0 ? activeHeroSlide % heroSlidesCount : 0;
+
+  const scrollToHeroSlide = useCallback(
+    (targetIndex: number) => {
+      if (heroSlidesCount === 0) return;
+      const normalized = ((targetIndex % heroSlidesCount) + heroSlidesCount) % heroSlidesCount;
+      setActiveHeroSlide(normalized);
+      const container = heroTrackRef.current;
+      const slideEl = heroSlideRefs.current[normalized];
+      if (container && slideEl) {
+        const deltaX = slideEl.getBoundingClientRect().left - container.getBoundingClientRect().left;
+        container.scrollTo({
+          left: container.scrollLeft + deltaX,
+          behavior: "smooth",
+        });
+      }
+    },
+    [heroSlidesCount],
+  );
+
+  useEffect(() => {
+    const container = heroTrackRef.current;
+    if (!container || heroSlidesCount <= 1) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+            const idx = Number((entry.target as HTMLElement).dataset.slideIndex);
+            if (!Number.isNaN(idx)) {
+              setActiveHeroSlide(idx);
+            }
+          }
+        }
+      },
+      { root: container, threshold: 0.6 },
+    );
+
+    heroSlideRefs.current.forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [heroSlidesCount]);
+
+  useEffect(() => {
+    if (isHeroPaused || heroSlidesCount <= 1) return;
+    const intervalId = window.setInterval(() => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      scrollToHeroSlide(safeActiveHeroSlide + 1);
+    }, 6500);
+    return () => window.clearInterval(intervalId);
+  }, [isHeroPaused, heroSlidesCount, safeActiveHeroSlide, scrollToHeroSlide]);
+
   useEffect(() => {
     let active = true;
     fetch("/api/external/13eme-region")
@@ -526,50 +825,208 @@ export function CmsHomePage() {
           className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_410px] xl:grid-cols-[minmax(0,1fr)_450px] gap-6 sm:gap-8 lg:gap-10 items-start font-sans"
           dir="rtl"
         >
-          {/* RIGHT COLUMN (1st in RTL grid): Hero Editorial Article + 3 Secondary Columns */}
+          {/* RIGHT COLUMN (1st in RTL grid): National Categories Latest-Article Slider + 3 Secondary Columns */}
           <div className="min-w-0 flex flex-col">
-            <Link
-              href={`/article/${encodeURIComponent(featured.slug)}`}
-              className="group block"
+            <div
+              className="group/hero relative flex flex-col"
+              role="region"
+              aria-roledescription="carousel"
+              aria-label="آخر مقالات تصنيفات أخبار وطنية"
+              onMouseEnter={() => setIsHeroPaused(true)}
+              onMouseLeave={() => setIsHeroPaused(false)}
+              onFocusCapture={() => setIsHeroPaused(true)}
+              onBlurCapture={() => setIsHeroPaused(false)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  scrollToHeroSlide(safeActiveHeroSlide + 1);
+                } else if (e.key === "ArrowRight") {
+                  e.preventDefault();
+                  scrollToHeroSlide(safeActiveHeroSlide - 1);
+                }
+              }}
+              onTouchStart={(e) => {
+                heroTouchStartXRef.current = e.touches[0]?.clientX ?? null;
+              }}
+              onTouchEnd={(e) => {
+                const startX = heroTouchStartXRef.current;
+                heroTouchStartXRef.current = null;
+                if (startX === null) return;
+                const endX = e.changedTouches[0]?.clientX ?? startX;
+                const diff = endX - startX;
+                if (Math.abs(diff) < 48) return;
+                if (diff > 0) {
+                  // Swiped toward the right: advance if at boundary or move seamlessly
+                  if (safeActiveHeroSlide === 0) {
+                    scrollToHeroSlide(heroCategorySlides.length - 1);
+                  } else {
+                    scrollToHeroSlide(safeActiveHeroSlide - 1);
+                  }
+                } else if (safeActiveHeroSlide === heroCategorySlides.length - 1) {
+                  scrollToHeroSlide(0);
+                }
+              }}
+              onWheel={(e) => {
+                if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 22) return;
+                const now = Date.now();
+                if (now - heroWheelLockRef.current < 420) return;
+                if (e.deltaX > 0 && safeActiveHeroSlide === 0) {
+                  e.preventDefault();
+                  heroWheelLockRef.current = now;
+                  scrollToHeroSlide(safeActiveHeroSlide + 1);
+                } else if (e.deltaX < 0 && safeActiveHeroSlide === heroCategorySlides.length - 1) {
+                  e.preventDefault();
+                  heroWheelLockRef.current = now;
+                  scrollToHeroSlide(0);
+                }
+              }}
             >
-              <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden rounded-xl bg-slate-900 shadow-sm">
-                <Image
-                  src={imageFor(featured, 0)}
-                  alt={featured.title || "صورة المقال"}
-                  fill
-                  priority
-                  sizes="(min-width: 1024px) 850px, 100vw"
-                  className="object-cover transition duration-700 group-hover:scale-105"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+              {/* Slide Viewport */}
+              <div className="relative">
+                <div
+                  ref={heroTrackRef}
+                  className="flex w-full overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
+                >
+                  {heroCategorySlides.map((slide, idx) => (
+                    <Link
+                      key={`${slide.categoryKey}-${slide.article.id}`}
+                      ref={(el) => {
+                        heroSlideRefs.current[idx] = el;
+                      }}
+                      data-slide-index={idx}
+                      href={`/article/${encodeURIComponent(slide.article.slug)}`}
+                      className="group block w-full shrink-0 snap-start focus:outline-none"
+                    >
+                      <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full overflow-hidden rounded-xl bg-slate-900 shadow-sm">
+                        <Image
+                          src={imageFor(slide.article, idx)}
+                          alt={slide.article.title || "صورة المقال"}
+                          fill
+                          priority={idx === 0}
+                          sizes="(min-width: 1024px) 850px, 100vw"
+                          className="object-cover transition duration-700 group-hover:scale-105"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
 
-              <div className="mt-5 text-right">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#c2410c]">
-                  <span className="inline-block size-2 rounded-xs bg-[#c2410c]" />
-                  <span>قصة مميزة · وطنية</span>
+                      <div className="mt-5 text-right">
+                        <div className={`flex items-center gap-1.5 text-xs font-bold ${slide.accentText}`}>
+                          <span className={`inline-block size-2 rounded-xs ${slide.accentBg}`} />
+                          <span>أخبار وطنية · {slide.categoryName}</span>
+                        </div>
+
+                        {idx === safeActiveHeroSlide ? (
+                          <h1 className="mt-3 text-2xl sm:text-4xl lg:text-[40px] font-black leading-[1.24] text-slate-950 transition duration-200 group-hover:text-red-700 text-balance">
+                            {slide.article.title}
+                          </h1>
+                        ) : (
+                          <h2 className="mt-3 text-2xl sm:text-4xl lg:text-[40px] font-black leading-[1.24] text-slate-950 transition duration-200 group-hover:text-red-700 text-balance">
+                            {slide.article.title}
+                          </h2>
+                        )}
+
+                        <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed font-normal line-clamp-3">
+                          {slide.article.excerpt || slide.article.seoDescription}
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+                          <span>{slide.article.author || "آفاق بريس"}</span>
+                          <span aria-hidden="true">·</span>
+                          <span dir="rtl" className="tabular-nums">
+                            {formatArabicLatinDate(slide.article.publishedAt || slide.article.publishDate)}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span className="tabular-nums">{formatReadingTimeAr(slide.article.readingTime)}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
 
-                <h1 className="mt-3 text-2xl sm:text-4xl lg:text-[42px] font-black leading-[1.22] text-slate-950 transition duration-200 group-hover:text-red-700">
-                  {featured.title && featured.title.includes("الذكرى")
-                    ? featured.title
-                    : "الذكرى 51 للمسيرة الخضراء المظفرة.. ملحمة وطنية متجددة ومكاسب دبلوماسية راسخة"}
-                </h1>
-
-                <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-                  {featured.excerpt ||
-                    "يخلد الشعب المغربي قاطبة، من طنجة إلى الكويرة، في أجواء من الحماس الفياض والتعبئة المستمرة، ذكرى المسيرة الخضراء، واليقظة الموصولة حول قضية الوحدة الترابية."}
-                </p>
-
-                <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-400">
-                  <span>آفاق بريس</span>
-                  <span>·</span>
-                  <span dir="rtl">5 نونبر 2026</span>
-                  <span>·</span>
-                  <span>3 دقائق للقراءة</span>
-                </div>
+                {/* Overlay Prev / Next Arrow Buttons inside image height */}
+                {heroCategorySlides.length > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        scrollToHeroSlide(safeActiveHeroSlide - 1);
+                      }}
+                      aria-label="المقال السابق حسب التصنيف"
+                      className="absolute right-3 top-1/4 sm:top-[28%] z-10 flex size-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/90 text-slate-900 shadow-sm backdrop-blur-xs transition hover:bg-white hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 cursor-pointer"
+                    >
+                      <ChevronRight className="size-5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        scrollToHeroSlide(safeActiveHeroSlide + 1);
+                      }}
+                      aria-label="المقال التالي حسب التصنيف"
+                      className="absolute left-3 top-1/4 sm:top-[28%] z-10 flex size-10 items-center justify-center rounded-lg border border-slate-200/80 bg-white/90 text-slate-900 shadow-sm backdrop-blur-xs transition hover:bg-white hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 cursor-pointer"
+                    >
+                      <ChevronLeft className="size-5" aria-hidden="true" />
+                    </button>
+                  </>
+                ) : null}
               </div>
-            </Link>
+
+              {/* Clean Category Switcher Rail & Slide Index */}
+              {heroCategorySlides.length > 1 ? (
+                <div className="mt-5 flex items-center justify-between gap-3 border-t border-b border-slate-200/80 py-2.5">
+                  <div
+                    className="flex min-w-0 items-center gap-4 overflow-x-auto no-scrollbar"
+                    role="tablist"
+                    aria-label="تصنيفات أخبار وطنية"
+                  >
+                    {heroCategorySlides.map((slide, idx) => {
+                      const isActive = idx === safeActiveHeroSlide;
+                      return (
+                        <button
+                          key={slide.categoryKey}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => scrollToHeroSlide(idx)}
+                          className={`relative shrink-0 whitespace-nowrap py-1 text-xs sm:text-[13px] transition-colors cursor-pointer ${
+                            isActive
+                              ? `font-black ${slide.accentText} border-b-2 ${slide.accentBorder}`
+                              : "font-semibold text-slate-500 hover:text-slate-950 border-b-2 border-transparent"
+                          }`}
+                        >
+                          {slide.categoryName}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2 border-r border-slate-200/80 pr-3">
+                    <button
+                      type="button"
+                      onClick={() => scrollToHeroSlide(safeActiveHeroSlide - 1)}
+                      aria-label="الشريحة السابقة"
+                      className="flex size-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-red-700 cursor-pointer"
+                    >
+                      <ChevronRight className="size-4" aria-hidden="true" />
+                    </button>
+                    <span className="min-w-10 text-center text-xs font-bold text-slate-500 tabular-nums" dir="ltr">
+                      {safeActiveHeroSlide + 1} / {heroCategorySlides.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => scrollToHeroSlide(safeActiveHeroSlide + 1)}
+                      aria-label="الشريحة التالية"
+                      className="flex size-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 transition hover:border-slate-300 hover:text-red-700 cursor-pointer"
+                    >
+                      <ChevronLeft className="size-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             {/* 3 Secondary Editorial Columns with Crisp Colored Top Bars */}
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
