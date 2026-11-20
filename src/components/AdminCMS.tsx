@@ -1213,7 +1213,7 @@ function RegionsPanel() {
       {activeRegion ? (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <Field label="Legacy name"><input dir="auto" className={inputClass} value={activeRegion.name} onChange={(event) => updateRegion({ ...activeRegion, name: event.target.value })} /></Field>
+            <Field label="Legacy name"><input dir="auto" className={inputClass} value={activeRegion.name} onChange={(event) => updateRegion({ ...activeRegion, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
             <Field label="French name"><input className={inputClass} value={activeRegion.nameFr ?? ""} onChange={(event) => updateRegion({ ...activeRegion, nameFr: event.target.value })} /></Field>
             <Field label="Arabic name"><input dir="rtl" className={inputClass} value={activeRegion.nameAr ?? ""} onChange={(event) => updateRegion({ ...activeRegion, nameAr: event.target.value })} /></Field>
             <Field label="Slug"><input className={inputClass} value={activeRegion.slug} onChange={(event) => updateRegion({ ...activeRegion, slug: event.target.value })} /></Field>
@@ -1237,7 +1237,7 @@ function RegionsPanel() {
             {activeProvince ? (
               <div className="min-w-0">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  <Field label="Legacy name"><input dir="auto" className={inputClass} value={activeProvince.name} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, name: event.target.value })} /></Field>
+                  <Field label="Legacy name"><input dir="auto" className={inputClass} value={activeProvince.name} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
                   <Field label="French name"><input className={inputClass} value={activeProvince.nameFr ?? ""} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, nameFr: event.target.value })} /></Field>
                   <Field label="Arabic name"><input dir="rtl" className={inputClass} value={activeProvince.nameAr ?? ""} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, nameAr: event.target.value })} /></Field>
                   <Field label="Slug"><input className={inputClass} value={activeProvince.slug} onChange={(event) => updateProvince(activeRegion, { ...activeProvince, slug: event.target.value })} /></Field>
@@ -1249,7 +1249,7 @@ function RegionsPanel() {
                   <div className="grid gap-2 md:grid-cols-2">
                     {activeProvince.communes.map((commune) => (
                       <div key={commune.id} className="grid gap-2 rounded-md border border-slate-200 p-3">
-                        <Field label="Legacy name"><input dir="auto" className={inputClass} value={commune.name} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, name: event.target.value })} /></Field>
+                        <Field label="Legacy name"><input dir="auto" className={inputClass} value={commune.name} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, name: event.target.value, slug: slugify(event.target.value) })} /></Field>
                         <Field label="French name"><input className={inputClass} value={commune.nameFr ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, nameFr: event.target.value })} /></Field>
                         <Field label="Arabic name"><input dir="rtl" className={inputClass} value={commune.nameAr ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, nameAr: event.target.value })} /></Field>
                         <div className="grid gap-2 sm:grid-cols-2"><Field label="Type"><select className={inputClass} value={commune.kind ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, kind: (event.target.value || null) as CmsCommune["kind"] })}><option value="">Not specified</option><option value="urbaine">Urbaine</option><option value="rurale">Rurale</option></select></Field><Field label="Population"><input type="number" min="0" className={inputClass} value={commune.population ?? ""} onChange={(event) => updateCommune(activeRegion, activeProvince, { ...commune, population: event.target.value ? Number(event.target.value) : null })} /></Field></div>
