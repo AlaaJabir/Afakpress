@@ -124,6 +124,7 @@ export function TerritoriesHomeView({ regions, searchItems, officials }: {
         </aside> : null}
       </div>
     </div>
+    </>
   );
 }
 
@@ -147,7 +148,19 @@ export function TerritoryDetailView({ data }: { data: TerritoryPageData }) {
     ...(data.province ? [{ label: label(data.province), href: `/territoires/${encodeURIComponent(data.region.slug)}/${encodeURIComponent(data.province.slug)}` }] : []),
   ];
   if (data.type === "commune") breadcrumb.push({ label: title, href: "#" });
+  const breadcrumbJsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: breadcrumb.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.label,
+      item: item.href,
+    })),
+  }).replace(/</g, "\\u003c");
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: breadcrumbJsonLd }} />
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" dir="ltr">
       <nav aria-label="Fil d’Ariane" className="mb-6 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
         {breadcrumb.map((item, index) => <span key={item.href + index} className="flex items-center gap-2"><Link href={item.href} className="hover:text-red-700">{item.label}</Link>{index < breadcrumb.length - 1 ? <span aria-hidden="true">/</span> : null}</span>)}
