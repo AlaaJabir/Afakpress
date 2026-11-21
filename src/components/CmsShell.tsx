@@ -321,7 +321,7 @@ export function CmsShell({ children, initialState, initiallyLoaded = true }: { c
 
   return (
     <CmsProvider initialState={initialState} initiallyLoaded={initiallyLoaded && !isAdmin}>
-      {isAdmin ? children : <Chrome>{children}</Chrome>}
+      {isAdmin ? <div dir="ltr" className="min-h-screen text-left">{children}</div> : <Chrome>{children}</Chrome>}
     </CmsProvider>
   );
 }

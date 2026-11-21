@@ -409,7 +409,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
   const filteredArticles = state.articles.filter((article) => `${article.title} ${article.category} ${article.status}`.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div dir="ltr" className="min-h-screen bg-slate-100 text-left">
       <div className="grid min-h-screen gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
         <aside className="sticky top-0 z-30 h-screen overflow-y-auto border-r border-slate-800 bg-slate-950 p-5 text-white">
           <div className="flex items-start justify-between gap-3">
