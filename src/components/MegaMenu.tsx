@@ -323,8 +323,8 @@ export function MegaMenu({
           {/* Subtle Divider */}
           <span className="h-5 w-px bg-slate-200/90 shrink-0" aria-hidden="true" />
 
-          {/* 2. Single "أخبار الجهات" Mega-Menu Trigger Button */}
-          <div className="shrink-0">
+          {/* 2. Single "أخبار الجهات" Mega-Menu Trigger Button (matching red style) */}
+          <div className="shrink-0 flex items-center gap-2">
             <button
               id="regional-news-menu-btn"
               type="button"
@@ -333,22 +333,27 @@ export function MegaMenu({
               onClick={toggleRegionsMenu}
               className={`group inline-flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-xs font-black tracking-wide transition-all duration-200 cursor-pointer ${
                 regionsOpen
-                  ? "bg-[#0b1930] text-white shadow-md ring-2 ring-[#0b1930]/20 ring-offset-1"
-                  : "border border-slate-200 bg-slate-50 text-slate-900 shadow-xs hover:border-[#0b1930] hover:bg-[#0b1930] hover:text-white"
+                  ? "bg-[#991b1b] text-white shadow-md ring-2 ring-red-600/25 ring-offset-1"
+                  : "bg-[#b91c1c] text-white shadow-xs hover:bg-[#991b1b] hover:shadow-sm"
               }`}
             >
-              <MapPin
-                className={`size-4 shrink-0 transition-colors ${
-                  regionsOpen ? "text-[#d99b1e]" : "text-[#b91c1c] group-hover:text-white"
-                }`}
-              />
+              <MapPin className="size-4 shrink-0 text-white" />
               <span className="whitespace-nowrap">أخبار الجهات</span>
               <ChevronDown
-                className={`size-3.5 shrink-0 opacity-80 transition-transform duration-200 ${
+                className={`size-3.5 shrink-0 opacity-85 transition-transform duration-200 ${
                   regionsOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
+
+            {/* Direct Link to Territoires Section */}
+            <Link
+              href="/territoires"
+              className="hidden xl:inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-2xs hover:border-[#A8472F] hover:text-[#A8472F] transition"
+            >
+              <span>التراب الوطني (12 جهة)</span>
+              <span className="text-[10px] text-[#A8472F]">↗</span>
+            </Link>
           </div>
         </div>
       </nav>
