@@ -324,7 +324,7 @@ export function MegaMenu({
           <span className="h-5 w-px bg-slate-200/90 shrink-0" aria-hidden="true" />
 
           {/* 2. Single "أخبار الجهات" Mega-Menu Trigger Button (matching red style) */}
-          <div className="shrink-0 flex items-center gap-2">
+          <div className="shrink-0">
             <button
               id="regional-news-menu-btn"
               type="button"
@@ -345,15 +345,6 @@ export function MegaMenu({
                 }`}
               />
             </button>
-
-            {/* Direct Link to Territoires Section */}
-            <Link
-              href="/territoires"
-              className="hidden xl:inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-2xs hover:border-[#A8472F] hover:text-[#A8472F] transition"
-            >
-              <span>التراب الوطني (12 جهة)</span>
-              <span className="text-[10px] text-[#A8472F]">↗</span>
-            </Link>
           </div>
         </div>
       </nav>

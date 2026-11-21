@@ -41,22 +41,39 @@ interface OfficialDbRecord {
 async function resolveSupabaseTerritoryIds(
   client: NonNullable<ReturnType<typeof createServerSupabaseClient>>,
   params: { regionSlug?: string; provinceSlug?: string; communeSlug?: string }
-): Promise<{ regionId?: string; provinceId?: string; communeId?: string }> {
-  const result: { regionId?: string; provinceId?: string; communeId?: string } = {};
+): Promise<{
+  regionId?: string;
+  provinceId?: string;
+  communeId?: string;
+  regionSlug?: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+}> {
+  const result: {
+    regionId?: string;
+    provinceId?: string;
+    communeId?: string;
+    regionSlug?: string;
+    provinceSlug?: string;
+    communeSlug?: string;
+  } = {};
   try {
     if (params.regionSlug) {
+      const regNorm = normalizeTerritorySlug(params.regionSlug);
       const regMeta = REGIONS_12_METADATA.find(
-        (r) => r.slug === normalizeTerritorySlug(params.regionSlug || "")
+        (r) => r.slug === regNorm || r.arabicSlug === params.regionSlug
       );
       const { data: regionsData } = await client.from("regions").select("id,name,slug");
       const regionsRows = (regionsData ?? []) as Array<{ id: string; name: string | null; slug: string | null }>;
       const matchedRegion = regionsRows.find(
         (r) =>
-          (r.slug && normalizeTerritorySlug(r.slug) === normalizeTerritorySlug(params.regionSlug || "")) ||
+          r.slug === params.regionSlug ||
+          (r.slug && normalizeTerritorySlug(r.slug) === regNorm) ||
           (regMeta && r.name && r.name.includes(regMeta.nameAr.split(" ")[0]))
       );
       if (matchedRegion) {
         result.regionId = matchedRegion.id;
+        result.regionSlug = matchedRegion.slug || undefined;
       }
     }
 
@@ -74,6 +91,7 @@ async function resolveSupabaseTerritoryIds(
       );
       if (matchedProv) {
         result.provinceId = matchedProv.id;
+        result.provinceSlug = matchedProv.slug || undefined;
       }
     }
 
@@ -91,6 +109,7 @@ async function resolveSupabaseTerritoryIds(
       );
       if (matchedComm) {
         result.communeId = matchedComm.id;
+        result.communeSlug = matchedComm.slug || undefined;
       }
     }
   } catch {
@@ -134,9 +153,9 @@ export async function getOfficialsForTerritory(params: {
   if (client) {
     try {
       const ids = await resolveSupabaseTerritoryIds(client, {
-        regionSlug: normR,
-        provinceSlug: normP,
-        communeSlug: normC,
+        regionSlug: params.regionSlug || normR,
+        provinceSlug: params.provinceSlug || normP,
+        communeSlug: params.communeSlug || normC,
       });
 
       let query = client
@@ -159,32 +178,26 @@ export async function getOfficialsForTerritory(params: {
       if (!error && Array.isArray(rows) && rows.length > 0) {
         dbMatched = rows
           .filter((item) => {
-            if (params.territoryType === "region" && normR && item.region_slug) {
-              return normalizeTerritorySlug(item.region_slug) === normR;
+            if (params.territoryType === "region" && normR && !ids.regionId) {
+              return Boolean(item.region_slug && normalizeTerritorySlug(item.region_slug) === normR);
             }
-            if (params.territoryType === "province" && normP && item.province_slug) {
-              return normalizeTerritorySlug(item.province_slug) === normP;
+            if (params.territoryType === "province" && normP && !ids.provinceId) {
+              return Boolean(item.province_slug && normalizeTerritorySlug(item.province_slug) === normP);
             }
-            if (params.territoryType === "commune" && normC && item.commune_slug) {
-              return normalizeTerritorySlug(item.commune_slug) === normC;
-            }
-            if (params.territoryType === "region" && normR && !ids.regionId && !item.region_slug) {
-              return false;
-            }
-            if (params.territoryType === "province" && normP && !ids.provinceId && !item.province_slug) {
-              return false;
-            }
-            if (params.territoryType === "commune" && normC && !ids.communeId && !item.commune_slug) {
-              return false;
+            if (params.territoryType === "commune" && normC && !ids.communeId) {
+              return Boolean(item.commune_slug && normalizeTerritorySlug(item.commune_slug) === normC);
             }
             return true;
           })
           .map((item) => ({
             id: item.id,
             territoryType: item.territory_type,
-            regionSlug: item.region_slug || normR,
-            provinceSlug: item.province_slug || normP,
-            communeSlug: item.commune_slug || normC,
+            regionId: item.region_id || undefined,
+            provinceId: item.province_id || undefined,
+            communeId: item.commune_id || undefined,
+            regionSlug: item.region_slug || ids.regionSlug || normR,
+            provinceSlug: item.province_slug || ids.provinceSlug || normP,
+            communeSlug: item.commune_slug || ids.communeSlug || normC,
             fullName: item.full_name,
             fullNameAr: item.full_name_ar || undefined,
             role: item.role,
@@ -214,22 +227,43 @@ export async function getOfficialsForTerritory(params: {
   return matched.sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
-export async function getAllOfficials(): Promise<OfficialProfile[]> {
+export async function getOfficialsForLocation(params: {
+  territoryType: TerritoryType;
+  entityId?: string;
+  slug?: string;
+  regionSlug?: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+}): Promise<OfficialProfile[]> {
   const client = createServerSupabaseClient();
-  if (client) {
+  if (client && params.entityId) {
     try {
+      const fkCol =
+        params.territoryType === "region"
+          ? "region_id"
+          : params.territoryType === "province"
+          ? "province_id"
+          : "commune_id";
+
       const { data, error } = await client
         .from("officials")
         .select("*")
-        .order("created_at", { ascending: false });
-      const rows = data as unknown as OfficialDbRecord[];
-      if (!error && Array.isArray(rows) && rows.length > 0) {
+        .eq("territory_type", params.territoryType)
+        .eq(fkCol, params.entityId)
+        .eq("is_published", true)
+        .order("display_order", { ascending: true });
+
+      const rows = (data ?? []) as unknown as OfficialDbRecord[];
+      if (!error && rows.length > 0) {
         return rows.map((item) => ({
           id: item.id,
           territoryType: item.territory_type,
-          regionSlug: item.region_slug || undefined,
-          provinceSlug: item.province_slug || undefined,
-          communeSlug: item.commune_slug || undefined,
+          regionId: item.region_id || undefined,
+          provinceId: item.province_id || undefined,
+          communeId: item.commune_id || undefined,
+          regionSlug: item.region_slug || params.regionSlug,
+          provinceSlug: item.province_slug || params.provinceSlug,
+          communeSlug: item.commune_slug || params.communeSlug,
           fullName: item.full_name,
           fullNameAr: item.full_name_ar || undefined,
           role: item.role,
@@ -244,10 +278,147 @@ export async function getAllOfficials(): Promise<OfficialProfile[]> {
         }));
       }
     } catch {
+      // Fall through to slug-based lookup
+    }
+  }
+
+  return getOfficialsForTerritory({
+    territoryType: params.territoryType,
+    regionSlug: params.regionSlug ?? (params.territoryType === "region" ? params.slug : undefined),
+    provinceSlug: params.provinceSlug ?? (params.territoryType === "province" ? params.slug : undefined),
+    communeSlug: params.communeSlug ?? (params.territoryType === "commune" ? params.slug : undefined),
+  });
+}
+
+export async function getAllOfficials(): Promise<OfficialProfile[]> {
+  const client = createServerSupabaseClient();
+  if (client) {
+    try {
+      const [{ data, error }, { data: regData }, { data: provData }, { data: commData }] = await Promise.all([
+        client.from("officials").select("*").order("created_at", { ascending: false }),
+        client.from("regions").select("id,slug"),
+        client.from("provinces").select("id,slug,region_id"),
+        client.from("communes").select("id,slug,province_id"),
+      ]);
+
+      const regRows = (regData ?? []) as Array<{ id: string; slug: string | null }>;
+      const provRows = (provData ?? []) as Array<{ id: string; slug: string | null; region_id: string | null }>;
+      const commRows = (commData ?? []) as Array<{ id: string; slug: string | null; province_id: string | null }>;
+
+      const regSlugMap = new Map(regRows.map((r) => [r.id, r.slug || undefined]));
+      const provMap = new Map(provRows.map((p) => [p.id, p]));
+      const commMap = new Map(commRows.map((c) => [c.id, c]));
+
+      const rows = data as unknown as OfficialDbRecord[];
+      if (!error && Array.isArray(rows) && rows.length > 0) {
+        return rows.map((item) => {
+          const prov = item.province_id ? provMap.get(item.province_id) : undefined;
+          const comm = item.commune_id ? commMap.get(item.commune_id) : undefined;
+          const commProv = comm?.province_id ? provMap.get(comm.province_id) : undefined;
+          const resolvedRegionId = item.region_id || prov?.region_id || commProv?.region_id || undefined;
+          const resolvedProvinceId = item.province_id || comm?.province_id || undefined;
+
+          return {
+            id: item.id,
+            territoryType: item.territory_type,
+            regionId: resolvedRegionId,
+            provinceId: resolvedProvinceId,
+            communeId: item.commune_id || undefined,
+            regionSlug: item.region_slug || (resolvedRegionId ? regSlugMap.get(resolvedRegionId) : undefined),
+            provinceSlug: item.province_slug || prov?.slug || commProv?.slug || undefined,
+            communeSlug: item.commune_slug || comm?.slug || undefined,
+            fullName: item.full_name,
+            fullNameAr: item.full_name_ar || undefined,
+            role: item.role,
+            house: item.house || "conseil",
+            party: item.party || undefined,
+            mandateStart: item.mandate_start || "2021",
+            mandateEnd: item.mandate_end || "2026",
+            bio: item.bio || undefined,
+            photoUrl: item.photo_path || undefined,
+            displayOrder: item.display_order ?? 0,
+            isPublished: Boolean(item.is_published),
+          };
+        });
+      }
+    } catch {
       // Fallback
     }
   }
   return memoryOfficials;
+}
+
+export interface AdminTerritoryNode {
+  id: string;
+  name: string;
+  slug: string;
+  provinces: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    communes: Array<{
+      id: string;
+      name: string;
+      slug: string;
+    }>;
+  }>;
+}
+
+export async function getSupabaseTerritoriesTree(): Promise<AdminTerritoryNode[]> {
+  const client = createServerSupabaseClient();
+  if (client) {
+    try {
+      const [{ data: regions }, { data: provinces }, { data: communes }] = await Promise.all([
+        client.from("regions").select("id,name,slug").order("name", { ascending: true }),
+        client.from("provinces").select("id,region_id,name,slug").order("name", { ascending: true }),
+        client.from("communes").select("id,province_id,name,slug").order("name", { ascending: true }),
+      ]);
+
+      const regRows = (regions ?? []) as Array<{ id: string; name: string | null; slug: string | null }>;
+      const provRows = (provinces ?? []) as Array<{ id: string; region_id: string | null; name: string | null; slug: string | null }>;
+      const commRows = (communes ?? []) as Array<{ id: string; province_id: string | null; name: string | null; slug: string | null }>;
+
+      if (regRows.length > 0) {
+        return regRows.map((reg) => ({
+          id: reg.id,
+          name: reg.name || reg.slug || reg.id,
+          slug: reg.slug || reg.id,
+          provinces: provRows
+            .filter((p) => p.region_id === reg.id)
+            .map((prov) => ({
+              id: prov.id,
+              name: prov.name || prov.slug || prov.id,
+              slug: prov.slug || prov.id,
+              communes: commRows
+                .filter((c) => c.province_id === prov.id)
+                .map((comm) => ({
+                  id: comm.id,
+                  name: comm.name || comm.slug || comm.id,
+                  slug: comm.slug || comm.id,
+                })),
+            })),
+        }));
+      }
+    } catch {
+      // Fall back to static metadata tree
+    }
+  }
+
+  return REGIONS_12_METADATA.map((r) => ({
+    id: r.id,
+    name: r.nameAr,
+    slug: r.arabicSlug,
+    provinces: getProvincesForRegion(r.slug).map((p) => ({
+      id: p.id,
+      name: p.nameAr,
+      slug: p.slug,
+      communes: getCommunesForProvince(r.slug, p.slug).map((c) => ({
+        id: c.id,
+        name: c.nameAr,
+        slug: c.slug,
+      })),
+    })),
+  }));
 }
 
 export async function saveOfficial(official: Omit<OfficialProfile, "id"> & { id?: string }): Promise<OfficialProfile> {
@@ -259,42 +430,70 @@ export async function saveOfficial(official: Omit<OfficialProfile, "id"> & { id?
     isPublished: official.isPublished ?? true,
   };
 
-  const adminClient = createServiceSupabaseAdminClient() || createServerSupabaseClient();
+  const serviceClient = createServiceSupabaseAdminClient();
+  const adminClient = serviceClient || createServerSupabaseClient();
   if (adminClient) {
-    try {
-      const ids = await resolveSupabaseTerritoryIds(
-        adminClient as NonNullable<ReturnType<typeof createServerSupabaseClient>>,
-        {
-          regionSlug: record.regionSlug,
-          provinceSlug: record.provinceSlug,
-          communeSlug: record.communeSlug,
-        }
+    const resolvedIds = await resolveSupabaseTerritoryIds(
+      adminClient as NonNullable<ReturnType<typeof createServerSupabaseClient>>,
+      {
+        regionSlug: record.regionSlug,
+        provinceSlug: record.provinceSlug,
+        communeSlug: record.communeSlug,
+      }
+    );
+
+    const regionId = record.regionId || resolvedIds.regionId;
+    const provinceId = record.provinceId || resolvedIds.provinceId;
+    const communeId = record.communeId || resolvedIds.communeId;
+
+    record.regionSlug = record.regionSlug || resolvedIds.regionSlug;
+    record.provinceSlug = record.provinceSlug || resolvedIds.provinceSlug;
+    record.communeSlug = record.communeSlug || resolvedIds.communeSlug;
+
+    const fkId =
+      record.territoryType === "region"
+        ? regionId
+        : record.territoryType === "province"
+        ? provinceId
+        : communeId;
+
+    if (serviceClient && !fkId) {
+      throw new Error(
+        `Impossible de localiser l'identifiant du territoire (${record.territoryType}) dans Supabase.`
       );
+    }
 
-      const payload: Record<string, unknown> = {
-        id,
-        territory_type: record.territoryType,
-        region_id: record.territoryType === "region" ? ids.regionId || null : null,
-        province_id: record.territoryType === "province" ? ids.provinceId || null : null,
-        commune_id: record.territoryType === "commune" ? ids.communeId || null : null,
-        full_name: record.fullName,
-        full_name_ar: record.fullNameAr || null,
-        role: record.role,
-        house: record.house || "conseil",
-        party: record.party || null,
-        mandate_start: record.mandateStart,
-        mandate_end: record.mandateEnd,
-        bio: record.bio || null,
-        photo_path: record.photoUrl || null,
-        display_order: record.displayOrder,
-        is_published: record.isPublished,
-      };
+    const payload: Record<string, unknown> = {
+      id,
+      territory_type: record.territoryType,
+      region_id: record.territoryType === "region" ? regionId || null : null,
+      province_id: record.territoryType === "province" ? provinceId || null : null,
+      commune_id: record.territoryType === "commune" ? communeId || null : null,
+      full_name: record.fullName,
+      full_name_ar: record.fullNameAr || null,
+      role: record.role,
+      house: record.house || "conseil",
+      party: record.party || null,
+      mandate_start: record.mandateStart,
+      mandate_end: record.mandateEnd,
+      bio: record.bio || null,
+      photo_path: record.photoUrl || null,
+      display_order: record.displayOrder,
+      is_published: record.isPublished,
+    };
 
-      await (adminClient as unknown as { from: (table: string) => { upsert: (p: unknown) => Promise<unknown> } })
-        .from("officials")
-        .upsert(payload);
-    } catch {
-      // Fall through to memory
+    const { error } = await (
+      adminClient as unknown as {
+        from: (table: string) => {
+          upsert: (p: unknown) => Promise<{ error: { message?: string } | null }>;
+        };
+      }
+    )
+      .from("officials")
+      .upsert(payload);
+
+    if (error && serviceClient) {
+      throw new Error(error.message || "Erreur lors de l'enregistrement dans Supabase");
     }
   }
 
@@ -309,20 +508,30 @@ export async function saveOfficial(official: Omit<OfficialProfile, "id"> & { id?
   return record;
 }
 
-export async function deleteOfficial(id: string): Promise<boolean> {
-  const adminClient = createServiceSupabaseAdminClient() || createServerSupabaseClient();
+export async function deleteOfficial(id: string): Promise<{ deleted: boolean; official?: OfficialProfile }> {
+  const all = await getAllOfficials();
+  const target = all.find((o) => o.id === id);
+
+  const serviceClient = createServiceSupabaseAdminClient();
+  const adminClient = serviceClient || createServerSupabaseClient();
   if (adminClient) {
-    try {
-      await (adminClient as unknown as { from: (table: string) => { delete: () => { eq: (k: string, v: string) => Promise<unknown> } } })
-        .from("officials")
-        .delete()
-        .eq("id", id);
-    } catch {
-      // Ignore
+    const { error } = await (
+      adminClient as unknown as {
+        from: (table: string) => {
+          delete: () => { eq: (k: string, v: string) => Promise<{ error: { message?: string } | null }> };
+        };
+      }
+    )
+      .from("officials")
+      .delete()
+      .eq("id", id);
+
+    if (error && serviceClient) {
+      throw new Error(error.message || "Erreur lors de la suppression dans Supabase");
     }
   }
   memoryOfficials = memoryOfficials.filter((o) => o.id !== id);
-  return true;
+  return { deleted: true, official: target };
 }
 
 export async function getNewsForTerritory(params: {

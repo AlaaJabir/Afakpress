@@ -443,6 +443,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
             <div className="flex flex-wrap gap-2">
               {isLoading || isBootstrapping ? <span className="inline-flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-black text-slate-600">Loading Supabase</span> : null}
               {error ? <span className="inline-flex min-h-10 items-center rounded-md bg-amber-50 px-3 text-sm font-black text-amber-800">Supabase error</span> : null}
+              <Link className={primaryButtonClass} href="/admin/territoires">Territoires & Élus</Link>
               <Link className={buttonClass} href="/">View site</Link>
               <button className={buttonClass} onClick={() => void refreshFromSupabase()} type="button">Refresh data</button>
               <button className={buttonClass} onClick={resetDemo} type="button">Reset demo data</button>
@@ -1196,6 +1197,9 @@ function RegionsPanel() {
           </div>
           <button className={primaryButtonClass} onClick={() => void addRegion()} type="button">Add</button>
         </div>
+        <Link className={`${buttonClass} mt-4 w-full`} href="/admin/territoires">
+          إدارة المنتخبين والملفات (Officials) →
+        </Link>
         <div className="mt-5 max-h-[70vh] space-y-2 overflow-y-auto pr-1">
           {state.regions.map((region) => (
             <button key={region.id} className={`w-full rounded-md border px-3 py-3 text-left transition ${activeRegion?.id === region.id ? "border-red-300 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-700 hover:border-red-200"}`} onClick={() => { setActiveRegionId(region.id); setActiveProvinceId(region.provinces[0]?.id ?? ""); }} type="button">

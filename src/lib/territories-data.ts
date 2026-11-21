@@ -5,6 +5,7 @@ export type TerritoryType = "region" | "province" | "commune";
 export interface TerritoryRegion {
   id: string;
   slug: string;
+  arabicSlug: string;
   name: string;
   nameFr: string;
   nameAr: string;
@@ -48,6 +49,9 @@ export interface TerritoryCommune {
 export interface OfficialProfile {
   id: string;
   territoryType: TerritoryType;
+  regionId?: string;
+  provinceId?: string;
+  communeId?: string;
   regionSlug?: string;
   provinceSlug?: string;
   communeSlug?: string;
@@ -80,6 +84,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "tta",
     code: "tta",
     slug: "tanger-tetouan-al-hoceima",
+    arabicSlug: "جهة-طنجة-تطوان-الحسيمة",
     name: "Tanger-Tétouan-Al Hoceïma",
     nameFr: "Tanger-Tétouan-Al Hoceïma",
     nameAr: "طنجة - تطوان - الحسيمة",
@@ -94,6 +99,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "ori",
     code: "ori",
     slug: "oriental",
+    arabicSlug: "جهة-الشرق",
     name: "L’Oriental",
     nameFr: "L’Oriental",
     nameAr: "الشرق",
@@ -108,13 +114,14 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "rsk",
     code: "rsk",
     slug: "rabat-sale-kenitra",
+    arabicSlug: "جهة-الرباط-سلا-القنيطرة",
     name: "Rabat-Salé-Kénitra",
     nameFr: "Rabat-Salé-Kénitra",
     nameAr: "الرباط - سلا - القنيطرة",
     col: "2",
     row: "2",
     population: 5130000,
-    provincesCount: 7,
+    provincesCount: 6,
     communesCount: 114,
     sortOrder: 3,
   },
@@ -122,6 +129,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "fm",
     code: "fm",
     slug: "fes-meknes",
+    arabicSlug: "جهة-فاس-مكناس",
     name: "Fès-Meknès",
     nameFr: "Fès-Meknès",
     nameAr: "فاس - مكناس",
@@ -136,13 +144,14 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "cs",
     code: "cs",
     slug: "casablanca-settat",
+    arabicSlug: "جهة-الدار-البيضاء-سطات",
     name: "Casablanca-Settat",
     nameFr: "Casablanca-Settat",
     nameAr: "الدار البيضاء - سطات",
     col: "2",
     row: "3",
     population: 7680000,
-    provincesCount: 9,
+    provincesCount: 8,
     communesCount: 153,
     sortOrder: 5,
   },
@@ -150,6 +159,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "bmk",
     code: "bmk",
     slug: "beni-mellal-khenifra",
+    arabicSlug: "جهة-بني-ملال-خنيفرة",
     name: "Béni Mellal-Khénifra",
     nameFr: "Béni Mellal-Khénifra",
     nameAr: "بني ملال - خنيفرة",
@@ -164,6 +174,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "dt",
     code: "dt",
     slug: "draa-tafilalet",
+    arabicSlug: "جهة-درعة-تافلالت",
     name: "Drâa-Tafilalet",
     nameFr: "Drâa-Tafilalet",
     nameAr: "درعة - تافيلالت",
@@ -178,6 +189,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "ms",
     code: "ms",
     slug: "marrakech-safi",
+    arabicSlug: "جهة-مراكش-اسفي",
     name: "Marrakech-Safi",
     nameFr: "Marrakech-Safi",
     nameAr: "مراكش - آسفي",
@@ -192,13 +204,14 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "sm",
     code: "sm",
     slug: "souss-massa",
+    arabicSlug: "جهة-سوس-ماسة",
     name: "Souss-Massa",
     nameFr: "Souss-Massa",
     nameAr: "سوس - ماسة",
     col: "2 / span 2",
     row: "5",
     population: 2850000,
-    provincesCount: 6,
+    provincesCount: 5,
     communesCount: 175,
     sortOrder: 9,
   },
@@ -206,13 +219,14 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "gon",
     code: "gon",
     slug: "guelmim-oued-noun",
+    arabicSlug: "جهة-كلميم-واد-نون",
     name: "Guelmim-Oued Noun",
     nameFr: "Guelmim-Oued Noun",
     nameAr: "كلميم - واد نون",
     col: "1 / span 2",
     row: "6",
     population: 445000,
-    provincesCount: 4,
+    provincesCount: 5,
     communesCount: 53,
     sortOrder: 10,
   },
@@ -220,6 +234,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "lsh",
     code: "lsh",
     slug: "laayoune-sakia-el-hamra",
+    arabicSlug: "جهة-العيون-الساقية-الحمراء",
     name: "Laâyoune-Sakia El Hamra",
     nameFr: "Laâyoune-Sakia El Hamra",
     nameAr: "العيون - الساقية الحمراء",
@@ -234,6 +249,7 @@ export const REGIONS_12_METADATA: TerritoryRegion[] = [
     id: "dod",
     code: "dod",
     slug: "dakhla-oued-ed-dahab",
+    arabicSlug: "جهة-الداخلة-واد-الذهب",
     name: "Dakhla-Oued Ed-Dahab",
     nameFr: "Dakhla-Oued Ed-Dahab",
     nameAr: "الداخلة - وادي الذهب",

@@ -3,6 +3,10 @@ import Link from "next/link";
 import type { PublicArticle, PublicEntity, PublicLocation } from "@/lib/public-content";
 import { sanitizeArticleHtml } from "@/lib/article-html";
 import { ArticleComments } from "@/components/ArticleComments";
+import {
+  LocationOfficialsSection,
+  LocationTerritoryMapCard,
+} from "@/components/territories/LocationTerritoryModules";
 
 const fallbackImage = "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1200&q=80";
 const emptyMessage = "لا توجد مقالات منشورة في هذه الصفحة حالياً.";
@@ -128,31 +132,88 @@ export function PublicCategoryView({ entity, articles }: { entity: PublicEntity;
 }
 
 export function PublicLocationView({ kind, location, articles }: { kind: "Region" | "Province / Prefecture" | "Commune"; location: PublicLocation; articles: PublicArticle[] }) {
+  const totalCommunes =
+    location.communes?.length ??
+    location.provinces?.reduce((sum, province) => sum + province.communes.length, 0);
+
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]" dir="rtl">
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]" dir="rtl">
       <section className="min-w-0">
-        <p className="text-sm font-black text-red-700">
+        <p className="text-sm font-black text-[#b91c1c]">
           {kind === "Region" ? "الجهة" : kind === "Commune" ? "الجماعة" : "العمالة أو الإقليم"}
         </p>
-        <h1 className="mt-3 text-4xl font-black leading-tight text-slate-950">{location.entity.name}</h1>
-        <p className="mt-3 text-base leading-7 text-slate-600">آخر الأخبار والمستجدات من هذه المنطقة</p>
-        <p className="mt-2 text-sm font-bold text-slate-500">{articles.length} مقال</p>
+        <h1 className="mt-3 text-4xl font-black leading-tight text-[#0b1930]">{location.entity.name}</h1>
+        <p className="mt-3 text-base leading-7 text-slate-600">آخر الأخبار والمستجدات، المسؤولون والمنتخبون في هذه المنطقة</p>
+        <p className="mt-2 text-sm font-bold text-slate-500">{articles.length} مقال منشور</p>
         <div className="mt-4 flex flex-wrap gap-3 text-sm font-black">
-          {location.region ? <Link href={`/region/${location.region.slug}`} className="text-red-700 hover:underline">{location.region.name}</Link> : null}
-          {location.province ? <Link href={`/province/${location.province.slug}`} className="text-slate-600 hover:text-red-700">{location.province.name}</Link> : null}
+          {location.region ? (
+            <Link href={`/region/${encodeURIComponent(location.region.slug)}`} className="text-[#b91c1c] hover:underline">
+              {location.region.name}
+            </Link>
+          ) : null}
+          {location.province ? (
+            <Link href={`/province/${encodeURIComponent(location.province.slug)}`} className="text-slate-600 hover:text-[#b91c1c]">
+              {location.province.name}
+            </Link>
+          ) : null}
         </div>
-        <div className="mt-8"><GeographicArticleList articles={articles} /></div>
+
+        {/* Officials & Elected Representatives Profiles */}
+        <div className="mt-8">
+          <LocationOfficialsSection
+            kind={kind}
+            locationName={location.entity.name}
+            officials={location.officials ?? []}
+          />
+        </div>
+
+        {/* Territory News Feed */}
+        <div className="mt-8">
+          <GeographicArticleList articles={articles} />
+        </div>
       </section>
-      <aside className="self-start rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black text-slate-950">التقسيم الإداري</h2>
-        <div className="mt-5 grid gap-3">
-          {location.provinces?.map((province) => (
-            <div key={province.id}>
-              <Link href={`/province/${province.slug}`} className="font-black text-slate-950 hover:text-red-700">{province.name}</Link>
-              <p className="mt-1 text-sm text-slate-600">{province.communes.map((commune) => commune.name).join(", ")}</p>
-            </div>
-          ))}
-          {location.communes?.map((commune) => <Link key={commune.id} href={`/commune/${commune.slug}`} className="font-bold text-slate-700 hover:text-red-700">{commune.name}</Link>)}
+
+      <aside className="self-start">
+        {/* Interactive 12-Region Map & Key Territory Card */}
+        <LocationTerritoryMapCard
+          kind={kind}
+          entityName={location.entity.name}
+          entitySlug={location.entity.slug}
+          regionSlug={location.region?.slug}
+          provincesCount={location.provinces?.length}
+          communesCount={totalCommunes}
+        />
+
+        {/* Administrative Subdivision List */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="border-b-4 border-[#b91c1c] pb-3 text-xl font-black text-[#0b1930]">التقسيم الإداري</h2>
+          <div className="mt-5 grid gap-3">
+            {location.provinces?.map((province) => (
+              <div key={province.id} className="border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
+                <Link href={`/province/${encodeURIComponent(province.slug)}`} className="font-black text-[#0b1930] hover:text-[#b91c1c]">
+                  {province.name}
+                </Link>
+                {province.communes.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-600">
+                    {province.communes.map((commune) => (
+                      <Link
+                        key={commune.id}
+                        href={`/commune/${encodeURIComponent(commune.slug)}`}
+                        className="hover:text-[#b91c1c] hover:underline"
+                      >
+                        {commune.name}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+            {location.communes?.map((commune) => (
+              <Link key={commune.id} href={`/commune/${encodeURIComponent(commune.slug)}`} className="font-bold text-slate-700 hover:text-[#b91c1c]">
+                {commune.name}
+              </Link>
+            ))}
+          </div>
         </div>
       </aside>
     </div>

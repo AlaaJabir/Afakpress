@@ -3,22 +3,49 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useTransition } from "react";
-import {
-  REGIONS_12_METADATA,
-  getProvincesForRegion,
-  getCommunesForProvince,
-  type OfficialProfile,
-  type TerritoryType,
-} from "@/lib/territories-data";
+import type { OfficialProfile, TerritoryType } from "@/lib/territories-data";
+import { REGIONS_12_METADATA, normalizeTerritorySlug } from "@/lib/territories-data";
+import type { AdminTerritoryNode } from "@/lib/territories-db";
 
 interface AdminTerritoiresClientProps {
   adminEmail: string;
   initialOfficials: OfficialProfile[];
+  regionsTree: AdminTerritoryNode[];
+}
+
+function isUuid(value?: string) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
+}
+
+function publicLocationHref(official: OfficialProfile, regionsTree: AdminTerritoryNode[]) {
+  if (official.territoryType === "commune" && official.communeSlug) {
+    return `/commune/${encodeURIComponent(official.communeSlug)}`;
+  }
+  if (official.territoryType === "province" && official.provinceSlug) {
+    return `/province/${encodeURIComponent(official.provinceSlug)}`;
+  }
+  const regionSlug = official.regionSlug;
+  if (regionSlug) {
+    const treeMatch = regionsTree.find(
+      (r) =>
+        r.slug === regionSlug ||
+        normalizeTerritorySlug(r.slug) === normalizeTerritorySlug(regionSlug)
+    );
+    const metaMatch = REGIONS_12_METADATA.find(
+      (r) =>
+        r.slug === normalizeTerritorySlug(regionSlug) ||
+        r.arabicSlug === regionSlug
+    );
+    const finalSlug = treeMatch?.slug || metaMatch?.arabicSlug || regionSlug;
+    return `/region/${encodeURIComponent(finalSlug)}`;
+  }
+  return "/";
 }
 
 export function AdminTerritoiresClient({
   adminEmail,
   initialOfficials,
+  regionsTree,
 }: AdminTerritoiresClientProps) {
   const [officials, setOfficials] = useState<OfficialProfile[]>(initialOfficials);
   const [isPending, startTransition] = useTransition();
@@ -26,9 +53,9 @@ export function AdminTerritoiresClient({
 
   // Form states
   const [territoryType, setTerritoryType] = useState<TerritoryType>("region");
-  const [selectedRegionSlug, setSelectedRegionSlug] = useState<string>("rabat-sale-kenitra");
-  const [selectedProvinceSlug, setSelectedProvinceSlug] = useState<string>("");
-  const [selectedCommuneSlug, setSelectedCommuneSlug] = useState<string>("");
+  const [selectedRegionId, setSelectedRegionId] = useState<string>(regionsTree[0]?.id ?? "");
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>("");
+  const [selectedCommuneId, setSelectedCommuneId] = useState<string>("");
 
   const [fullName, setFullName] = useState("");
   const [fullNameAr, setFullNameAr] = useState("");
@@ -45,8 +72,11 @@ export function AdminTerritoiresClient({
   // Filter for the list
   const [filterType, setFilterType] = useState<string>("all");
 
-  const provinces = getProvincesForRegion(selectedRegionSlug);
-  const communes = selectedProvinceSlug ? getCommunesForProvince(selectedRegionSlug, selectedProvinceSlug) : [];
+  const activeRegion = regionsTree.find((r) => r.id === selectedRegionId) ?? regionsTree[0];
+  const provinces = activeRegion?.provinces ?? [];
+  const activeProvince = provinces.find((p) => p.id === selectedProvinceId);
+  const communes = activeProvince?.communes ?? [];
+  const activeCommune = communes.find((c) => c.id === selectedCommuneId);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,6 +97,7 @@ export function AdminTerritoiresClient({
 
       const res = await fetch("/api/territoires/upload", {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
 
@@ -91,6 +122,16 @@ export function AdminTerritoiresClient({
       return;
     }
 
+    if (territoryType !== "region" && !activeProvince) {
+      setNotice({ type: "error", message: "Veuillez sélectionner une province ou préfecture." });
+      return;
+    }
+
+    if (territoryType === "commune" && !activeCommune) {
+      setNotice({ type: "error", message: "Veuillez sélectionner une commune." });
+      return;
+    }
+
     const effectiveRole = role === "custom" ? customRole : role;
     if (!effectiveRole.trim()) {
       setNotice({ type: "error", message: "Veuillez préciser la fonction / rôle de l'élu." });
@@ -101,9 +142,12 @@ export function AdminTerritoiresClient({
       try {
         const payload = {
           territoryType,
-          regionSlug: selectedRegionSlug,
-          provinceSlug: territoryType !== "region" ? selectedProvinceSlug : undefined,
-          communeSlug: territoryType === "commune" ? selectedCommuneSlug : undefined,
+          regionId: territoryType === "region" && isUuid(activeRegion?.id) ? activeRegion?.id : undefined,
+          provinceId: territoryType === "province" && isUuid(activeProvince?.id) ? activeProvince?.id : undefined,
+          communeId: territoryType === "commune" && isUuid(activeCommune?.id) ? activeCommune?.id : undefined,
+          regionSlug: activeRegion?.slug,
+          provinceSlug: territoryType !== "region" ? activeProvince?.slug : undefined,
+          communeSlug: territoryType === "commune" ? activeCommune?.slug : undefined,
           fullName: fullName.trim(),
           fullNameAr: fullNameAr.trim() || undefined,
           role: effectiveRole.trim(),
@@ -119,6 +163,7 @@ export function AdminTerritoiresClient({
 
         const res = await fetch("/api/territoires/officials", {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
@@ -149,13 +194,17 @@ export function AdminTerritoiresClient({
     try {
       const res = await fetch(`/api/territoires/officials?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (res.ok) {
         setOfficials((prev) => prev.filter((o) => o.id !== id));
         setNotice({ type: "success", message: `L'élu "${name}" a été supprimé.` });
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || "Erreur lors de la suppression.");
       }
-    } catch {
-      setNotice({ type: "error", message: "Erreur lors de la suppression." });
+    } catch (err: unknown) {
+      setNotice({ type: "error", message: err instanceof Error ? err.message : "Erreur lors de la suppression." });
     }
   };
 
@@ -163,6 +212,15 @@ export function AdminTerritoiresClient({
     if (filterType === "all") return true;
     return o.territoryType === filterType;
   });
+
+  const activePublicHref =
+    territoryType === "commune" && activeCommune
+      ? `/commune/${encodeURIComponent(activeCommune.slug)}`
+      : territoryType === "province" && activeProvince
+      ? `/province/${encodeURIComponent(activeProvince.slug)}`
+      : activeRegion
+      ? `/region/${encodeURIComponent(activeRegion.slug)}`
+      : "/";
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -190,11 +248,11 @@ export function AdminTerritoiresClient({
             ← Retour Dashboard
           </Link>
           <Link
-            href="/territoires"
+            href={activePublicHref}
             target="_blank"
-            className="rounded-lg bg-[#A8472F] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#7E3220]"
+            className="rounded-lg bg-[#b91c1c] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#991b1b]"
           >
-            Voir la section publique ↗
+            Voir la page publique ↗
           </Link>
         </div>
       </div>
@@ -263,17 +321,17 @@ export function AdminTerritoiresClient({
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Région</label>
               <select
-                value={selectedRegionSlug}
+                value={activeRegion?.id ?? ""}
                 onChange={(e) => {
-                  setSelectedRegionSlug(e.target.value);
-                  setSelectedProvinceSlug("");
-                  setSelectedCommuneSlug("");
+                  setSelectedRegionId(e.target.value);
+                  setSelectedProvinceId("");
+                  setSelectedCommuneId("");
                 }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#A8472F] focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#b91c1c] focus:outline-none"
               >
-                {REGIONS_12_METADATA.map((r) => (
-                  <option key={r.slug} value={r.slug}>
-                    {r.nameFr} ({r.nameAr})
+                {regionsTree.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
                   </option>
                 ))}
               </select>
@@ -284,17 +342,17 @@ export function AdminTerritoiresClient({
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Province / Préfecture</label>
                 <select
-                  value={selectedProvinceSlug}
+                  value={selectedProvinceId}
                   onChange={(e) => {
-                    setSelectedProvinceSlug(e.target.value);
-                    setSelectedCommuneSlug("");
+                    setSelectedProvinceId(e.target.value);
+                    setSelectedCommuneId("");
                   }}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#A8472F] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#b91c1c] focus:outline-none"
                 >
                   <option value="">Sélectionnez une province...</option>
                   {provinces.map((p) => (
-                    <option key={p.slug} value={p.slug}>
-                      {p.nameFr} ({p.kind})
+                    <option key={p.id} value={p.id}>
+                      {p.name}
                     </option>
                   ))}
                 </select>
@@ -302,18 +360,18 @@ export function AdminTerritoiresClient({
             ) : null}
 
             {/* Commune Selector (if Commune) */}
-            {territoryType === "commune" && selectedProvinceSlug ? (
+            {territoryType === "commune" && selectedProvinceId ? (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Commune</label>
                 <select
-                  value={selectedCommuneSlug}
-                  onChange={(e) => setSelectedCommuneSlug(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#A8472F] focus:outline-none"
+                  value={selectedCommuneId}
+                  onChange={(e) => setSelectedCommuneId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#b91c1c] focus:outline-none"
                 >
                   <option value="">Sélectionnez une commune...</option>
                   {communes.map((c) => (
-                    <option key={c.slug} value={c.slug}>
-                      {c.nameFr} ({c.kind})
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -471,7 +529,7 @@ export function AdminTerritoiresClient({
             <button
               type="submit"
               disabled={isPending || isUploading}
-              className="w-full min-h-12 rounded-xl bg-[#A8472F] px-4 py-2.5 text-sm font-black text-white shadow-xs transition hover:bg-[#7E3220] disabled:opacity-50 cursor-pointer"
+              className="w-full min-h-12 rounded-xl bg-[#b91c1c] px-4 py-2.5 text-sm font-black text-white shadow-xs transition hover:bg-[#991b1b] disabled:opacity-50 cursor-pointer"
             >
               {isPending ? "Enregistrement en cours..." : "Enregistrer et publier l’élu"}
             </button>
@@ -494,7 +552,7 @@ export function AdminTerritoiresClient({
                   onClick={() => setFilterType(t)}
                   className={`px-3 py-1 text-xs font-bold rounded-md transition cursor-pointer capitalize ${
                     filterType === t
-                      ? "bg-[#1B2A41] text-white"
+                      ? "bg-[#0b1930] text-white"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -511,12 +569,7 @@ export function AdminTerritoiresClient({
           ) : (
             <div className="grid gap-3">
               {filteredOfficials.map((o) => {
-                const targetLink =
-                  o.territoryType === "region"
-                    ? `/territoires/${o.regionSlug}`
-                    : o.territoryType === "province"
-                    ? `/territoires/${o.regionSlug}/${o.provinceSlug}`
-                    : `/territoires/${o.regionSlug}/${o.provinceSlug}/${o.communeSlug}`;
+                const targetLink = publicLocationHref(o, regionsTree);
 
                 return (
                   <div
@@ -546,7 +599,7 @@ export function AdminTerritoiresClient({
                             {o.territoryType}
                           </span>
                         </div>
-                        <p className="text-xs text-[#A8472F] font-semibold truncate">{o.role}</p>
+                        <p className="text-xs text-[#b91c1c] font-semibold truncate">{o.role}</p>
                         <p className="text-[11px] text-slate-400">
                           {o.party ? `${o.party} · ` : ""}Mandat {o.mandateStart} – {o.mandateEnd}
                         </p>

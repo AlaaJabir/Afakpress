@@ -11,6 +11,11 @@ import { sanitizeArticleHtml } from "@/lib/article-html";
 import { ArticleComments } from "@/components/ArticleComments";
 import { FALLBACK_13EME_ARTICLES, type ThirteenthRegionArticle } from "@/lib/thirteenth-region";
 import type { PublicComment } from "@/lib/comments-store";
+import {
+  LocationOfficialsSection,
+  LocationTerritoryMapCard,
+} from "@/components/territories/LocationTerritoryModules";
+import { INITIAL_OFFICIALS, normalizeTerritorySlug } from "@/lib/territories-data";
 
 interface RegionGridItem {
   id: string;
@@ -1884,32 +1889,60 @@ export function CmsCategoryPage({ slug }: { slug: string }) {
 
 export function CmsRegionPage({ slug }: { slug: string }) {
   const { state } = useCms();
-  const region = state.regions.find((item) => item.slug === slug) ?? moroccoRegions.find((item) => item.slug === slug);
-  const regionArticles = publishedArticles(state).filter((article) => articleRegionSlug(state, article) === slug);
+  const normSlug = normalizeTerritorySlug(slug);
+  const region =
+    state.regions.find((item) => item.slug === slug || normalizeTerritorySlug(item.slug) === normSlug) ??
+    moroccoRegions.find((item) => item.slug === slug || normalizeTerritorySlug(item.slug) === normSlug);
+  const regionArticles = publishedArticles(state).filter(
+    (article) => articleRegionSlug(state, article) === slug || normalizeTerritorySlug(articleRegionSlug(state, article)) === normSlug
+  );
+  const officials = INITIAL_OFFICIALS.filter(
+    (o) => o.territoryType === "region" && o.isPublished && normalizeTerritorySlug(o.regionSlug || "") === normSlug
+  );
+  const totalCommunes = region?.provinces.reduce((sum, province) => sum + province.communes.length, 0) ?? 0;
 
   if (!region) {
-    return <p className="border border-slate-200 bg-white p-6 text-slate-600">Region not found.</p>;
+    return <p className="border border-slate-200 bg-white p-6 text-slate-600" dir="rtl">الجهة غير موجودة.</p>;
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-      <section>
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Regional desk</p>
-        <h1 className="mt-3 text-4xl font-black text-slate-950">{region.name}</h1>
-        <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">Coverage organized by region, province or prefecture, and commune.</p>
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]" dir="rtl">
+      <section className="min-w-0">
+        <p className="text-sm font-black text-[#b91c1c]">الجهة</p>
+        <h1 className="mt-3 text-4xl font-black leading-tight text-[#0b1930]">{region.name}</h1>
+        <p className="mt-3 text-base leading-7 text-slate-600">آخر الأخبار والمستجدات، المسؤولون والمنتخبون في هذه المنطقة</p>
+        <div className="mt-8">
+          <LocationOfficialsSection kind="Region" locationName={region.name} officials={officials} />
+        </div>
         <div className="mt-8 space-y-6">
-          {regionArticles.length > 0 ? regionArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="border border-slate-200 bg-white p-6 text-slate-600">No articles are assigned to this region yet.</p>}
+          {regionArticles.length > 0 ? regionArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center font-bold text-slate-600">لا توجد مقالات منشورة في هذه الصفحة حالياً.</p>}
         </div>
       </section>
-      <aside className="border border-slate-200 bg-white p-6">
-        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Local structure</h2>
-        <div className="mt-5 space-y-5">
-          {region.provinces.map((province) => (
-            <div key={province.slug}>
-              <Link href={`/province/${province.slug}`} className="font-black text-slate-950 hover:text-red-700">{province.name}</Link>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{province.communes.map((commune) => commune.name).join(", ")}</p>
-            </div>
-          ))}
+      <aside className="self-start">
+        <LocationTerritoryMapCard
+          kind="Region"
+          entityName={region.name}
+          entitySlug={region.slug}
+          regionSlug={region.slug}
+          provincesCount={region.provinces.length}
+          communesCount={totalCommunes}
+        />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="border-b-4 border-[#b91c1c] pb-3 text-xl font-black text-[#0b1930]">التقسيم الإداري</h2>
+          <div className="mt-5 grid gap-3">
+            {region.provinces.map((province) => (
+              <div key={province.slug} className="border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
+                <Link href={`/province/${encodeURIComponent(province.slug)}`} className="font-black text-[#0b1930] hover:text-[#b91c1c]">{province.name}</Link>
+                <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-600">
+                  {province.communes.map((commune) => (
+                    <Link key={commune.slug} href={`/commune/${encodeURIComponent(commune.slug)}`} className="hover:text-[#b91c1c] hover:underline">
+                      {commune.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </aside>
     </div>
@@ -1919,33 +1952,53 @@ export function CmsRegionPage({ slug }: { slug: string }) {
 export function CmsProvincePage({ slug }: { slug: string }) {
   const { state } = useCms();
   const geography = state.regions.length ? state.regions : moroccoRegions;
-  const match = geography.flatMap((region) => region.provinces.map((province) => ({ region, province }))).find((item) => item.province.slug === slug);
-  const provinceArticles = publishedArticles(state).filter((article) => articleProvinceSlug(state, article) === slug);
+  const normSlug = normalizeTerritorySlug(slug);
+  const match = geography
+    .flatMap((region) => region.provinces.map((province) => ({ region, province })))
+    .find((item) => item.province.slug === slug || normalizeTerritorySlug(item.province.slug) === normSlug);
+  const provinceArticles = publishedArticles(state).filter(
+    (article) => articleProvinceSlug(state, article) === slug || normalizeTerritorySlug(articleProvinceSlug(state, article)) === normSlug
+  );
+  const officials = INITIAL_OFFICIALS.filter(
+    (o) => o.territoryType === "province" && o.isPublished && normalizeTerritorySlug(o.provinceSlug || "") === normSlug
+  );
 
   if (!match) {
-    return <p className="border border-slate-200 bg-white p-6 text-slate-600">Province or prefecture not found.</p>;
+    return <p className="border border-slate-200 bg-white p-6 text-slate-600" dir="rtl">العمالة أو الإقليم غير موجود.</p>;
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-      <section>
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Province / Prefecture</p>
-        <h1 className="mt-3 text-4xl font-black text-slate-950">{match.province.name}</h1>
-        <Link href={`/region/${match.region.slug}`} className="mt-4 inline-block text-sm font-black text-red-700 hover:underline">
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]" dir="rtl">
+      <section className="min-w-0">
+        <p className="text-sm font-black text-[#b91c1c]">العمالة أو الإقليم</p>
+        <h1 className="mt-3 text-4xl font-black leading-tight text-[#0b1930]">{match.province.name}</h1>
+        <Link href={`/region/${encodeURIComponent(match.region.slug)}`} className="mt-4 inline-block text-sm font-black text-[#b91c1c] hover:underline">
           {match.region.name}
         </Link>
+        <div className="mt-8">
+          <LocationOfficialsSection kind="Province / Prefecture" locationName={match.province.name} officials={officials} />
+        </div>
         <div className="mt-8 space-y-6">
-          {provinceArticles.length > 0 ? provinceArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="border border-slate-200 bg-white p-6 text-slate-600">No articles are assigned to this province yet.</p>}
+          {provinceArticles.length > 0 ? provinceArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center font-bold text-slate-600">لا توجد مقالات منشورة في هذه الصفحة حالياً.</p>}
         </div>
       </section>
-      <aside className="border border-slate-200 bg-white p-6">
-        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Communes</h2>
-        <div className="mt-5 grid gap-2">
-          {match.province.communes.map((commune) => (
-            <Link key={commune.slug} href={`/commune/${commune.slug}`} className="rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-red-700">
-              {commune.name}
-            </Link>
-          ))}
+      <aside className="self-start">
+        <LocationTerritoryMapCard
+          kind="Province / Prefecture"
+          entityName={match.province.name}
+          entitySlug={match.province.slug}
+          regionSlug={match.region.slug}
+          communesCount={match.province.communes.length}
+        />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="border-b-4 border-[#b91c1c] pb-3 text-xl font-black text-[#0b1930]">الجماعات الترابية</h2>
+          <div className="mt-5 grid gap-2">
+            {match.province.communes.map((commune) => (
+              <Link key={commune.slug} href={`/commune/${encodeURIComponent(commune.slug)}`} className="rounded-md px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-red-50 hover:text-[#b91c1c]">
+                {commune.name}
+              </Link>
+            ))}
+          </div>
         </div>
       </aside>
     </div>
@@ -1955,33 +2008,50 @@ export function CmsProvincePage({ slug }: { slug: string }) {
 export function CmsCommunePage({ slug }: { slug: string }) {
   const { state } = useCms();
   const geography = state.regions.length ? state.regions : moroccoRegions;
+  const normSlug = normalizeTerritorySlug(slug);
   const match = geography
     .flatMap((region) => region.provinces.flatMap((province) => province.communes.map((commune) => ({ region, province, commune }))))
-    .find((item) => item.commune.slug === slug);
-  const communeArticles = publishedArticles(state).filter((article) => articleCommuneSlug(state, article) === slug);
+    .find((item) => item.commune.slug === slug || normalizeTerritorySlug(item.commune.slug) === normSlug);
+  const communeArticles = publishedArticles(state).filter(
+    (article) => articleCommuneSlug(state, article) === slug || normalizeTerritorySlug(articleCommuneSlug(state, article)) === normSlug
+  );
+  const officials = INITIAL_OFFICIALS.filter(
+    (o) => o.territoryType === "commune" && o.isPublished && normalizeTerritorySlug(o.communeSlug || "") === normSlug
+  );
 
   if (!match) {
-    return <p className="border border-slate-200 bg-white p-6 text-slate-600">Commune not found.</p>;
+    return <p className="border border-slate-200 bg-white p-6 text-slate-600" dir="rtl">الجماعة غير موجودة.</p>;
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-      <section>
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">Commune</p>
-        <h1 className="mt-3 text-4xl font-black text-slate-950">{match.commune.name}</h1>
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]" dir="rtl">
+      <section className="min-w-0">
+        <p className="text-sm font-black text-[#b91c1c]">الجماعة</p>
+        <h1 className="mt-3 text-4xl font-black leading-tight text-[#0b1930]">{match.commune.name}</h1>
         <div className="mt-4 flex flex-wrap gap-3 text-sm font-black">
-          <Link href={`/province/${match.province.slug}`} className="text-red-700 hover:underline">{match.province.name}</Link>
-          <Link href={`/region/${match.region.slug}`} className="text-slate-600 hover:text-red-700">{match.region.name}</Link>
+          <Link href={`/province/${encodeURIComponent(match.province.slug)}`} className="text-[#b91c1c] hover:underline">{match.province.name}</Link>
+          <Link href={`/region/${encodeURIComponent(match.region.slug)}`} className="text-slate-600 hover:text-[#b91c1c]">{match.region.name}</Link>
+        </div>
+        <div className="mt-8">
+          <LocationOfficialsSection kind="Commune" locationName={match.commune.name} officials={officials} />
         </div>
         <div className="mt-8 space-y-6">
-          {communeArticles.length > 0 ? communeArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="border border-slate-200 bg-white p-6 text-slate-600">No articles are assigned to this commune yet.</p>}
+          {communeArticles.length > 0 ? communeArticles.map((article) => <ArticleCard key={article.id} article={article} />) : <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center font-bold text-slate-600">لا توجد مقالات منشورة في هذه الصفحة حالياً.</p>}
         </div>
       </section>
-      <aside className="border border-slate-200 bg-white p-6">
-        <h2 className="border-b-4 border-red-700 pb-3 text-xl font-black uppercase text-slate-950">Local context</h2>
-        <div className="mt-5 grid gap-3 text-sm font-bold text-slate-700">
-          <Link href={`/region/${match.region.slug}`} className="hover:text-red-700">{match.region.name}</Link>
-          <Link href={`/province/${match.province.slug}`} className="hover:text-red-700">{match.province.name}</Link>
+      <aside className="self-start">
+        <LocationTerritoryMapCard
+          kind="Commune"
+          entityName={match.commune.name}
+          entitySlug={match.commune.slug}
+          regionSlug={match.region.slug}
+        />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="border-b-4 border-[#b91c1c] pb-3 text-xl font-black text-[#0b1930]">التقسيم الإداري</h2>
+          <div className="mt-5 grid gap-3 text-sm font-bold text-slate-700">
+            <Link href={`/region/${encodeURIComponent(match.region.slug)}`} className="hover:text-[#b91c1c]">{match.region.name}</Link>
+            <Link href={`/province/${encodeURIComponent(match.province.slug)}`} className="hover:text-[#b91c1c]">{match.province.name}</Link>
+          </div>
         </div>
       </aside>
     </div>

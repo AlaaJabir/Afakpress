@@ -1,4 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase";
+import { getOfficialsForLocation } from "@/lib/territories-db";
+import type { OfficialProfile } from "@/lib/territories-data";
 
 export type PublicEntity = {
   id: string;
@@ -36,6 +38,7 @@ export type PublicLocation = {
   province?: PublicEntity;
   provinces?: Array<PublicEntity & { communes: PublicEntity[] }>;
   communes?: PublicEntity[];
+  officials?: OfficialProfile[];
 };
 
 export type PublicQueryResult<T> =
@@ -254,8 +257,18 @@ export async function getRegionPageData(slug: string): Promise<PublicQueryResult
   const entityResult = await geographicEntity("regions", slug);
   if (entityResult.status !== "ok") return entityResult;
   const entity = entityResult.data;
-  const locations = await locationRows();
+  const [locations, articles, officials] = await Promise.all([
+    locationRows(),
+    geographicArticles("region_id", entity.id),
+    getOfficialsForLocation({
+      territoryType: "region",
+      entityId: entity.id,
+      slug: entity.slug,
+      regionSlug: entity.slug,
+    }),
+  ]);
   if (locations.status !== "ok") return locations;
+  if (articles.status !== "ok") return articles;
 
   const provinces = locations.provinces
     .filter((province) => province.region_id === entity.id)
@@ -263,13 +276,11 @@ export async function getRegionPageData(slug: string): Promise<PublicQueryResult
       ...province,
       communes: locations.communes.filter((commune) => commune.province_id === province.id),
     }));
-  const articles = await geographicArticles("region_id", entity.id);
-  if (articles.status !== "ok") return articles;
 
   return {
     status: "ok",
     data: {
-      location: { entity, provinces },
+      location: { entity, provinces, officials },
       articles: articles.data,
     },
   };
@@ -284,13 +295,22 @@ export async function getProvincePageData(slug: string): Promise<PublicQueryResu
   const provinceRow = locations.provinces.find((province) => province.id === entity.id);
   const region = locations.regions.find((item) => item.id === provinceRow?.region_id);
   const communes = locations.communes.filter((commune) => commune.province_id === entity.id);
-  const articles = await geographicArticles("province_id", entity.id);
+  const [articles, officials] = await Promise.all([
+    geographicArticles("province_id", entity.id),
+    getOfficialsForLocation({
+      territoryType: "province",
+      entityId: entity.id,
+      slug: entity.slug,
+      regionSlug: region?.slug,
+      provinceSlug: entity.slug,
+    }),
+  ]);
   if (articles.status !== "ok") return articles;
 
   return {
     status: "ok",
     data: {
-      location: { entity, region, communes },
+      location: { entity, region, communes, officials },
       articles: articles.data,
     },
   };
@@ -305,13 +325,23 @@ export async function getCommunePageData(slug: string): Promise<PublicQueryResul
   const communeRow = locations.communes.find((commune) => commune.id === entity.id);
   const province = locations.provinces.find((item) => item.id === communeRow?.province_id);
   const region = locations.regions.find((item) => item.id === province?.region_id);
-  const articles = await geographicArticles("commune_id", entity.id);
+  const [articles, officials] = await Promise.all([
+    geographicArticles("commune_id", entity.id),
+    getOfficialsForLocation({
+      territoryType: "commune",
+      entityId: entity.id,
+      slug: entity.slug,
+      regionSlug: region?.slug,
+      provinceSlug: province?.slug,
+      communeSlug: entity.slug,
+    }),
+  ]);
   if (articles.status !== "ok") return articles;
 
   return {
     status: "ok",
     data: {
-      location: { entity, province, region },
+      location: { entity, province, region, officials },
       articles: articles.data,
     },
   };
