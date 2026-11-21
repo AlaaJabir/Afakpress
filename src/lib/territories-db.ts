@@ -1,4 +1,5 @@
 import { createServerSupabaseClient, createServiceSupabaseAdminClient } from "@/lib/supabase";
+import type { Json } from "@/lib/supabase-types";
 import {
   REGIONS_12_METADATA,
   INITIAL_OFFICIALS,
@@ -9,12 +10,14 @@ import {
   type TerritoryProvince,
   type TerritoryCommune,
   type OfficialProfile,
+  type TerritoryMapEntry,
   type TerritoryArticle,
   type TerritoryType,
 } from "./territories-data";
 
-// Fallback in-memory store for newly added officials during session if Supabase table is not yet migrated
+// Fallback in-memory stores for session when Supabase service key / table is unavailable
 let memoryOfficials: OfficialProfile[] = [...INITIAL_OFFICIALS];
+let memoryTerritoryMaps: TerritoryMapEntry[] = [];
 
 interface OfficialDbRecord {
   id: string;
@@ -77,12 +80,13 @@ async function resolveSupabaseTerritoryIds(
       }
     }
 
-    if (params.provinceSlug && result.regionId) {
-      const { data: provData } = await client
-        .from("provinces")
-        .select("id,name,slug")
-        .eq("region_id", result.regionId);
-      const provRows = (provData ?? []) as Array<{ id: string; name: string | null; slug: string | null }>;
+    if (params.provinceSlug) {
+      let provQuery = client.from("provinces").select("id,region_id,name,slug");
+      if (result.regionId) {
+        provQuery = provQuery.eq("region_id", result.regionId);
+      }
+      const { data: provData } = await provQuery;
+      const provRows = (provData ?? []) as Array<{ id: string; region_id: string | null; name: string | null; slug: string | null }>;
       const normP = normalizeTerritorySlug(params.provinceSlug);
       const matchedProv = provRows.find(
         (p) =>
@@ -92,15 +96,19 @@ async function resolveSupabaseTerritoryIds(
       if (matchedProv) {
         result.provinceId = matchedProv.id;
         result.provinceSlug = matchedProv.slug || undefined;
+        if (!result.regionId && matchedProv.region_id) {
+          result.regionId = matchedProv.region_id;
+        }
       }
     }
 
-    if (params.communeSlug && result.provinceId) {
-      const { data: commData } = await client
-        .from("communes")
-        .select("id,name,slug")
-        .eq("province_id", result.provinceId);
-      const commRows = (commData ?? []) as Array<{ id: string; name: string | null; slug: string | null }>;
+    if (params.communeSlug) {
+      let commQuery = client.from("communes").select("id,province_id,name,slug");
+      if (result.provinceId) {
+        commQuery = commQuery.eq("province_id", result.provinceId);
+      }
+      const { data: commData } = await commQuery;
+      const commRows = (commData ?? []) as Array<{ id: string; province_id: string | null; name: string | null; slug: string | null }>;
       const normC = normalizeTerritorySlug(params.communeSlug);
       const matchedComm = commRows.find(
         (c) =>
@@ -110,6 +118,9 @@ async function resolveSupabaseTerritoryIds(
       if (matchedComm) {
         result.communeId = matchedComm.id;
         result.communeSlug = matchedComm.slug || undefined;
+        if (!result.provinceId && matchedComm.province_id) {
+          result.provinceId = matchedComm.province_id;
+        }
       }
     }
   } catch {
@@ -532,6 +543,473 @@ export async function deleteOfficial(id: string): Promise<{ deleted: boolean; of
   }
   memoryOfficials = memoryOfficials.filter((o) => o.id !== id);
   return { deleted: true, official: target };
+}
+
+const TERRITORY_MAP_KEY_PREFIX = "territory_map:";
+
+function isSafeImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return (
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("data:image/")
+  );
+}
+
+function parseTerritoryMapSetting(
+  row: { id: string; key: string | null; value: Json | null; updated_at: string | null }
+): TerritoryMapEntry | null {
+  if (!row.value || typeof row.value !== "object" || Array.isArray(row.value)) return null;
+  const val = row.value as Record<string, unknown>;
+  const mapUrl = typeof val.mapUrl === "string" ? val.mapUrl.trim() : "";
+  const territoryType =
+    val.territoryType === "region" || val.territoryType === "province" || val.territoryType === "commune"
+      ? val.territoryType
+      : null;
+
+  if (!mapUrl || !territoryType || !isSafeImageUrl(mapUrl)) return null;
+
+  return {
+    id: typeof val.id === "string" && val.id ? val.id : row.id,
+    territoryType,
+    regionId: typeof val.regionId === "string" ? val.regionId : undefined,
+    provinceId: typeof val.provinceId === "string" ? val.provinceId : undefined,
+    communeId: typeof val.communeId === "string" ? val.communeId : undefined,
+    regionSlug: typeof val.regionSlug === "string" ? val.regionSlug : undefined,
+    provinceSlug: typeof val.provinceSlug === "string" ? val.provinceSlug : undefined,
+    communeSlug: typeof val.communeSlug === "string" ? val.communeSlug : undefined,
+    territoryName: typeof val.territoryName === "string" ? val.territoryName : undefined,
+    mapUrl,
+    caption: typeof val.caption === "string" && val.caption.trim() ? val.caption.trim() : undefined,
+    updatedAt: (typeof val.updatedAt === "string" ? val.updatedAt : row.updated_at) || undefined,
+  };
+}
+
+export async function getAllTerritoryMaps(): Promise<TerritoryMapEntry[]> {
+  const client = createServerSupabaseClient();
+  if (client) {
+    try {
+      const [{ data: settingsData, error }, { data: regData }, { data: provData }, { data: commData }] =
+        await Promise.all([
+          client
+            .from("settings")
+            .select("id,key,value,updated_at")
+            .like("key", `${TERRITORY_MAP_KEY_PREFIX}%`)
+            .order("updated_at", { ascending: false }),
+          client.from("regions").select("id,name,slug"),
+          client.from("provinces").select("id,name,slug,region_id"),
+          client.from("communes").select("id,name,slug,province_id"),
+        ]);
+
+      if (!error && Array.isArray(settingsData)) {
+        const settingsRows = settingsData as Array<{
+          id: string;
+          key: string | null;
+          value: Json | null;
+          updated_at: string | null;
+        }>;
+        const regRows = (regData ?? []) as Array<{ id: string; name: string | null; slug: string | null }>;
+        const provRows = (provData ?? []) as Array<{ id: string; name: string | null; slug: string | null; region_id: string | null }>;
+        const commRows = (commData ?? []) as Array<{ id: string; name: string | null; slug: string | null; province_id: string | null }>;
+
+        const regMap = new Map(regRows.map((r) => [r.id, r]));
+        const provMap = new Map(provRows.map((p) => [p.id, p]));
+        const commMap = new Map(commRows.map((c) => [c.id, c]));
+
+        const parsed: TerritoryMapEntry[] = [];
+        for (const row of settingsRows) {
+          const entry = parseTerritoryMapSetting(row);
+          if (!entry) continue;
+
+          const comm = entry.communeId ? commMap.get(entry.communeId) : undefined;
+          const prov = entry.provinceId
+            ? provMap.get(entry.provinceId)
+            : comm?.province_id
+            ? provMap.get(comm.province_id)
+            : undefined;
+          const resolvedRegionId = entry.regionId || prov?.region_id || undefined;
+          const reg = resolvedRegionId ? regMap.get(resolvedRegionId) : undefined;
+
+          parsed.push({
+            ...entry,
+            id: row.id,
+            regionId: resolvedRegionId,
+            provinceId: entry.provinceId || comm?.province_id || undefined,
+            regionSlug: entry.regionSlug || reg?.slug || undefined,
+            provinceSlug: entry.provinceSlug || prov?.slug || undefined,
+            communeSlug: entry.communeSlug || comm?.slug || undefined,
+            territoryName:
+              entry.territoryName ||
+              (entry.territoryType === "commune"
+                ? comm?.name || undefined
+                : entry.territoryType === "province"
+                ? prov?.name || undefined
+                : reg?.name || undefined),
+          });
+        }
+
+        return parsed;
+      }
+    } catch {
+      // Fall back to memory store
+    }
+  }
+
+  return memoryTerritoryMaps;
+}
+
+export async function getTerritoryMapForLocation(params: {
+  territoryType: TerritoryType;
+  entityId?: string;
+  slug?: string;
+  regionSlug?: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+}): Promise<TerritoryMapEntry | null> {
+  const targetSlug =
+    params.slug ||
+    (params.territoryType === "region"
+      ? params.regionSlug
+      : params.territoryType === "province"
+      ? params.provinceSlug
+      : params.communeSlug);
+  const normTargetSlug = targetSlug ? normalizeTerritorySlug(targetSlug) : undefined;
+
+  const client = createServerSupabaseClient();
+  if (client) {
+    try {
+      const { data: settingsRows, error } = await client
+        .from("settings")
+        .select("id,key,value,updated_at")
+        .like("key", `${TERRITORY_MAP_KEY_PREFIX}${params.territoryType}:%`);
+
+      if (!error && Array.isArray(settingsRows) && settingsRows.length > 0) {
+        const typedSettingsRows = settingsRows as Array<{
+          id: string;
+          key: string | null;
+          value: Json | null;
+          updated_at: string | null;
+        }>;
+        const expectedKey = params.entityId
+          ? `${TERRITORY_MAP_KEY_PREFIX}${params.territoryType}:${params.entityId}`
+          : undefined;
+
+        const parsedRows = typedSettingsRows
+          .map((row) => ({ key: row.key || "", entry: parseTerritoryMapSetting(row) }))
+          .filter((item): item is { key: string; entry: TerritoryMapEntry } => Boolean(item.entry));
+
+        if (expectedKey) {
+          const exactByKey = parsedRows.find((item) => item.key === expectedKey);
+          if (exactByKey) return exactByKey.entry;
+        }
+
+        const matchedByIdOrSlug = parsedRows.find(({ entry }) => {
+          if (params.entityId) {
+            if (params.territoryType === "region" && entry.regionId === params.entityId) return true;
+            if (params.territoryType === "province" && entry.provinceId === params.entityId) return true;
+            if (params.territoryType === "commune" && entry.communeId === params.entityId) return true;
+          }
+          if (normTargetSlug) {
+            const candidateSlug =
+              params.territoryType === "region"
+                ? entry.regionSlug
+                : params.territoryType === "province"
+                ? entry.provinceSlug
+                : entry.communeSlug;
+            if (candidateSlug && (candidateSlug === targetSlug || normalizeTerritorySlug(candidateSlug) === normTargetSlug)) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (matchedByIdOrSlug) return matchedByIdOrSlug.entry;
+      }
+
+      // Check optional map_url column if migration 202611210002_territory_maps.sql has been applied
+      if (params.entityId) {
+        const table =
+          params.territoryType === "region"
+            ? "regions"
+            : params.territoryType === "province"
+            ? "provinces"
+            : "communes";
+        const { data: entityRow } = await client
+          .from(table)
+          .select("*")
+          .eq("id", params.entityId)
+          .maybeSingle();
+        const maybeMapUrl = (entityRow as { map_url?: string | null; name?: string | null; slug?: string | null } | null)?.map_url;
+        if (maybeMapUrl && isSafeImageUrl(maybeMapUrl)) {
+          return {
+            id: `col-${params.entityId}`,
+            territoryType: params.territoryType,
+            regionId: params.territoryType === "region" ? params.entityId : undefined,
+            provinceId: params.territoryType === "province" ? params.entityId : undefined,
+            communeId: params.territoryType === "commune" ? params.entityId : undefined,
+            regionSlug: params.regionSlug,
+            provinceSlug: params.provinceSlug,
+            communeSlug: params.communeSlug,
+            territoryName: (entityRow as { name?: string | null } | null)?.name || undefined,
+            mapUrl: maybeMapUrl,
+          };
+        }
+      }
+    } catch {
+      // Fall through to memory store
+    }
+  }
+
+  return (
+    memoryTerritoryMaps.find((entry) => {
+      if (entry.territoryType !== params.territoryType) return false;
+      if (params.entityId) {
+        if (params.territoryType === "region" && entry.regionId === params.entityId) return true;
+        if (params.territoryType === "province" && entry.provinceId === params.entityId) return true;
+        if (params.territoryType === "commune" && entry.communeId === params.entityId) return true;
+      }
+      if (normTargetSlug) {
+        const candidateSlug =
+          params.territoryType === "region"
+            ? entry.regionSlug
+            : params.territoryType === "province"
+            ? entry.provinceSlug
+            : entry.communeSlug;
+        return Boolean(candidateSlug && normalizeTerritorySlug(candidateSlug) === normTargetSlug);
+      }
+      return false;
+    }) || null
+  );
+}
+
+export async function saveTerritoryMap(
+  input: Omit<TerritoryMapEntry, "id"> & { id?: string }
+): Promise<TerritoryMapEntry> {
+  if (!input.mapUrl || !isSafeImageUrl(input.mapUrl)) {
+    throw new Error("URL d'image de carte invalide.");
+  }
+
+  const serviceClient = createServiceSupabaseAdminClient();
+  const adminClient = serviceClient || createServerSupabaseClient();
+
+  let regionId = input.regionId;
+  let provinceId = input.provinceId;
+  let communeId = input.communeId;
+  let regionSlug = input.regionSlug;
+  let provinceSlug = input.provinceSlug;
+  let communeSlug = input.communeSlug;
+  let territoryName = input.territoryName;
+
+  if (adminClient) {
+    const resolvedIds = await resolveSupabaseTerritoryIds(
+      adminClient as NonNullable<ReturnType<typeof createServerSupabaseClient>>,
+      {
+        regionSlug: input.regionSlug,
+        provinceSlug: input.provinceSlug,
+        communeSlug: input.communeSlug,
+      }
+    );
+
+    regionId = regionId || resolvedIds.regionId;
+    provinceId = provinceId || resolvedIds.provinceId;
+    communeId = communeId || resolvedIds.communeId;
+    regionSlug = regionSlug || resolvedIds.regionSlug;
+    provinceSlug = provinceSlug || resolvedIds.provinceSlug;
+    communeSlug = communeSlug || resolvedIds.communeSlug;
+  }
+
+  const entityId =
+    input.territoryType === "region"
+      ? regionId
+      : input.territoryType === "province"
+      ? provinceId
+      : communeId;
+
+  const targetSlug =
+    input.territoryType === "region"
+      ? regionSlug
+      : input.territoryType === "province"
+      ? provinceSlug
+      : communeSlug;
+
+  if (serviceClient && !entityId && !targetSlug) {
+    throw new Error(
+      `Impossible de localiser l'identifiant du territoire (${input.territoryType}) dans Supabase.`
+    );
+  }
+
+  const mapKey = `${TERRITORY_MAP_KEY_PREFIX}${input.territoryType}:${entityId || normalizeTerritorySlug(targetSlug || "territory")}`;
+  const updatedAt = new Date().toISOString();
+  let finalId = input.id || crypto.randomUUID();
+
+  if (adminClient) {
+    const { data: existingRow } = await adminClient
+      .from("settings")
+      .select("id")
+      .eq("key", mapKey)
+      .maybeSingle();
+
+    const existingId = (existingRow as { id?: string } | null)?.id;
+    if (existingId) {
+      finalId = existingId;
+    }
+
+    // Fetch exact entity name from Supabase if missing
+    if (!territoryName && entityId) {
+      const table =
+        input.territoryType === "region"
+          ? "regions"
+          : input.territoryType === "province"
+          ? "provinces"
+          : "communes";
+      const { data: entityRow } = await adminClient
+        .from(table)
+        .select("name,slug")
+        .eq("id", entityId)
+        .maybeSingle();
+      if (entityRow) {
+        const typedRow = entityRow as { name?: string | null; slug?: string | null };
+        territoryName = typedRow.name || undefined;
+        if (input.territoryType === "region") regionSlug = regionSlug || typedRow.slug || undefined;
+        if (input.territoryType === "province") provinceSlug = provinceSlug || typedRow.slug || undefined;
+        if (input.territoryType === "commune") communeSlug = communeSlug || typedRow.slug || undefined;
+      }
+    }
+  }
+
+  const entry: TerritoryMapEntry = {
+    id: finalId,
+    territoryType: input.territoryType,
+    regionId: regionId || undefined,
+    provinceId: input.territoryType !== "region" ? provinceId || undefined : undefined,
+    communeId: input.territoryType === "commune" ? communeId || undefined : undefined,
+    regionSlug: regionSlug || undefined,
+    provinceSlug: input.territoryType !== "region" ? provinceSlug || undefined : undefined,
+    communeSlug: input.territoryType === "commune" ? communeSlug || undefined : undefined,
+    territoryName: territoryName || targetSlug || "Territoire",
+    mapUrl: input.mapUrl.trim(),
+    caption: input.caption?.trim() || undefined,
+    updatedAt,
+  };
+
+  if (adminClient) {
+    const dbClient = adminClient as unknown as {
+      from: (table: string) => {
+        select: (cols: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { id: string } | null }> } };
+        update: (p: Record<string, unknown>) => { eq: (k: string, v: string) => Promise<{ error: { message?: string } | null }> };
+        insert: (p: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>;
+      };
+    };
+
+    const { data: existing } = await dbClient
+      .from("settings")
+      .select("id")
+      .eq("key", mapKey)
+      .maybeSingle();
+
+    const mutation = existing?.id
+      ? await dbClient
+          .from("settings")
+          .update({ value: entry as unknown as Json, updated_at: updatedAt })
+          .eq("id", existing.id)
+      : await dbClient.from("settings").insert({
+          id: finalId,
+          key: mapKey,
+          value: entry as unknown as Json,
+          updated_at: updatedAt,
+        });
+
+    if (mutation.error && serviceClient) {
+      throw new Error(mutation.error.message || "Erreur lors de l'enregistrement de la carte dans Supabase");
+    }
+
+    // Best-effort sync to map_url column if migration 202611210002_territory_maps.sql has been applied
+    if (entityId) {
+      try {
+        const table =
+          input.territoryType === "region"
+            ? "regions"
+            : input.territoryType === "province"
+            ? "provinces"
+            : "communes";
+        await dbClient.from(table).update({ map_url: entry.mapUrl }).eq("id", entityId);
+      } catch {
+        // Ignore if map_url column isn't migrated yet
+      }
+    }
+  }
+
+  const idx = memoryTerritoryMaps.findIndex(
+    (m) =>
+      m.id === entry.id ||
+      (m.territoryType === entry.territoryType &&
+        ((entityId &&
+          ((entry.territoryType === "region" && m.regionId === entityId) ||
+            (entry.territoryType === "province" && m.provinceId === entityId) ||
+            (entry.territoryType === "commune" && m.communeId === entityId))) ||
+          (targetSlug &&
+            normalizeTerritorySlug(
+              (entry.territoryType === "region"
+                ? m.regionSlug
+                : entry.territoryType === "province"
+                ? m.provinceSlug
+                : m.communeSlug) || ""
+            ) === normalizeTerritorySlug(targetSlug))))
+  );
+  if (idx >= 0) {
+    memoryTerritoryMaps[idx] = entry;
+  } else {
+    memoryTerritoryMaps.unshift(entry);
+  }
+
+  return entry;
+}
+
+export async function deleteTerritoryMap(id: string): Promise<{ deleted: boolean; map?: TerritoryMapEntry }> {
+  const all = await getAllTerritoryMaps();
+  const target = all.find((m) => m.id === id);
+
+  const serviceClient = createServiceSupabaseAdminClient();
+  const adminClient = serviceClient || createServerSupabaseClient();
+  if (adminClient) {
+    const dbClient = adminClient as unknown as {
+      from: (table: string) => {
+        delete: () => { eq: (k: string, v: string) => Promise<{ error: { message?: string } | null }> };
+        update: (p: Record<string, unknown>) => { eq: (k: string, v: string) => Promise<{ error: { message?: string } | null }> };
+      };
+    };
+
+    const { error } = await dbClient.from("settings").delete().eq("id", id);
+    if (error && serviceClient) {
+      throw new Error(error.message || "Erreur lors de la suppression de la carte dans Supabase");
+    }
+
+    if (target) {
+      const entityId =
+        target.territoryType === "region"
+          ? target.regionId
+          : target.territoryType === "province"
+          ? target.provinceId
+          : target.communeId;
+      if (entityId) {
+        try {
+          const table =
+            target.territoryType === "region"
+              ? "regions"
+              : target.territoryType === "province"
+              ? "provinces"
+              : "communes";
+          await dbClient.from(table).update({ map_url: null }).eq("id", entityId);
+        } catch {
+          // Ignore if map_url column isn't migrated yet
+        }
+      }
+    }
+  }
+
+  memoryTerritoryMaps = memoryTerritoryMaps.filter((m) => m.id !== id);
+  return { deleted: true, map: target };
 }
 
 export async function getNewsForTerritory(params: {

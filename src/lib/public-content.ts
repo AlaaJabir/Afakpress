@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase";
-import { getOfficialsForLocation } from "@/lib/territories-db";
-import type { OfficialProfile } from "@/lib/territories-data";
+import { getOfficialsForLocation, getTerritoryMapForLocation } from "@/lib/territories-db";
+import type { OfficialProfile, TerritoryMapEntry } from "@/lib/territories-data";
 
 export type PublicEntity = {
   id: string;
@@ -39,6 +39,7 @@ export type PublicLocation = {
   provinces?: Array<PublicEntity & { communes: PublicEntity[] }>;
   communes?: PublicEntity[];
   officials?: OfficialProfile[];
+  map?: TerritoryMapEntry | null;
 };
 
 export type PublicQueryResult<T> =
@@ -257,10 +258,16 @@ export async function getRegionPageData(slug: string): Promise<PublicQueryResult
   const entityResult = await geographicEntity("regions", slug);
   if (entityResult.status !== "ok") return entityResult;
   const entity = entityResult.data;
-  const [locations, articles, officials] = await Promise.all([
+  const [locations, articles, officials, territoryMap] = await Promise.all([
     locationRows(),
     geographicArticles("region_id", entity.id),
     getOfficialsForLocation({
+      territoryType: "region",
+      entityId: entity.id,
+      slug: entity.slug,
+      regionSlug: entity.slug,
+    }),
+    getTerritoryMapForLocation({
       territoryType: "region",
       entityId: entity.id,
       slug: entity.slug,
@@ -280,7 +287,7 @@ export async function getRegionPageData(slug: string): Promise<PublicQueryResult
   return {
     status: "ok",
     data: {
-      location: { entity, provinces, officials },
+      location: { entity, provinces, officials, map: territoryMap },
       articles: articles.data,
     },
   };
@@ -295,9 +302,16 @@ export async function getProvincePageData(slug: string): Promise<PublicQueryResu
   const provinceRow = locations.provinces.find((province) => province.id === entity.id);
   const region = locations.regions.find((item) => item.id === provinceRow?.region_id);
   const communes = locations.communes.filter((commune) => commune.province_id === entity.id);
-  const [articles, officials] = await Promise.all([
+  const [articles, officials, territoryMap] = await Promise.all([
     geographicArticles("province_id", entity.id),
     getOfficialsForLocation({
+      territoryType: "province",
+      entityId: entity.id,
+      slug: entity.slug,
+      regionSlug: region?.slug,
+      provinceSlug: entity.slug,
+    }),
+    getTerritoryMapForLocation({
       territoryType: "province",
       entityId: entity.id,
       slug: entity.slug,
@@ -310,7 +324,7 @@ export async function getProvincePageData(slug: string): Promise<PublicQueryResu
   return {
     status: "ok",
     data: {
-      location: { entity, region, communes, officials },
+      location: { entity, region, communes, officials, map: territoryMap },
       articles: articles.data,
     },
   };
@@ -325,9 +339,17 @@ export async function getCommunePageData(slug: string): Promise<PublicQueryResul
   const communeRow = locations.communes.find((commune) => commune.id === entity.id);
   const province = locations.provinces.find((item) => item.id === communeRow?.province_id);
   const region = locations.regions.find((item) => item.id === province?.region_id);
-  const [articles, officials] = await Promise.all([
+  const [articles, officials, territoryMap] = await Promise.all([
     geographicArticles("commune_id", entity.id),
     getOfficialsForLocation({
+      territoryType: "commune",
+      entityId: entity.id,
+      slug: entity.slug,
+      regionSlug: region?.slug,
+      provinceSlug: province?.slug,
+      communeSlug: entity.slug,
+    }),
+    getTerritoryMapForLocation({
       territoryType: "commune",
       entityId: entity.id,
       slug: entity.slug,
@@ -341,7 +363,7 @@ export async function getCommunePageData(slug: string): Promise<PublicQueryResul
   return {
     status: "ok",
     data: {
-      location: { entity, province, region, officials },
+      location: { entity, province, region, officials, map: territoryMap },
       articles: articles.data,
     },
   };

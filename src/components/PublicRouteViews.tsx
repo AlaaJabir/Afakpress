@@ -174,7 +174,7 @@ export function PublicLocationView({ kind, location, articles }: { kind: "Region
       </section>
 
       <aside className="self-start">
-        {/* Interactive 12-Region Map & Key Territory Card */}
+        {/* Specific Territory Map & Key Territory Card */}
         <LocationTerritoryMapCard
           kind={kind}
           entityName={location.entity.name}
@@ -182,6 +182,7 @@ export function PublicLocationView({ kind, location, articles }: { kind: "Region
           regionSlug={location.region?.slug}
           provincesCount={location.provinces?.length}
           communesCount={totalCommunes}
+          territoryMap={location.map}
         />
 
         {/* Administrative Subdivision List */}

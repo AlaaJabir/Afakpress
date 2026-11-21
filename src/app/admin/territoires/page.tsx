@@ -1,7 +1,7 @@
 import { getAdminAuthStateFromCookies } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
 import { AdminTerritoiresClient } from "./AdminTerritoiresClient";
-import { getAllOfficials, getSupabaseTerritoriesTree } from "@/lib/territories-db";
+import { getAllOfficials, getAllTerritoryMaps, getSupabaseTerritoriesTree } from "@/lib/territories-db";
 
 export const dynamic = "force-dynamic";
 
@@ -11,16 +11,18 @@ export default async function AdminTerritoiresPage() {
     redirect("/admin/login");
   }
 
-  const [initialOfficials, regionsTree] = await Promise.all([
+  const [initialOfficials, initialMaps, regionsTree] = await Promise.all([
     getAllOfficials(),
+    getAllTerritoryMaps(),
     getSupabaseTerritoriesTree(),
   ]);
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900 font-sans p-4 sm:p-6 lg:p-10">
+    <main dir="ltr" className="min-h-screen bg-slate-100 text-slate-900 font-sans p-4 sm:p-6 lg:p-10">
       <AdminTerritoiresClient
         adminEmail={authState.status === "authenticated" ? authState.session.email : ""}
         initialOfficials={initialOfficials}
+        initialMaps={initialMaps}
         regionsTree={regionsTree}
       />
     </main>

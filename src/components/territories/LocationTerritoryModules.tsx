@@ -1,13 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
-import { Building2, Globe, MapPin, Phone, UserCheck, Users, X } from "lucide-react";
+import { Building2, Globe, MapPin, Maximize2, Phone, UserCheck, Users, X } from "lucide-react";
 import {
   REGIONS_12_METADATA,
   normalizeTerritorySlug,
   type OfficialProfile,
+  type TerritoryMapEntry,
 } from "@/lib/territories-data";
 
 const ROLE_AR_LABELS: Record<string, string> = {
@@ -253,6 +253,7 @@ export function LocationTerritoryMapCard({
   regionSlug,
   provincesCount,
   communesCount,
+  territoryMap,
 }: {
   kind: "Region" | "Province / Prefecture" | "Commune";
   entityName: string;
@@ -260,7 +261,10 @@ export function LocationTerritoryMapCard({
   regionSlug?: string;
   provincesCount?: number;
   communesCount?: number;
+  territoryMap?: TerritoryMapEntry | null;
 }) {
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+
   const activeRegionNorm = normalizeTerritorySlug(regionSlug || (kind === "Region" ? entitySlug : ""));
   const currentRegionMeta = REGIONS_12_METADATA.find(
     (r) =>
@@ -269,19 +273,28 @@ export function LocationTerritoryMapCard({
       normalizeTerritorySlug(r.arabicSlug) === activeRegionNorm
   );
 
+  const cardTitle =
+    kind === "Region"
+      ? "خريطة الجهة"
+      : kind === "Commune"
+      ? "خريطة الجماعة"
+      : "خريطة العمالة / الإقليم";
+
   return (
     <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" dir="rtl">
-      <div className="flex items-center justify-between border-b-4 border-[#b91c1c] pb-3">
+      <div className="flex items-center justify-between gap-2 border-b-4 border-[#b91c1c] pb-3">
         <h2 className="flex items-center gap-2 text-lg font-black text-[#0b1930]">
-          <MapPin className="size-4 text-[#b91c1c]" />
-          <span>خريطة وبطاقة الجهة</span>
+          <MapPin className="size-4 shrink-0 text-[#b91c1c]" />
+          <span>{cardTitle}</span>
         </h2>
-        <span className="text-[11px] font-black text-[#b91c1c]">12 جهة</span>
+        <span className="truncate max-w-[140px] rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-black text-[#b91c1c]">
+          {entityName}
+        </span>
       </div>
 
       {/* Key Stats */}
-      {currentRegionMeta ? (
-        <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-3 text-center border border-slate-100">
+      {kind === "Region" && currentRegionMeta ? (
+        <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
           <div>
             <p className="text-lg font-black text-[#0b1930] tabular-nums">
               {provincesCount ?? currentRegionMeta.provincesCount}
@@ -301,38 +314,53 @@ export function LocationTerritoryMapCard({
             <p className="text-[10px] font-bold text-slate-500">السكان</p>
           </div>
         </div>
+      ) : kind === "Province / Prefecture" && typeof communesCount === "number" ? (
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-xs">
+          <span className="font-bold text-slate-600">الجماعات الترابية التابعة</span>
+          <span className="font-black text-[#0b1930] tabular-nums">{communesCount} جماعة</span>
+        </div>
       ) : null}
 
-      {/* Interactive 12-Region Schematic Tile Map in Arabic */}
+      {/* Specific Uploaded Territory Map */}
       <div className="mt-4">
-        <p className="mb-2 text-[11px] font-bold text-slate-500">
-          اختر جهة للانتقال إلى صفحتها ومسؤوليها:
-        </p>
-        <div className="grid grid-cols-5 gap-1.5 auto-rows-[40px] w-full" dir="ltr">
-          {REGIONS_12_METADATA.map((r) => {
-            const isCurrent = currentRegionMeta?.id === r.id;
-            return (
-              <Link
-                key={r.id}
-                href={`/region/${encodeURIComponent(r.arabicSlug)}`}
-                title={r.nameAr}
-                style={{
-                  gridColumn: r.col,
-                  gridRow: r.row,
-                }}
-                className={`flex items-center justify-center rounded-lg px-1.5 py-1 text-center text-[9px] font-black leading-tight transition ${
-                  isCurrent
-                    ? "bg-[#b91c1c] text-white shadow-sm ring-2 ring-[#b91c1c]/30"
-                    : "bg-slate-100 text-[#0b1930] hover:bg-[#0b1930] hover:text-white"
-                }`}
-              >
-                <span className="line-clamp-2" dir="rtl">
-                  {r.nameAr.split(" - ")[0]}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+        {territoryMap?.mapUrl ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsZoomOpen(true)}
+              aria-label={`تكبير خريطة ${entityName}`}
+              className="group relative block aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#b91c1c]"
+            >
+              <Image
+                src={territoryMap.mapUrl}
+                alt={`خريطة ${entityName}`}
+                fill
+                sizes="(min-width: 1024px) 320px, 100vw"
+                className="object-contain p-1.5 transition duration-300 group-hover:scale-[1.03]"
+                referrerPolicy="no-referrer"
+              />
+              <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-lg bg-[#0b1930]/85 px-2.5 py-1 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs transition group-hover:bg-[#b91c1c]">
+                <Maximize2 className="size-3" />
+                <span>تكبير</span>
+              </span>
+            </button>
+            {territoryMap.caption ? (
+              <p className="mt-2.5 text-xs font-medium leading-5 text-slate-600">
+                {territoryMap.caption}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-7 text-center">
+            <MapPin className="mx-auto size-6 text-slate-400" />
+            <p className="mt-2 text-xs font-bold text-slate-600">
+              لم يتم رفع خريطة خاصة بـ {entityName} بعد.
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              تُرفع الخريطة من لوحة التحكم لتظهر تلقائياً في هذه البطاقة.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Commune practical info */}
@@ -350,6 +378,51 @@ export function LocationTerritoryMapCard({
           <div className="flex items-center gap-2 text-slate-600">
             <Globe className="size-3.5 shrink-0 text-[#b91c1c]" />
             <span className="truncate text-[#b91c1c]">www.collectivites-territoriales.gov.ma</span>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Fullscreen Map Zoom Lightbox */}
+      {isZoomOpen && territoryMap?.mapUrl ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`خريطة ${entityName}`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-xs"
+          onClick={() => setIsZoomOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <p className="text-xs font-black text-[#b91c1c]">{cardTitle}</p>
+                <h3 className="text-lg font-black text-[#0b1930]">{entityName}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(false)}
+                aria-label="إغلاق"
+                className="flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="relative mt-4 aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-50">
+              <Image
+                src={territoryMap.mapUrl}
+                alt={`خريطة ${entityName}`}
+                fill
+                sizes="(min-width: 768px) 720px, 100vw"
+                className="object-contain p-2"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            {territoryMap.caption ? (
+              <p className="mt-3 text-sm font-medium text-slate-600">{territoryMap.caption}</p>
+            ) : null}
           </div>
         </div>
       ) : null}

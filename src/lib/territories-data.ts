@@ -68,6 +68,21 @@ export interface OfficialProfile {
   isPublished: boolean;
 }
 
+export interface TerritoryMapEntry {
+  id: string;
+  territoryType: TerritoryType;
+  regionId?: string;
+  provinceId?: string;
+  communeId?: string;
+  regionSlug?: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+  territoryName?: string;
+  mapUrl: string;
+  caption?: string;
+  updatedAt?: string;
+}
+
 export interface TerritoryArticle {
   id: string;
   slug: string;

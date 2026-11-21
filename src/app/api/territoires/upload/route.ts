@@ -6,7 +6,7 @@ import { createServiceSupabaseAdminClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-const maxPhotoSize = 2 * 1024 * 1024;
+const maxPhotoSize = 5 * 1024 * 1024;
 const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
 
 async function ensureBucket(
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     if (file.size > maxPhotoSize) {
-      return NextResponse.json({ error: "L'image ne doit pas dépasser 2 Mo" }, { status: 400 });
+      return NextResponse.json({ error: "L'image ne doit pas dépasser 5 Mo" }, { status: 400 });
     }
 
     if (!allowedTypes.includes(file.type)) {
