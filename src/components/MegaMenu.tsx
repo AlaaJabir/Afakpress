@@ -10,11 +10,13 @@ import {
   MapPin,
   Newspaper,
   Palette,
+  Search,
   TrendingUp,
   Trophy,
   Users,
 } from "lucide-react";
 import type { CmsRegion } from "@/lib/cms";
+import { MINISTRY_GROUPS, MOROCCAN_MINISTRIES } from "@/lib/ministries-data";
 
 type RegionSource = CmsRegion;
 
@@ -165,7 +167,12 @@ export function MegaMenu({
   const [activeRegionId, setActiveRegionId] = useState("");
   const [activeProvinceId, setActiveProvinceId] = useState("");
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [ministriesOpen, setMinistriesOpen] = useState(false);
+  const [activeMinistryGroupId, setActiveMinistryGroupId] = useState<string>("all");
+  const [ministrySearch, setMinistrySearch] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileMinistriesOpen, setMobileMinistriesOpen] = useState(false);
+  const [openMobileMinistryGroup, setOpenMobileMinistryGroup] = useState<string | null>("sovereign");
   const menuRef = useRef<HTMLDivElement>(null);
 
   const activeRegion =
@@ -178,10 +185,11 @@ export function MegaMenu({
   const closeMenu = useCallback(() => {
     setRegionsOpen(false);
     setCategoriesOpen(false);
+    setMinistriesOpen(false);
   }, []);
 
   useEffect(() => {
-    if (!mobileOpen) return;
+    if (!mobileOpen && !mobileMinistriesOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -189,7 +197,7 @@ export function MegaMenu({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [mobileOpen]);
+  }, [mobileOpen, mobileMinistriesOpen]);
 
   useEffect(() => {
     const closeFromOutside = (event: PointerEvent) => {
@@ -201,6 +209,7 @@ export function MegaMenu({
       if (event.key === "Escape") {
         closeMenu();
         setMobileOpen(false);
+        setMobileMinistriesOpen(false);
       }
     };
 
@@ -219,6 +228,7 @@ export function MegaMenu({
 
   const toggleRegionsMenu = () => {
     setCategoriesOpen(false);
+    setMinistriesOpen(false);
     setRegionsOpen((prev) => {
       const next = !prev;
       if (next && !activeRegionId && regionItems[0]) {
@@ -228,6 +238,34 @@ export function MegaMenu({
       return next;
     });
   };
+
+  const toggleMinistriesMenu = () => {
+    setCategoriesOpen(false);
+    setRegionsOpen(false);
+    setMinistriesOpen((prev) => !prev);
+  };
+
+  const normalizedMinistrySearch = ministrySearch.trim();
+  const visibleMinistryGroups = useMemo(() => {
+    const groups =
+      activeMinistryGroupId === "all" || normalizedMinistrySearch
+        ? MINISTRY_GROUPS
+        : MINISTRY_GROUPS.filter((g) => g.id === activeMinistryGroupId);
+
+    return groups
+      .map((group) => ({
+        ...group,
+        items: MOROCCAN_MINISTRIES.filter((m) => {
+          if (m.groupId !== group.id) return false;
+          if (!normalizedMinistrySearch) return true;
+          return (
+            m.nameAr.includes(normalizedMinistrySearch) ||
+            m.groupNameAr.includes(normalizedMinistrySearch)
+          );
+        }),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [activeMinistryGroupId, normalizedMinistrySearch]);
 
   return (
     <div ref={menuRef} className="relative z-[100] w-full">
@@ -243,6 +281,7 @@ export function MegaMenu({
               aria-haspopup="menu"
               onClick={() => {
                 setRegionsOpen(false);
+                setMinistriesOpen(false);
                 setCategoriesOpen((prev) => !prev);
               }}
               className={`inline-flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-xs font-black tracking-wide transition-all duration-200 cursor-pointer ${
@@ -342,6 +381,33 @@ export function MegaMenu({
               <ChevronDown
                 className={`size-3.5 shrink-0 opacity-85 transition-transform duration-200 ${
                   regionsOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Subtle Divider */}
+          <span className="h-5 w-px bg-slate-200/90 shrink-0" aria-hidden="true" />
+
+          {/* 3. "الوزارات" Mega-Menu Trigger Button (identical styling to أخبار الجهات) */}
+          <div className="shrink-0">
+            <button
+              id="ministries-menu-btn"
+              type="button"
+              aria-expanded={ministriesOpen}
+              aria-haspopup="menu"
+              onClick={toggleMinistriesMenu}
+              className={`group inline-flex items-center gap-2.5 rounded-lg px-5 py-2.5 text-xs font-black tracking-wide transition-all duration-200 cursor-pointer ${
+                ministriesOpen
+                  ? "bg-[#991b1b] text-white shadow-md ring-2 ring-red-600/25 ring-offset-1"
+                  : "bg-[#b91c1c] text-white shadow-xs hover:bg-[#991b1b] hover:shadow-sm"
+              }`}
+            >
+              <Landmark className="size-4 shrink-0 text-white" />
+              <span className="whitespace-nowrap">الوزارات</span>
+              <ChevronDown
+                className={`size-3.5 shrink-0 opacity-85 transition-transform duration-200 ${
+                  ministriesOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
@@ -508,6 +574,156 @@ export function MegaMenu({
         </div>
       ) : null}
 
+      {/* Elegant Centered Ministries Mega Menu (الوزارات) */}
+      {ministriesOpen ? (
+        <div
+          className="absolute inset-x-0 top-[calc(100%+6px)] z-[1050] hidden lg:block"
+          role="menu"
+          dir="rtl"
+        >
+          <div className="mx-auto max-w-[1140px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_28px_70px_-15px_rgba(15,23,42,0.25)] ring-1 ring-slate-900/5">
+            <div className="h-[3px] w-full bg-gradient-to-l from-[#0b1930] via-[#b91c1c] to-[#d99b1e]" />
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0b1930] text-[#d99b1e]">
+                  <Landmark className="size-3.5" />
+                </span>
+                <div>
+                  <h3 className="text-xs font-black text-slate-950">
+                    دليل الوزارات والقطاعات الحكومية — المملكة المغربية
+                  </h3>
+                  <p className="text-[10px] font-medium text-slate-500">
+                    اختر الوزارة أو القطب الحكومي لمتابعة الأخبار والملفات المرتبطة به ({MOROCCAN_MINISTRIES.length} وزارة وهيئة)
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Filter Input */}
+              <div className="relative w-64">
+                <Search className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={ministrySearch}
+                  onChange={(e) => setMinistrySearch(e.target.value)}
+                  placeholder="ابحث عن وزارة..."
+                  aria-label="ابحث عن وزارة"
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white pr-8 pl-3 text-xs font-semibold text-slate-800 outline-none transition focus:border-[#b91c1c] focus:ring-2 focus:ring-red-100 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[260px_minmax(0,1fr)] divide-x divide-x-reverse divide-slate-100">
+              {/* Column 1: Ministerial Poles */}
+              <div className="max-h-[68vh] overflow-y-auto bg-slate-50/50 p-3">
+                <p className="px-2.5 pb-2 text-[10px] font-black text-slate-400">
+                  الأقطاب الوزارية ({MINISTRY_GROUPS.length})
+                </p>
+                <ul className="space-y-0.5">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMinistryGroupId("all");
+                        setMinistrySearch("");
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-right text-xs font-bold transition-all cursor-pointer ${
+                        activeMinistryGroupId === "all" && !normalizedMinistrySearch
+                          ? "bg-[#0b1930] text-white shadow-xs font-black"
+                          : "text-slate-700 hover:bg-white hover:text-[#b91c1c]"
+                      }`}
+                    >
+                      <span className="truncate">جميع الوزارات والهيئات</span>
+                      <span
+                        className={`text-[10px] tabular-nums shrink-0 ${
+                          activeMinistryGroupId === "all" && !normalizedMinistrySearch
+                            ? "text-[#d99b1e]"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {MOROCCAN_MINISTRIES.length}
+                      </span>
+                    </button>
+                  </li>
+                  {MINISTRY_GROUPS.map((group) => {
+                    const count = MOROCCAN_MINISTRIES.filter((m) => m.groupId === group.id).length;
+                    const isSelected = activeMinistryGroupId === group.id && !normalizedMinistrySearch;
+                    return (
+                      <li key={group.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveMinistryGroupId(group.id);
+                            setMinistrySearch("");
+                          }}
+                          onMouseEnter={() => {
+                            if (!normalizedMinistrySearch) setActiveMinistryGroupId(group.id);
+                          }}
+                          className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-right text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-[#0b1930] text-white shadow-xs font-black"
+                              : "text-slate-700 hover:bg-white hover:text-[#b91c1c]"
+                          }`}
+                        >
+                          <span className="truncate">{group.nameAr}</span>
+                          <span
+                            className={`text-[10px] tabular-nums shrink-0 ${
+                              isSelected ? "text-[#d99b1e]" : "text-slate-400"
+                            }`}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              {/* Column 2: Ministries Grid grouped by Pole */}
+              <div className="max-h-[68vh] overflow-y-auto bg-white p-5 space-y-5">
+                {visibleMinistryGroups.length === 0 ? (
+                  <p className="py-10 text-center text-xs font-bold text-slate-500">
+                    لم يتم العثور على وزارة مطابقة لـ «{ministrySearch}».
+                  </p>
+                ) : (
+                  visibleMinistryGroups.map((group) => (
+                    <div key={group.id}>
+                      <div className="mb-2.5 flex items-center justify-between border-b border-slate-100 pb-2">
+                        <h4 className="flex items-center gap-2 text-xs font-black text-[#0b1930]">
+                          <span className="inline-block size-2 rounded-xs bg-[#b91c1c]" />
+                          <span>{group.nameAr}</span>
+                        </h4>
+                        <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                          {group.items.length}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                        {group.items.map((ministry) => (
+                          <Link
+                            key={ministry.slug}
+                            href={`/ministere/${encodeURIComponent(ministry.slug)}`}
+                            onClick={closeMenu}
+                            className="group flex items-start gap-2.5 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 text-right transition hover:border-red-200 hover:bg-red-50/60"
+                          >
+                            <span className="mt-0.5 shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-black text-slate-500 shadow-2xs ring-1 ring-slate-200/70 tabular-nums group-hover:bg-[#b91c1c] group-hover:text-white group-hover:ring-[#b91c1c]">
+                              {String(ministry.number).padStart(2, "0")}
+                            </span>
+                            <span className="text-xs font-bold leading-5 text-slate-800 group-hover:text-[#b91c1c]">
+                              {ministry.nameAr}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Mobile Navigation: Ultra-slim single-line bar */}
       <nav className="w-full lg:hidden" aria-label="Mobile navigation" dir="rtl">
         <div className="flex h-9 items-center justify-between gap-2">
@@ -517,6 +733,7 @@ export function MegaMenu({
             onClick={() => {
               setCategoriesOpen((prev) => !prev);
               setMobileOpen(false);
+              setMobileMinistriesOpen(false);
             }}
             className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-black transition ${
               categoriesOpen ? "bg-red-700 text-white" : "text-red-700 hover:bg-red-50"
@@ -531,7 +748,7 @@ export function MegaMenu({
 
           {/* Fluid Single-Line Quick Links */}
           <div className="no-scrollbar flex flex-1 items-center gap-3 overflow-x-auto whitespace-nowrap px-1 text-[11px] font-bold text-slate-600">
-            {ARABIC_CATEGORIES.slice(0, 5).map((cat) => (
+            {ARABIC_CATEGORIES.slice(0, 4).map((cat) => (
               <Link
                 key={cat.slug}
                 href={`/category/${encodeURIComponent(cat.slug)}`}
@@ -544,12 +761,33 @@ export function MegaMenu({
 
           <span className="h-3.5 w-px shrink-0 bg-slate-200" />
 
+          {/* Compact Ministries Trigger */}
+          <button
+            type="button"
+            aria-expanded={mobileMinistriesOpen}
+            onClick={() => {
+              setMobileMinistriesOpen((current) => !current);
+              setMobileOpen(false);
+              setCategoriesOpen(false);
+            }}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-black transition ${
+              mobileMinistriesOpen ? "bg-[#b91c1c] text-white" : "text-slate-800 hover:bg-slate-100"
+            }`}
+          >
+            <Landmark className={`size-3.5 shrink-0 ${mobileMinistriesOpen ? "text-white" : "text-red-700"}`} />
+            <span>الوزارات</span>
+            <ChevronDown className={`size-3 transition-transform ${mobileMinistriesOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          <span className="h-3.5 w-px shrink-0 bg-slate-200" />
+
           {/* Compact Regions Trigger */}
           <button
             type="button"
             aria-expanded={mobileOpen}
             onClick={() => {
               setMobileOpen((current) => !current);
+              setMobileMinistriesOpen(false);
               setCategoriesOpen(false);
             }}
             className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-black transition ${
@@ -557,7 +795,7 @@ export function MegaMenu({
             }`}
           >
             <MapPin className="size-3.5 shrink-0 text-red-700" />
-            <span>أخبار الجهات</span>
+            <span>الجهات</span>
             <ChevronDown className={`size-3 transition-transform ${mobileOpen ? "rotate-180" : ""}`} />
           </button>
         </div>
@@ -580,6 +818,51 @@ export function MegaMenu({
             </div>
           </div>
         )}
+
+        {/* Mobile Ministries Accordion */}
+        {mobileMinistriesOpen ? (
+          <div
+            className="-mx-3.5 max-h-[65dvh] space-y-1.5 overflow-y-auto overscroll-contain border-y border-slate-200 bg-white px-3.5 py-3 shadow-lg sm:-mx-6 sm:px-6"
+            role="menu"
+          >
+            {MINISTRY_GROUPS.map((group) => {
+              const items = MOROCCAN_MINISTRIES.filter((m) => m.groupId === group.id);
+              const isOpen = openMobileMinistryGroup === group.id;
+              return (
+                <div key={group.id} className="rounded-xl border border-slate-200/80 bg-slate-50/50">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMobileMinistryGroup(isOpen ? null : group.id)}
+                    className="flex w-full items-center justify-between px-3 py-2.5 text-right text-xs font-black text-[#0b1930]"
+                  >
+                    <span>{group.nameAr}</span>
+                    <span className="text-[11px] font-bold text-[#b91c1c]">
+                      {items.length} {isOpen ? "−" : "+"}
+                    </span>
+                  </button>
+                  {isOpen ? (
+                    <ul className="space-y-1 border-t border-slate-200/70 bg-white p-2">
+                      {items.map((m) => (
+                        <li key={m.slug}>
+                          <Link
+                            href={`/ministere/${encodeURIComponent(m.slug)}`}
+                            onClick={() => setMobileMinistriesOpen(false)}
+                            className="flex items-start gap-2 rounded-lg px-2.5 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-[#b91c1c]"
+                          >
+                            <span className="mt-0.5 text-[10px] font-black text-[#b91c1c] tabular-nums">
+                              {String(m.number).padStart(2, "0")}
+                            </span>
+                            <span>{m.nameAr}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
 
         {mobileOpen ? (
           <ul

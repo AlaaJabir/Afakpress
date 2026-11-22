@@ -514,6 +514,12 @@ export function AdminTerritoiresClient({
             <span>Retour Dashboard</span>
           </Link>
           <Link
+            href="/admin/ministeres"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+          >
+            <span>Ministères & Ministres</span>
+          </Link>
+          <Link
             href={activePublicHref}
             target="_blank"
             className="inline-flex items-center gap-1.5 rounded-lg bg-[#b91c1c] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#991b1b]"

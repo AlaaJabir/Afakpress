@@ -135,6 +135,108 @@ export type Database = {
           created_at?: string | null;
         };
       };
+      ministries: {
+        Row: Row<{
+          id: string;
+          number: number;
+          slug: string;
+          name_ar: string;
+          group_id: string;
+          group_name_ar: string;
+          overview: string | null;
+          mission: string | null;
+          headquarters: string | null;
+          official_website: string | null;
+          emblem_url: string | null;
+          is_active: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        }>;
+        Insert: {
+          id?: string;
+          number: number;
+          slug: string;
+          name_ar: string;
+          group_id: string;
+          group_name_ar: string;
+          overview?: string | null;
+          mission?: string | null;
+          headquarters?: string | null;
+          official_website?: string | null;
+          emblem_url?: string | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          number?: number;
+          slug?: string;
+          name_ar?: string;
+          group_id?: string;
+          group_name_ar?: string;
+          overview?: string | null;
+          mission?: string | null;
+          headquarters?: string | null;
+          official_website?: string | null;
+          emblem_url?: string | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      ministry_profiles: {
+        Row: Row<{
+          id: string;
+          ministry_slug: string;
+          full_name: string;
+          full_name_ar: string | null;
+          role: string;
+          party: string | null;
+          mandate_start: string | null;
+          mandate_end: string | null;
+          bio: string | null;
+          photo_path: string | null;
+          display_order: number | null;
+          is_published: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        }>;
+        Insert: {
+          id?: string;
+          ministry_slug: string;
+          full_name: string;
+          full_name_ar?: string | null;
+          role: string;
+          party?: string | null;
+          mandate_start?: string | null;
+          mandate_end?: string | null;
+          bio?: string | null;
+          photo_path?: string | null;
+          display_order?: number | null;
+          is_published?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          ministry_slug?: string;
+          full_name?: string;
+          full_name_ar?: string | null;
+          role?: string;
+          party?: string | null;
+          mandate_start?: string | null;
+          mandate_end?: string | null;
+          bio?: string | null;
+          photo_path?: string | null;
+          display_order?: number | null;
+          is_published?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       media: {
         Row: Row<{ id: string; name: string | null; url: string | null; type: string | null; folder: string | null; alt: string | null; caption: string | null; copyright: string | null; optimized: boolean | null; created_at: string | null; updated_at: string | null }>;
         Insert: { id?: string; name?: string | null; url?: string | null; type?: string | null; folder?: string | null; alt?: string | null; caption?: string | null; copyright?: string | null; optimized?: boolean | null; created_at?: string | null; updated_at?: string | null };
@@ -149,6 +251,7 @@ export type Database = {
           content: string | null;
           featured_image: string | null;
           geographic_scope: "national" | "region" | "province" | "commune" | null;
+          ministry_slug?: string | null;
           category_id: string | null;
           author_id: string | null;
           region_id: string | null;
@@ -173,6 +276,7 @@ export type Database = {
           content?: string | null;
           featured_image?: string | null;
           geographic_scope?: "national" | "region" | "province" | "commune" | null;
+          ministry_slug?: string | null;
           category_id?: string | null;
           author_id?: string | null;
           region_id?: string | null;
@@ -197,6 +301,7 @@ export type Database = {
           content?: string | null;
           featured_image?: string | null;
           geographic_scope?: "national" | "region" | "province" | "commune" | null;
+          ministry_slug?: string | null;
           category_id?: string | null;
           author_id?: string | null;
           region_id?: string | null;

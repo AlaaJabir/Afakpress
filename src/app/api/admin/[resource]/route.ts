@@ -67,6 +67,7 @@ function tableName(resource: string): AdminResource | null {
 type ArticleCacheRow = {
   slug?: string | null;
   status?: string | null;
+  ministry_slug?: string | null;
   category_id?: string | null;
   region_id?: string | null;
   province_id?: string | null;
@@ -78,6 +79,7 @@ type ArticleCacheRefs = {
   regionSlug?: string;
   provinceSlug?: string;
   communeSlug?: string;
+  ministrySlug?: string;
 };
 
 type DatabaseError = {
@@ -120,6 +122,7 @@ async function resolveArticleCacheRefs(supabase: NonNullable<ReturnType<typeof c
     regionSlug: region.data?.slug ?? undefined,
     provinceSlug: province.data?.slug ?? undefined,
     communeSlug: commune.data?.slug ?? undefined,
+    ministrySlug: article.ministry_slug ?? undefined,
   };
 }
 
@@ -158,6 +161,7 @@ function articlePaths(article: ArticleCacheRow, refs: ArticleCacheRefs) {
   if (refs.regionSlug) paths.add(`/region/${refs.regionSlug}`);
   if (refs.provinceSlug) paths.add(`/province/${refs.provinceSlug}`);
   if (refs.communeSlug) paths.add(`/commune/${refs.communeSlug}`);
+  if (refs.ministrySlug) paths.add(`/ministere/${refs.ministrySlug}`);
   return paths;
 }
 
@@ -285,7 +289,11 @@ export async function POST(request: Request, context: { params: Promise<{ resour
     if (error) return Response.json({ error }, { status: 400 });
   }
 
-  const { data, error } = await supabase.from(table).insert(payload).select(writeResultColumns[table]).single();
+  let { data, error } = await supabase.from(table).insert(payload).select(writeResultColumns[table]).single();
+  if (error && table === "articles" && error.code === "PGRST204" && payload.ministry_slug === null) {
+    delete payload.ministry_slug;
+    ({ data, error } = await supabase.from(table).insert(payload).select(writeResultColumns[table]).single());
+  }
   if (error) {
     if (table === "articles") {
       logArticleDatabaseError("insert", error, payload);
@@ -332,7 +340,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ resou
     if (existing) return Response.json({ error: "Article slug already exists." }, { status: 409 });
   }
 
-  const { data, error } = await supabase.from(table).update(payload).eq("id", id).select(writeResultColumns[table]).single();
+  let { data, error } = await supabase.from(table).update(payload).eq("id", id).select(writeResultColumns[table]).single();
+  if (error && table === "articles" && error.code === "PGRST204" && payload.ministry_slug === null) {
+    delete payload.ministry_slug;
+    ({ data, error } = await supabase.from(table).update(payload).eq("id", id).select(writeResultColumns[table]).single());
+  }
   if (error) {
     if (table === "articles") {
       logArticleDatabaseError("update", error, payload);

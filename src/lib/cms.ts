@@ -79,6 +79,7 @@ export type CmsArticle = {
   categoryId: string;
   category: string;
   geographicScope?: GeographicScope;
+  ministrySlug?: string;
   regionId: string;
   region: string;
   provinceId: string;
@@ -193,8 +194,8 @@ export type CmsState = {
 };
 
 export const rolePermissions: Record<Role, string[]> = {
-  "Super Admin": ["dashboard", "articles", "categories", "media", "menus", "breaking", "regions", "authors", "pages", "homepage", "comments", "newsletter", "seo", "settings"],
-  Editor: ["dashboard", "articles", "categories", "media", "menus", "breaking", "homepage"],
+  "Super Admin": ["dashboard", "articles", "categories", "media", "menus", "breaking", "regions", "officials", "authors", "pages", "homepage", "comments", "newsletter", "seo", "settings"],
+  Editor: ["dashboard", "articles", "categories", "media", "menus", "breaking", "regions", "officials", "homepage"],
   Journalist: ["dashboard", "articles", "media"],
   Moderator: ["dashboard", "articles", "comments"],
 };

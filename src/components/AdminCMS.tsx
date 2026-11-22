@@ -40,6 +40,7 @@ import {
   type AdminResource,
 } from "@/lib/supabase-cms";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { MOROCCAN_MINISTRIES } from "@/lib/ministries-data";
 
 type Section =
   | "dashboard"
@@ -95,6 +96,7 @@ const emptyArticle: CmsArticle = {
   categoryId: "",
   category: "",
   geographicScope: "National",
+  ministrySlug: "",
   regionId: "",
   region: "",
   provinceId: "",
@@ -444,6 +446,7 @@ export function AdminCMS({ adminSession }: { adminSession: AdminSession }) {
               {isLoading || isBootstrapping ? <span className="inline-flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-black text-slate-600">Loading Supabase</span> : null}
               {error ? <span className="inline-flex min-h-10 items-center rounded-md bg-amber-50 px-3 text-sm font-black text-amber-800">Supabase error</span> : null}
               <Link className={primaryButtonClass} href="/admin/territoires">Territoires & Élus</Link>
+              <Link className={primaryButtonClass} href="/admin/ministeres">Ministères & Ministres</Link>
               <Link className={buttonClass} href="/">View site</Link>
               <button className={buttonClass} onClick={() => void refreshFromSupabase()} type="button">Refresh data</button>
               <button className={buttonClass} onClick={resetDemo} type="button">Reset demo data</button>
@@ -554,6 +557,14 @@ function ArticlesPanel({
   const [geographyLoadError, setGeographyLoadError] = useState("");
   const authorOptions = useMemo(() => state.users.map((user) => ({ value: user.id, label: user.name || user.email || user.id })), [state.users]);
   const categoryOptions = useMemo(() => state.categories.map((category) => ({ value: category.id, label: category.name || category.slug || category.id })), [state.categories]);
+  const ministryOptions = useMemo(
+    () =>
+      MOROCCAN_MINISTRIES.map((ministry) => ({
+        value: ministry.slug,
+        label: `${String(ministry.number).padStart(2, "0")}. ${ministry.nameAr}`,
+      })),
+    [],
+  );
   const regionOptions = useMemo(() => selectorRegions.map((region) => ({ value: region.id, label: region.name || region.slug || region.id })), [selectorRegions]);
   const selectedRegion = useMemo(() => completedRegions.find((region) => region.id === draft.regionId), [completedRegions, draft.regionId]);
   const selectedProvince = useMemo(() => selectedRegion?.provinces.find((province) => province.id === draft.provinceId), [draft.provinceId, selectedRegion]);
@@ -803,6 +814,14 @@ function ArticlesPanel({
                 options={communeOptions}
                 disabled={!draft.provinceId || draft.geographicScope !== "Commune"}
                 placeholder={draft.provinceId ? "Select" : "Select province first"}
+              />
+            </Field>
+            <Field label="Ministry / الوزارة (Optional)">
+              <SearchableSelect
+                value={draft.ministrySlug ?? ""}
+                onChange={(ministrySlug) => setDraft({ ...draft, ministrySlug })}
+                options={ministryOptions}
+                placeholder="None (General)"
               />
             </Field>
             <Field label="Status"><select className={inputClass} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as ArticleStatus })}>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></Field>

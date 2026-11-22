@@ -20,6 +20,7 @@ export const articleDraftSchema = z.object({
   slug: z.string().trim().min(1, "Article slug is required."),
   status: z.enum(articleStatusValues, "Article status is not valid."),
   geographicScope: z.enum(["National", "Region", "Province", "Commune"]).optional(),
+  ministrySlug: z.string().trim().optional().nullable(),
   publishDate: z.string().optional().refine((value) => !value || !Number.isNaN(Date.parse(value)), "Publish date must be a valid date."),
   categoryId: optionalUuid,
   authorId: optionalUuid,
@@ -35,6 +36,10 @@ export const articlePayloadSchema = z.object({
   content: z.string().nullable().optional(),
   featured_image: z.string().nullable().optional(),
   geographic_scope: z.enum(["national", "region", "province", "commune"]),
+  ministry_slug: z.preprocess(
+    (value) => (value === "" || value === undefined ? null : value),
+    z.string().trim().nullable().optional(),
+  ),
   category_id: optionalUuid,
   author_id: optionalUuid,
   region_id: optionalUuid,
