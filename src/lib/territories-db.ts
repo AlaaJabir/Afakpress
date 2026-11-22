@@ -587,7 +587,8 @@ function parseTerritoryMapSetting(
 }
 
 export async function getAllTerritoryMaps(): Promise<TerritoryMapEntry[]> {
-  const client = createServerSupabaseClient();
+  const client = (createServiceSupabaseAdminClient() ||
+    createServerSupabaseClient()) as ReturnType<typeof createServerSupabaseClient>;
   if (client) {
     try {
       const [{ data: settingsData, error }, { data: regData }, { data: provData }, { data: commData }] =
@@ -676,7 +677,8 @@ export async function getTerritoryMapForLocation(params: {
       : params.communeSlug);
   const normTargetSlug = targetSlug ? normalizeTerritorySlug(targetSlug) : undefined;
 
-  const client = createServerSupabaseClient();
+  const client = (createServiceSupabaseAdminClient() ||
+    createServerSupabaseClient()) as ReturnType<typeof createServerSupabaseClient>;
   if (client) {
     try {
       const { data: settingsRows, error } = await client
