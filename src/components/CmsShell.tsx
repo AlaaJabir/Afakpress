@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CmsProvider, useCms } from "@/lib/cms-store";
 import { getPublishedArticles } from "@/lib/cms";
 import { MegaMenu } from "@/components/MegaMenu";
@@ -13,7 +13,13 @@ import type { CmsState } from "@/lib/cms";
 
 import { FileText, Home, Search, Sun, X } from "lucide-react";
 
-function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedArticles> }) {
+function HeaderSearch({
+  articles,
+  variant = "dark",
+}: {
+  articles: ReturnType<typeof getPublishedArticles>;
+  variant?: "dark" | "light";
+}) {
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const normalizedQuery = query.normalize("NFKD").trim().toLocaleLowerCase();
@@ -23,24 +29,38 @@ function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedAr
         .slice(0, 5)
     : [];
 
+  const isLight = variant === "light";
+
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-2">
       {/* 1. Digital Edition (PDF) */}
       <a
         href="#digital-edition"
-        className="hidden xl:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+        className={
+          isLight
+            ? "hidden xl:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-black text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+            : "hidden xl:inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-bold text-slate-200 transition hover:border-red-400/50 hover:bg-red-600/20 hover:text-white"
+        }
         title="تصفح النسخة الورقية بصيغة PDF"
       >
-        <FileText className="size-3.5 text-red-700" />
+        <FileText className={`size-3 ${isLight ? "text-red-700" : "text-red-400"}`} />
         <span>النسخة الرقمية</span>
-        <span className="rounded bg-red-100 px-1 py-0.2 text-[9px] font-bold text-red-700">PDF</span>
+        <span
+          className={`rounded px-1 py-0.2 text-[9px] font-bold ${
+            isLight ? "bg-red-100 text-red-700" : "bg-red-600/80 text-white"
+          }`}
+        >
+          PDF
+        </span>
       </a>
 
       {/* 2. Weather in Rabat */}
-      <div className="hidden lg:flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-        <Sun className="size-3.5 text-amber-500" />
-        <span>الرباط 21°C</span>
-      </div>
+      {!isLight ? (
+        <div className="hidden lg:flex items-center gap-1 rounded-md border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-bold text-slate-300">
+          <Sun className="size-3 text-amber-400" />
+          <span>الرباط 21°C</span>
+        </div>
+      ) : null}
 
       {/* 3. Desktop Search Input */}
       <form
@@ -51,17 +71,27 @@ function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedAr
           if (results[0]) window.location.assign(`/article/${encodeURIComponent(results[0].slug)}`);
         }}
       >
-        <label htmlFor="header-search" className="sr-only">Rechercher dans Afakpress</label>
-        <div className="flex h-10 items-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-xs transition-all duration-200 focus-within:w-64 focus-within:border-red-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-red-100 w-44 lg:w-48">
+        <label htmlFor={`header-search-${variant}`} className="sr-only">Rechercher dans Afakpress</label>
+        <div
+          className={
+            isLight
+              ? "group flex h-8 w-36 items-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-800 transition-all duration-200 focus-within:w-52 focus-within:border-red-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-red-100 xl:w-44"
+              : "group flex h-7 w-36 items-center overflow-hidden rounded-full border border-white/15 bg-white/10 text-white transition-all duration-200 focus-within:w-52 focus-within:border-white focus-within:bg-white focus-within:text-slate-900 lg:w-44"
+          }
+        >
           <button
             type="submit"
             aria-label="بحث"
-            className="flex size-10 shrink-0 items-center justify-center text-slate-500 transition hover:text-red-700"
+            className={
+              isLight
+                ? "flex size-8 shrink-0 items-center justify-center text-slate-500 transition hover:text-red-700"
+                : "flex size-7 shrink-0 items-center justify-center text-slate-300 transition group-focus-within:text-red-700 hover:text-white"
+            }
           >
-            <Search className="size-4" />
+            <Search className="size-3.5" />
           </button>
           <input
-            id="header-search"
+            id={`header-search-${variant}`}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -69,11 +99,15 @@ function HeaderSearch({ articles }: { articles: ReturnType<typeof getPublishedAr
             onBlur={() => window.setTimeout(() => setIsFocused(false), 150)}
             placeholder="بحث..."
             autoComplete="off"
-            className="h-full min-w-0 flex-1 bg-transparent pr-2 text-xs font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+            className={
+              isLight
+                ? "h-full min-w-0 flex-1 bg-transparent pl-2.5 text-xs font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+                : "h-full min-w-0 flex-1 bg-transparent pl-2.5 text-[11px] font-semibold text-white outline-none placeholder:text-slate-300 group-focus-within:text-slate-900 group-focus-within:placeholder:text-slate-400"
+            }
           />
         </div>
         {isFocused && query.trim() ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[2000] min-w-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+          <div className="absolute left-0 top-[calc(100%+8px)] z-[2000] min-w-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 text-slate-900 shadow-2xl">
             {results.length ? (
               <ul>
                 {results.map((article) => (
@@ -172,16 +206,106 @@ function Chrome({ children }: { children: React.ReactNode }) {
   const { state } = useCms();
   const published = getPublishedArticles(state);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const today = new Intl.DateTimeFormat("fr-MA", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const y = window.scrollY;
+      const scrollableRoom = document.documentElement.scrollHeight - window.innerHeight;
+      setIsScrolled((prev) => {
+        if (!prev && y > 130 && scrollableRoom > 320) return true;
+        if (prev && y < 35) return false;
+        return prev;
+      });
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <>
-      <header className="relative z-50 w-full bg-white/95 backdrop-blur-xl md:sticky md:top-0">
-        {/* Desktop-only top black strip */}
-        <div className="hidden border-b border-slate-200 bg-slate-950 text-white md:block">
-          <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-2 text-xs font-bold sm:px-6 lg:px-8">
-            <span className="uppercase tracking-[0.18em] text-white/80">Presse marocaine indépendante</span>
-            <span suppressHydrationWarning className="capitalize text-slate-300">{today}</span>
+      <header
+        className={`relative z-50 w-full bg-white/95 backdrop-blur-xl transition-shadow duration-300 md:sticky md:top-0 ${
+          isScrolled ? "lg:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.14)]" : ""
+        }`}
+      >
+        {/* Desktop-only top black strip (collapses smoothly on scroll on lg+) */}
+        <div
+          className={`hidden bg-slate-950 text-white transition-all duration-300 ease-out md:block ${
+            isScrolled
+              ? "border-b border-slate-800 lg:max-h-0 lg:overflow-hidden lg:border-b-0 lg:opacity-0 lg:pointer-events-none"
+              : "border-b border-slate-800 lg:max-h-20 lg:opacity-100"
+          }`}
+        >
+          <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-1.5 text-xs font-bold sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-black text-white transition hover:border-red-400/50 hover:bg-red-600/20"
+              >
+                <Home className="size-3.5 text-red-400 shrink-0" />
+                <span>الرئيسية</span>
+              </Link>
+
+              <div className="flex items-center gap-1">
+                <a
+                  href="https://facebook.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Facebook"
+                  aria-label="Facebook"
+                  className="flex size-6 items-center justify-center rounded border border-white/15 bg-white/5 text-[11px] font-black text-slate-200 transition hover:border-[#1877f2] hover:bg-[#1877f2] hover:text-white"
+                >
+                  f
+                </a>
+                <a
+                  href="https://x.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="X"
+                  aria-label="X"
+                  className="flex size-6 items-center justify-center rounded border border-white/15 bg-white/5 text-[11px] font-black text-slate-200 transition hover:border-white/40 hover:bg-black hover:text-white"
+                >
+                  𝕏
+                </a>
+                <a
+                  href="https://youtube.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="YouTube"
+                  aria-label="YouTube"
+                  className="flex size-6 items-center justify-center rounded border border-white/15 bg-white/5 text-[11px] font-black text-slate-200 transition hover:border-[#ff0000] hover:bg-[#ff0000] hover:text-white"
+                >
+                  ▶
+                </a>
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Instagram"
+                  aria-label="Instagram"
+                  className="flex size-6 items-center justify-center rounded border border-white/15 bg-white/5 text-[11px] font-black text-slate-200 transition hover:border-[#e4405f] hover:bg-[#e4405f] hover:text-white"
+                >
+                  in
+                </a>
+              </div>
+
+              <span className="hidden h-3.5 w-px bg-white/15 xl:block" />
+              <span className="hidden uppercase tracking-[0.16em] text-[10px] text-white/70 xl:inline">
+                Presse marocaine indépendante
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <HeaderSearch articles={published} />
+              <span className="hidden h-3.5 w-px bg-white/15 sm:block" />
+              <span suppressHydrationWarning className="capitalize text-[11px] text-slate-300 whitespace-nowrap">
+                {today}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -230,72 +354,79 @@ function Chrome({ children }: { children: React.ReactNode }) {
           ) : null}
         </div>
 
-        {/* Desktop Header (>= md) */}
-        <div className="mx-auto hidden max-w-[1400px] px-4 sm:px-6 md:block lg:px-8">
-          <div className="grid min-h-28 grid-cols-[1fr_auto_1fr] items-center gap-3 py-3">
-            <div className="flex justify-start">
-              <HeaderSearch articles={published} />
+        {/* Desktop Header (>= md, collapses smoothly on scroll on lg+) */}
+        <div
+          className={`mx-auto hidden max-w-[1400px] px-4 transition-all duration-300 ease-out sm:px-6 md:block lg:px-8 ${
+            isScrolled
+              ? "lg:max-h-0 lg:overflow-hidden lg:opacity-0 lg:pointer-events-none"
+              : "lg:max-h-56 lg:opacity-100"
+          }`}
+        >
+          <div className="grid min-h-28 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 py-2.5 lg:gap-7">
+            {/* Right side (RTL start): Editorial figures statement */}
+            <div
+              dir="rtl"
+              className="rounded-r-xl border-r-[3px] border-[#d99b1e] bg-gradient-to-l from-amber-50/60 via-white to-white py-2 pr-3.5 pl-2 text-right"
+            >
+              <p className="font-moroccan-naskh text-[12px] font-semibold leading-[1.8] text-slate-800 lg:text-[13.5px] lg:leading-[1.9] xl:text-[14.5px]">
+                <span className="font-bold text-[#b91c1c]">آفاق بريس</span>{" "}
+                <span className="font-bold text-[#b91c1c] underline decoration-[#d99b1e]/80 decoration-2 underline-offset-4">
+                  &quot;همزة وصل&quot;
+                </span>{" "}
+                بين{" "}
+                <span className="font-bold text-[#b91c1c] tabular-nums" dir="ltr">
+                  33.191
+                </span>{" "}
+                مستشار جماعي{" "}
+                <span className="font-bold text-[#b91c1c] tabular-nums">395</span>{" "}
+                نائب برلماني و{" "}
+                <span className="font-bold text-[#b91c1c] tabular-nums">120</span>{" "}
+                مستشار برلماني تضمهم{" "}
+                <span className="font-bold text-[#b91c1c] tabular-nums">1503</span>{" "}
+                جماعة ترابية في{" "}
+                <span className="font-bold text-[#b91c1c] tabular-nums">75</span>{" "}
+                عمالة وإقليم بين أحضان{" "}
+                <span className="font-bold text-[#b91c1c] tabular-nums">12</span>{" "}
+                جهة في المملكة المغربية.
+              </p>
             </div>
+
+            {/* Center: Afakpress Logo (kept unchanged) */}
             <Link
               href="/"
-              className="flex h-[82px] w-[210px] items-center justify-center p-1 justify-self-center transition hover:opacity-95"
+              className="flex h-[74px] w-[180px] shrink-0 items-center justify-center p-1 justify-self-center transition hover:opacity-95 lg:h-[82px] lg:w-[210px]"
               aria-label="Afakpress"
             >
               <Image src="/afakpress-logo.png" alt="Afakpress" width={200} height={78} priority className="h-full w-full object-contain" />
             </Link>
-            <div className="flex items-center justify-end gap-2" dir="rtl">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-800 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-              >
-                <Home className="size-4 text-red-700 shrink-0" />
-                <span>الرئيسية</span>
-              </Link>
 
-              <div className="h-4 w-px bg-slate-200 mx-1" />
-
-              <div className="flex items-center gap-1.5">
+            {/* Left side (RTL end): Territorial reach & portal address */}
+            <div
+              dir="rtl"
+              className="rounded-l-xl border-l-[3px] border-[#0b1930] bg-gradient-to-r from-slate-100/75 via-white to-white py-2 pl-3.5 pr-2 text-center"
+            >
+              <p className="font-moroccan-naskh text-[12px] font-semibold leading-[1.8] text-slate-800 lg:text-[13.5px] lg:leading-[1.9] xl:text-[14.5px]">
+                من الدوار و<span className="font-bold text-emerald-700">القرية</span> و
+                <span className="font-bold text-emerald-700">الحي</span> والمدينة إلى{" "}
+                <span className="font-bold text-[#b91c1c]">الجماعة</span> ثم من{" "}
+                <span className="font-bold text-emerald-700">الإقليم</span> إلى{" "}
+                <span className="font-bold text-[#b91c1c]">الجهة</span>.
+              </p>
+              <div className="my-0.5">
                 <a
-                  href="https://facebook.com"
+                  href="https://www.afakpress.ma"
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="Facebook"
-                  aria-label="Facebook"
-                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-[#1877f2] hover:bg-[#1877f2] hover:text-white"
+                  dir="ltr"
+                  className="inline-block text-[12px] font-black tracking-[0.06em] text-[#0b1930] transition hover:text-[#b91c1c] lg:text-[13px]"
                 >
-                  f
-                </a>
-                <a
-                  href="https://x.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="X"
-                  aria-label="X"
-                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-black hover:bg-black hover:text-white"
-                >
-                  𝕏
-                </a>
-                <a
-                  href="https://youtube.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="YouTube"
-                  aria-label="YouTube"
-                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-[#ff0000] hover:bg-[#ff0000] hover:text-white"
-                >
-                  ▶
-                </a>
-                <a
-                  href="https://instagram.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Instagram"
-                  aria-label="Instagram"
-                  className="flex size-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-black text-slate-600 transition hover:border-[#e4405f] hover:bg-[#e4405f] hover:text-white"
-                >
-                  in
+                  www.afakpress.ma
                 </a>
               </div>
+              <p className="font-moroccan-naskh text-[12px] font-semibold leading-[1.7] text-slate-800 lg:text-[13.5px] xl:text-[14.5px]">
+                <span className="font-bold text-[#b91c1c]">تواصل دائم</span> بين{" "}
+                <span className="font-bold text-emerald-700">سكان جهات المملكة</span>.
+              </p>
             </div>
           </div>
         </div>
@@ -303,7 +434,32 @@ function Chrome({ children }: { children: React.ReactNode }) {
         {/* Navigation Strip */}
         <div className="border-t border-slate-200/80 bg-white md:border-y">
           <div className="mx-auto max-w-[1400px] px-3.5 sm:px-6 lg:px-8">
-            <MegaMenu regions={state.regions} />
+            <MegaMenu
+              regions={state.regions}
+              isScrolled={isScrolled}
+              compactRightSlot={
+                <div className="flex items-center gap-2.5" dir="rtl">
+                  <Link href="/" className="flex shrink-0 items-center py-0.5 transition hover:opacity-90" aria-label="Afakpress">
+                    <Image
+                      src="/afakpress-logo.png"
+                      alt="Afakpress"
+                      width={116}
+                      height={44}
+                      className="h-9 w-auto object-contain"
+                    />
+                  </Link>
+                  <span className="h-5 w-px bg-slate-200 shrink-0" aria-hidden="true" />
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50 px-2.5 py-1.5 text-xs font-black text-slate-800 transition hover:border-red-200 hover:bg-red-50 hover:text-[#b91c1c]"
+                  >
+                    <Home className="size-3.5 text-[#b91c1c] shrink-0" />
+                    <span>الرئيسية</span>
+                  </Link>
+                </div>
+              }
+              compactLeftSlot={<HeaderSearch articles={published} variant="light" />}
+            />
           </div>
         </div>
 

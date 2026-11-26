@@ -159,8 +159,14 @@ function MobileBranch({ node, depth }: { node: MenuNode; depth: number }) {
 
 export function MegaMenu({
   regions,
+  isScrolled = false,
+  compactRightSlot,
+  compactLeftSlot,
 }: {
   regions: RegionSource[];
+  isScrolled?: boolean;
+  compactRightSlot?: React.ReactNode;
+  compactLeftSlot?: React.ReactNode;
 }) {
   const regionItems = useMemo(() => buildRegionNodes(regions), [regions]);
   const [regionsOpen, setRegionsOpen] = useState(false);
@@ -269,9 +275,27 @@ export function MegaMenu({
 
   return (
     <div ref={menuRef} className="relative z-[100] w-full">
-      {/* Desktop Navigation: Centered Dual Editorial Buttons */}
+      {/* Desktop Navigation: Centered Editorial Buttons (+ compact flanking logo & search when scrolled) */}
       <nav className="hidden w-full lg:block" aria-label="Primary navigation" dir="rtl">
-        <div className="flex w-full items-center justify-center gap-3 py-2.5">
+        <div
+          className={`grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 transition-all duration-300 ${
+            isScrolled ? "py-1.5" : "py-2.5"
+          }`}
+        >
+          {/* Compact Right Slot (RTL start) — revealed on scroll */}
+          <div
+            className={`flex items-center justify-start transition-all duration-300 ${
+              isScrolled
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none -translate-y-1 opacity-0"
+            }`}
+            aria-hidden={!isScrolled}
+          >
+            {isScrolled ? compactRightSlot : null}
+          </div>
+
+          {/* Center: Afakpress Editorial Navigation Buttons */}
+          <div className="flex items-center justify-center gap-3">
           {/* 1. National News & Categories Button */}
           <div className="relative shrink-0">
             <button
@@ -411,6 +435,19 @@ export function MegaMenu({
                 }`}
               />
             </button>
+          </div>
+          </div>
+
+          {/* Compact Left Slot (RTL end) — revealed on scroll */}
+          <div
+            className={`flex items-center justify-end transition-all duration-300 ${
+              isScrolled
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none -translate-y-1 opacity-0"
+            }`}
+            aria-hidden={!isScrolled}
+          >
+            {isScrolled ? compactLeftSlot : null}
           </div>
         </div>
       </nav>

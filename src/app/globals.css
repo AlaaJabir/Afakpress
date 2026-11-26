@@ -163,3 +163,7 @@ input {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.font-moroccan-naskh {
+  font-family: "Noto Naskh Arabic Variable", "Cairo Variable", serif;
+}

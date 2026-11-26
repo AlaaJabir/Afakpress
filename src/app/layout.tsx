@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/cairo";
+import "@fontsource-variable/noto-naskh-arabic";
 import "./globals.css";
 import { CmsShell } from "@/components/CmsShell";
 
