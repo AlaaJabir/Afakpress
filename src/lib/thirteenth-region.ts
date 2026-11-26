@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 export type ThirteenthRegionArticle = {
   id: string;
   title: string;
@@ -285,11 +287,11 @@ function parseArticlesFromBundle(jsSource: string): ThirteenthRegionArticle[] {
   return parsed;
 }
 
-export async function fetchThirteenthRegionArticles(): Promise<ThirteenthRegionArticle[]> {
+async function fetchThirteenthRegionArticlesUncached(): Promise<ThirteenthRegionArticle[]> {
   try {
     const htmlRes = await fetch(SOURCE_URL, {
       next: { revalidate: 300 },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(4500),
       headers: {
         "User-Agent": "AfakpressBot/1.0 (+https://afakpress.ma)",
       },
@@ -303,7 +305,7 @@ export async function fetchThirteenthRegionArticles(): Promise<ThirteenthRegionA
     const bundleUrl = `${SOURCE_URL.replace(/\/$/, "")}${scriptMatch[1]}`;
     const jsRes = await fetch(bundleUrl, {
       next: { revalidate: 300 },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(4500),
       headers: {
         "User-Agent": "AfakpressBot/1.0 (+https://afakpress.ma)",
       },
@@ -317,6 +319,12 @@ export async function fetchThirteenthRegionArticles(): Promise<ThirteenthRegionA
     return FALLBACK_13EME_ARTICLES;
   }
 }
+
+export const fetchThirteenthRegionArticles = unstable_cache(
+  fetchThirteenthRegionArticlesUncached,
+  ["afakpress-13eme-region-v1"],
+  { revalidate: 300 }
+);
 
 export async function getThirteenthRegionArticleById(id: string): Promise<ThirteenthRegionArticle | null> {
   const articles = await fetchThirteenthRegionArticles();

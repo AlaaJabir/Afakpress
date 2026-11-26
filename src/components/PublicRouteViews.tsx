@@ -24,11 +24,13 @@ function formattedDate(article: PublicArticle, locale = "en") {
 }
 
 function estimatedReadingTime(article: PublicArticle) {
-  const text = (article.content || article.excerpt || "")
+  const source = article.content || article.excerpt || article.title || "";
+  const text = source
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return Math.max(1, Math.ceil((text ? text.split(" ").length : 0) / 200));
+  const words = text ? text.split(" ").length : 0;
+  return article.content ? Math.max(1, Math.ceil(words / 200)) : Math.max(2, Math.ceil(words / 35));
 }
 
 export function GeographicArticleCard({ article }: { article: PublicArticle }) {

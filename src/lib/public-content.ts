@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase";
 import { getOfficialsForLocation, getTerritoryMapForLocation } from "@/lib/territories-db";
 import type { OfficialProfile, TerritoryMapEntry } from "@/lib/territories-data";
@@ -48,8 +50,8 @@ export type PublicQueryResult<T> =
   | { status: "unconfigured" }
   | { status: "error" };
 
-const articleSelect = `
-  id,title,slug,excerpt,content,featured_image,
+const articleListSelect = `
+  id,title,slug,excerpt,featured_image,
   category_id,author_id,region_id,province_id,commune_id,
   published_at,created_at,seo_title,seo_description,
   category:categories(id,name,slug),
@@ -76,7 +78,7 @@ function logQueryError(scope: string, error: unknown) {
   }
 }
 
-export async function getPublishedArticleBySlug(slug: string): Promise<PublicQueryResult<PublicArticle>> {
+export const getPublishedArticleBySlug = cache(async function getPublishedArticleBySlug(slug: string): Promise<PublicQueryResult<PublicArticle>> {
   const supabase = createServerSupabaseClient();
   if (!supabase) return { status: "unconfigured" };
   const requestedSlug = normalizedSlug(slug);
@@ -141,7 +143,7 @@ export async function getPublishedArticleBySlug(slug: string): Promise<PublicQue
       commune: communeResult.data as PublicEntity | null,
     },
   };
-}
+});
 
 export async function getCategoryPageData(slug: string): Promise<PublicQueryResult<{ entity: PublicEntity; articles: PublicArticle[] }>> {
   const supabase = createServerSupabaseClient();
@@ -162,10 +164,11 @@ export async function getCategoryPageData(slug: string): Promise<PublicQueryResu
 
   const { data: articles, error: articlesError } = await supabase
     .from("articles")
-    .select(articleSelect)
+    .select(articleListSelect)
     .eq("status", "published")
     .eq("category_id", category.id)
-    .order("published_at", { ascending: false, nullsFirst: false });
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(60);
 
   if (articlesError) {
     logQueryError("category/articles", articlesError);
@@ -181,13 +184,29 @@ export async function getCategoryPageData(slug: string): Promise<PublicQueryResu
   };
 }
 
-async function locationRows() {
+async function fetchLocationRowsUncached() {
   const supabase = createServerSupabaseClient();
   if (!supabase) return { status: "unconfigured" } as const;
+
+  const fetchAllCommunes = async () => {
+    const pageSize = 1000;
+    const rows: Array<PublicEntity & { province_id: string | null }> = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("communes")
+        .select("id,province_id,name,slug")
+        .range(from, from + pageSize - 1);
+      if (error) return { data: null, error };
+      rows.push(...((data ?? []) as Array<PublicEntity & { province_id: string | null }>));
+      if (!data || data.length < pageSize) break;
+    }
+    return { data: rows, error: null };
+  };
+
   const [regions, provinces, communes] = await Promise.all([
     supabase.from("regions").select("id,name,slug"),
     supabase.from("provinces").select("id,region_id,name,slug"),
-    supabase.from("communes").select("id,province_id,name,slug"),
+    fetchAllCommunes(),
   ]);
   const error = regions.error ?? provinces.error ?? communes.error;
   if (error) {
@@ -200,6 +219,16 @@ async function locationRows() {
     provinces: (provinces.data ?? []) as Array<PublicEntity & { region_id: string | null }>,
     communes: (communes.data ?? []) as Array<PublicEntity & { province_id: string | null }>,
   };
+}
+
+const getCachedLocationRows = unstable_cache(
+  fetchLocationRowsUncached,
+  ["afakpress-geography-v1"],
+  { revalidate: 300, tags: ["geography"] }
+);
+
+async function locationRows() {
+  return getCachedLocationRows();
 }
 
 type GeographicTable = "regions" | "provinces" | "communes";
@@ -235,11 +264,12 @@ async function geographicArticles(
 
   const { data, error } = await supabase
     .from("articles")
-    .select(articleSelect)
+    .select(articleListSelect)
     .eq("status", "published")
     .eq(foreignKey, entityId)
     .order("published_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false, nullsFirst: false });
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(60);
 
   if (error) {
     logQueryError(`articles/${foreignKey}`, error);
@@ -255,11 +285,18 @@ async function geographicArticles(
 }
 
 export async function getRegionPageData(slug: string): Promise<PublicQueryResult<{ location: PublicLocation; articles: PublicArticle[] }>> {
-  const entityResult = await geographicEntity("regions", slug);
-  if (entityResult.status !== "ok") return entityResult;
-  const entity = entityResult.data;
-  const [locations, articles, officials, territoryMap] = await Promise.all([
-    locationRows(),
+  const locations = await locationRows();
+  if (locations.status !== "ok") return locations;
+  const targetSlug = normalizedSlug(slug);
+  const entity =
+    locations.regions.find((item) => item.slug.normalize("NFC").trim() === targetSlug) ??
+    (await (async () => {
+      const res = await geographicEntity("regions", slug);
+      return res.status === "ok" ? res.data : null;
+    })());
+  if (!entity) return { status: "not-found" };
+
+  const [articles, officials, territoryMap] = await Promise.all([
     geographicArticles("region_id", entity.id),
     getOfficialsForLocation({
       territoryType: "region",
@@ -274,7 +311,6 @@ export async function getRegionPageData(slug: string): Promise<PublicQueryResult
       regionSlug: entity.slug,
     }),
   ]);
-  if (locations.status !== "ok") return locations;
   if (articles.status !== "ok") return articles;
 
   const provinces = locations.provinces
@@ -294,12 +330,20 @@ export async function getRegionPageData(slug: string): Promise<PublicQueryResult
 }
 
 export async function getProvincePageData(slug: string): Promise<PublicQueryResult<{ location: PublicLocation; articles: PublicArticle[] }>> {
-  const entityResult = await geographicEntity("provinces", slug);
-  if (entityResult.status !== "ok") return entityResult;
-  const entity = entityResult.data;
   const locations = await locationRows();
   if (locations.status !== "ok") return locations;
-  const provinceRow = locations.provinces.find((province) => province.id === entity.id);
+  const targetSlug = normalizedSlug(slug);
+  const provinceRow =
+    locations.provinces.find((item) => item.slug.normalize("NFC").trim() === targetSlug) ??
+    null;
+  const entity: PublicEntity | null =
+    provinceRow ??
+    (await (async () => {
+      const res = await geographicEntity("provinces", slug);
+      return res.status === "ok" ? res.data : null;
+    })());
+  if (!entity) return { status: "not-found" };
+
   const region = locations.regions.find((item) => item.id === provinceRow?.region_id);
   const communes = locations.communes.filter((commune) => commune.province_id === entity.id);
   const [articles, officials, territoryMap] = await Promise.all([
@@ -331,12 +375,20 @@ export async function getProvincePageData(slug: string): Promise<PublicQueryResu
 }
 
 export async function getCommunePageData(slug: string): Promise<PublicQueryResult<{ location: PublicLocation; articles: PublicArticle[] }>> {
-  const entityResult = await geographicEntity("communes", slug);
-  if (entityResult.status !== "ok") return entityResult;
-  const entity = entityResult.data;
   const locations = await locationRows();
   if (locations.status !== "ok") return locations;
-  const communeRow = locations.communes.find((commune) => commune.id === entity.id);
+  const targetSlug = normalizedSlug(slug);
+  const communeRow =
+    locations.communes.find((item) => item.slug.normalize("NFC").trim() === targetSlug) ??
+    null;
+  const entity: PublicEntity | null =
+    communeRow ??
+    (await (async () => {
+      const res = await geographicEntity("communes", slug);
+      return res.status === "ok" ? res.data : null;
+    })());
+  if (!entity) return { status: "not-found" };
+
   const province = locations.provinces.find((item) => item.id === communeRow?.province_id);
   const region = locations.regions.find((item) => item.id === province?.region_id);
   const [articles, officials, territoryMap] = await Promise.all([

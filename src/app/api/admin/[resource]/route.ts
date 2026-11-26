@@ -177,6 +177,7 @@ async function revalidateArticlePublishScope(supabase: NonNullable<ReturnType<ty
 
   for (const path of paths) revalidatePath(path);
   revalidateTag("cms:articles", { expire: 0 });
+  revalidateTag("ministries", { expire: 0 });
   return [...paths];
 }
 

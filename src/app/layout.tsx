@@ -4,8 +4,6 @@ import "@fontsource-variable/noto-naskh-arabic";
 import "./globals.css";
 import { CmsShell } from "@/components/CmsShell";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Afakpress",
   description: "Moroccan press and regional news platform",

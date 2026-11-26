@@ -4,7 +4,7 @@ import { getPublishedArticleBySlug } from "@/lib/public-content";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateMetadata({ params }: PageProps<"/article/[slug]">): Promise<Metadata> {

@@ -178,46 +178,52 @@ export async function getCommentsSummary(articleIds?: string[]): Promise<{
   const all = new Map<string, PublicComment>();
 
   const supabase = createServiceSupabaseAdminClient() ?? createServerSupabaseClient();
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from("comments")
-        .select("id,article_id,author,content,status,created_at")
-        .in("status", ["approved", "Approved"])
-        .order("created_at", { ascending: false })
-        .limit(100);
+  const [supabaseRes, settingsComments, localComments] = await Promise.all([
+    supabase
+      ? (async () => {
+          try {
+            return await supabase
+              .from("comments")
+              .select("id,article_id,author,content,status,created_at")
+              .in("status", ["approved", "Approved"])
+              .order("created_at", { ascending: false })
+              .limit(100);
+          } catch {
+            return { data: null, error: true };
+          }
+        })()
+      : Promise.resolve({ data: null, error: null }),
+    readSettingsComments(),
+    readLocalStore(),
+  ]);
 
-      const rows = data as Array<{
-        id: string;
-        article_id: string | null;
-        author: string | null;
-        content: string | null;
-        created_at: string | null;
-      }> | null;
+  const rows = supabaseRes.data as Array<{
+    id: string;
+    article_id: string | null;
+    author: string | null;
+    content: string | null;
+    created_at: string | null;
+  }> | null;
 
-      if (!error && Array.isArray(rows)) {
-        for (const row of rows) {
-          if (!row.article_id || !row.content) continue;
-          all.set(row.id, {
-            id: row.id,
-            articleId: row.article_id,
-            author: row.author || "قارئ آفاق بريس",
-            content: row.content,
-            status: "Approved",
-            createdAt: row.created_at ?? new Date().toISOString(),
-          });
-        }
-      }
-    } catch {
-      // Continue to fallback stores
+  if (!supabaseRes.error && Array.isArray(rows)) {
+    for (const row of rows) {
+      if (!row.article_id || !row.content) continue;
+      all.set(row.id, {
+        id: row.id,
+        articleId: row.article_id,
+        author: row.author || "قارئ آفاق بريس",
+        content: row.content,
+        status: "Approved",
+        createdAt: row.created_at ?? new Date().toISOString(),
+      });
     }
   }
 
-  for (const item of await readSettingsComments()) {
+  for (const item of settingsComments) {
     if (item.status === "Approved") all.set(item.id, toPublicComment(item));
   }
 
-  for (const item of await readLocalStore()) {
+  for (const item of localComments) {
     if (item.status === "Approved") all.set(item.id, toPublicComment(item));
   }
 

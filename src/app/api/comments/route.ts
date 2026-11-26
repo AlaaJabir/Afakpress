@@ -20,7 +20,11 @@ export async function GET(req: NextRequest) {
           .filter(Boolean)
       : undefined;
     const summary = await getCommentsSummary(articleIds);
-    return NextResponse.json(summary);
+    return NextResponse.json(summary, {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+      },
+    });
   }
 
   const comments = await listCommentsForArticle(articleId);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getAdminSessionFromRequest } from "@/lib/admin-auth";
 import { cmsRoleFromAdmin } from "@/lib/admin-roles";
 import { canAccess } from "@/lib/cms";
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     });
 
     try {
+      revalidateTag("ministries", { expire: 0 });
       revalidatePath("/");
       revalidatePath("/admin/ministeres");
       revalidatePath(`/ministere/${slug}`);

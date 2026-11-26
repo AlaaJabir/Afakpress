@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createServerSupabaseClient, createServiceSupabaseAdminClient } from "@/lib/supabase";
 import type { Json } from "@/lib/supabase-types";
 import {
@@ -238,7 +239,7 @@ export async function getOfficialsForTerritory(params: {
   return matched.sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
-export async function getOfficialsForLocation(params: {
+async function getOfficialsForLocationUncached(params: {
   territoryType: TerritoryType;
   entityId?: string;
   slug?: string;
@@ -299,6 +300,23 @@ export async function getOfficialsForLocation(params: {
     provinceSlug: params.provinceSlug ?? (params.territoryType === "province" ? params.slug : undefined),
     communeSlug: params.communeSlug ?? (params.territoryType === "commune" ? params.slug : undefined),
   });
+}
+
+const getCachedOfficialsForLocation = unstable_cache(
+  getOfficialsForLocationUncached,
+  ["afakpress-territory-officials-v1"],
+  { revalidate: 60, tags: ["territories"] }
+);
+
+export async function getOfficialsForLocation(params: {
+  territoryType: TerritoryType;
+  entityId?: string;
+  slug?: string;
+  regionSlug?: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+}): Promise<OfficialProfile[]> {
+  return getCachedOfficialsForLocation(params);
 }
 
 export async function getAllOfficials(): Promise<OfficialProfile[]> {
@@ -660,7 +678,7 @@ export async function getAllTerritoryMaps(): Promise<TerritoryMapEntry[]> {
   return memoryTerritoryMaps;
 }
 
-export async function getTerritoryMapForLocation(params: {
+async function getTerritoryMapForLocationUncached(params: {
   territoryType: TerritoryType;
   entityId?: string;
   slug?: string;
@@ -783,6 +801,23 @@ export async function getTerritoryMapForLocation(params: {
       return false;
     }) || null
   );
+}
+
+const getCachedTerritoryMapForLocation = unstable_cache(
+  getTerritoryMapForLocationUncached,
+  ["afakpress-territory-map-v1"],
+  { revalidate: 60, tags: ["territories"] }
+);
+
+export async function getTerritoryMapForLocation(params: {
+  territoryType: TerritoryType;
+  entityId?: string;
+  slug?: string;
+  regionSlug?: string;
+  provinceSlug?: string;
+  communeSlug?: string;
+}): Promise<TerritoryMapEntry | null> {
+  return getCachedTerritoryMapForLocation(params);
 }
 
 export async function saveTerritoryMap(

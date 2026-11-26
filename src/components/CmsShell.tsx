@@ -228,7 +228,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <header
-        className={`relative z-50 w-full bg-white/95 backdrop-blur-xl transition-shadow duration-300 md:sticky md:top-0 ${
+        className={`relative z-50 w-full bg-white/[0.98] transition-shadow duration-300 md:sticky md:top-0 ${
           isScrolled ? "lg:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.14)]" : ""
         }`}
       >
@@ -310,7 +310,7 @@ function Chrome({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Ultra-compact Sticky Mobile Single-Row Header (< md) */}
-        <div className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur-md md:hidden">
+        <div className="sticky top-0 z-50 border-b border-slate-100 bg-white/[0.98] md:hidden">
           <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-3.5" dir="rtl">
             <Link
               href="/"

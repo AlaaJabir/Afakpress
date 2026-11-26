@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createServerSupabaseClient, createServiceSupabaseAdminClient } from "@/lib/supabase";
 import type { Json } from "@/lib/supabase-types";
 import type { PublicArticle } from "@/lib/public-content";
@@ -153,7 +154,7 @@ function parseContentSetting(row: { value: Json | null; updated_at: string | nul
   };
 }
 
-export async function getProfilesForMinistry(ministrySlug: string): Promise<MinistryProfile[]> {
+async function getProfilesForMinistryUncached(ministrySlug: string): Promise<MinistryProfile[]> {
   const client = (createServiceSupabaseAdminClient() ||
     createServerSupabaseClient()) as ReturnType<typeof createServerSupabaseClient>;
 
@@ -192,6 +193,12 @@ export async function getProfilesForMinistry(ministrySlug: string): Promise<Mini
     .filter((p) => p.ministrySlug === ministrySlug && p.isPublished)
     .sort((a, b) => a.displayOrder - b.displayOrder);
 }
+
+export const getProfilesForMinistry = unstable_cache(
+  getProfilesForMinistryUncached,
+  ["afakpress-ministry-profiles-v1"],
+  { revalidate: 60, tags: ["ministries"] }
+);
 
 export async function getAllMinistryProfiles(): Promise<MinistryProfile[]> {
   const client = (createServiceSupabaseAdminClient() ||
@@ -378,7 +385,7 @@ interface MinistryDbRow {
   updated_at: string | null;
 }
 
-export async function getMinistryPageDetails(slug: string): Promise<MinistryPageContent | null> {
+async function getMinistryPageDetailsUncached(slug: string): Promise<MinistryPageContent | null> {
   const client = (createServiceSupabaseAdminClient() ||
     createServerSupabaseClient()) as ReturnType<typeof createServerSupabaseClient>;
 
@@ -421,6 +428,12 @@ export async function getMinistryPageDetails(slug: string): Promise<MinistryPage
 
   return memoryMinistryContents.find((c) => c.slug === slug) || null;
 }
+
+export const getMinistryPageDetails = unstable_cache(
+  getMinistryPageDetailsUncached,
+  ["afakpress-ministry-details-v1"],
+  { revalidate: 60, tags: ["ministries"] }
+);
 
 export async function getAllMinistryPageContents(): Promise<MinistryPageContent[]> {
   const client = (createServiceSupabaseAdminClient() ||
@@ -564,90 +577,106 @@ function syncMemoryContent(entry: MinistryPageContent) {
   }
 }
 
+const getCachedMinistryArticles = unstable_cache(
+  async (ministrySlug: string, ministerTermsKey: string): Promise<PublicArticle[]> => {
+    const ministry = getMinistryBySlug(ministrySlug);
+    if (!ministry) return [];
+
+    const supabase = createServerSupabaseClient();
+    if (!supabase) return [];
+
+    const ministerTerms = ministerTermsKey
+      ? ministerTermsKey.split("\n").filter((v) => v.length >= 3)
+      : [];
+
+    try {
+      const withColSelect =
+        "id,title,slug,excerpt,featured_image,ministry_slug,category_id,author_id,region_id,province_id,commune_id,published_at,created_at,seo_title,seo_description,seo_keywords,category:categories(id,name,slug),author:profiles(id,name,slug)";
+      const fallbackSelect =
+        "id,title,slug,excerpt,featured_image,category_id,author_id,region_id,province_id,commune_id,published_at,created_at,seo_title,seo_description,seo_keywords,category:categories(id,name,slug),author:profiles(id,name,slug)";
+
+      let hasMinistrySlugCol = true;
+      let queryRes = await supabase
+        .from("articles")
+        .select(withColSelect)
+        .eq("status", "published")
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(40);
+
+      if (queryRes.error && isMissingRelationError(queryRes.error)) {
+        hasMinistrySlugCol = false;
+        queryRes = await supabase
+          .from("articles")
+          .select(fallbackSelect)
+          .eq("status", "published")
+          .order("published_at", { ascending: false, nullsFirst: false })
+          .limit(40);
+      }
+
+      if (queryRes.error || !Array.isArray(queryRes.data)) return [];
+
+      type ArticleWithMinistry = PublicArticle & {
+        ministry_slug?: string | null;
+        seo_keywords?: string | null;
+      };
+
+      const allArticles = queryRes.data as unknown as ArticleWithMinistry[];
+      const seen = new Set<string>();
+      const results: PublicArticle[] = [];
+
+      const pushUnique = (article: ArticleWithMinistry) => {
+        if (seen.has(article.id)) return;
+        seen.add(article.id);
+        results.push(article);
+      };
+
+      // 1. Direct ministry_slug match
+      if (hasMinistrySlugCol) {
+        for (const article of allArticles) {
+          if (article.ministry_slug === ministry.slug) {
+            pushUnique(article);
+          }
+        }
+      }
+
+      // 2. Minister name mention match (articles about the minister)
+      if (ministerTerms.length > 0) {
+        for (const article of allArticles) {
+          const haystack = `${article.title || ""} ${article.excerpt || ""} ${article.seo_description || ""} ${article.seo_keywords || ""}`.toLowerCase();
+          if (ministerTerms.some((term) => haystack.includes(term.toLowerCase()))) {
+            pushUnique(article);
+          }
+        }
+      }
+
+      // 3. Ministry keyword match
+      for (const article of allArticles) {
+        const haystack = `${article.title || ""} ${article.excerpt || ""} ${article.seo_description || ""} ${article.seo_keywords || ""}`;
+        if (ministry.keywords.some((kw) => haystack.includes(kw))) {
+          pushUnique(article);
+        }
+      }
+
+      return results;
+    } catch {
+      return [];
+    }
+  },
+  ["afakpress-ministry-articles-v1"],
+  { revalidate: 60, tags: ["ministries", "cms:articles"] }
+);
+
 export async function getArticlesForMinistry(
   ministry: MinistryItem,
   profiles: MinistryProfile[] = []
 ): Promise<PublicArticle[]> {
-  const supabase = createServerSupabaseClient();
-  if (!supabase) return [];
-
-  const ministerTerms = profiles
+  const ministerTermsKey = profiles
     .flatMap((p) => [p.fullNameAr, p.fullName])
     .map((v) => (v || "").trim())
-    .filter((v) => v.length >= 3);
+    .filter((v) => v.length >= 3)
+    .join("\n");
 
-  try {
-    const withColSelect =
-      "id,title,slug,excerpt,content,featured_image,ministry_slug,category_id,author_id,region_id,province_id,commune_id,published_at,created_at,seo_title,seo_description,seo_keywords,category:categories(id,name,slug),author:profiles(id,name,slug)";
-    const fallbackSelect =
-      "id,title,slug,excerpt,content,featured_image,category_id,author_id,region_id,province_id,commune_id,published_at,created_at,seo_title,seo_description,seo_keywords,category:categories(id,name,slug),author:profiles(id,name,slug)";
-
-    let hasMinistrySlugCol = true;
-    let queryRes = await supabase
-      .from("articles")
-      .select(withColSelect)
-      .eq("status", "published")
-      .order("published_at", { ascending: false, nullsFirst: false })
-      .limit(80);
-
-    if (queryRes.error && isMissingRelationError(queryRes.error)) {
-      hasMinistrySlugCol = false;
-      queryRes = await supabase
-        .from("articles")
-        .select(fallbackSelect)
-        .eq("status", "published")
-        .order("published_at", { ascending: false, nullsFirst: false })
-        .limit(80);
-    }
-
-    if (queryRes.error || !Array.isArray(queryRes.data)) return [];
-
-    type ArticleWithMinistry = PublicArticle & {
-      ministry_slug?: string | null;
-      seo_keywords?: string | null;
-    };
-
-    const allArticles = queryRes.data as unknown as ArticleWithMinistry[];
-    const seen = new Set<string>();
-    const results: PublicArticle[] = [];
-
-    const pushUnique = (article: ArticleWithMinistry) => {
-      if (seen.has(article.id)) return;
-      seen.add(article.id);
-      results.push(article);
-    };
-
-    // 1. Direct ministry_slug match
-    if (hasMinistrySlugCol) {
-      for (const article of allArticles) {
-        if (article.ministry_slug === ministry.slug) {
-          pushUnique(article);
-        }
-      }
-    }
-
-    // 2. Minister name mention match (articles about the minister)
-    if (ministerTerms.length > 0) {
-      for (const article of allArticles) {
-        const haystack = `${article.title || ""} ${article.excerpt || ""} ${article.seo_description || ""} ${article.seo_keywords || ""} ${article.content || ""}`.toLowerCase();
-        if (ministerTerms.some((term) => haystack.includes(term.toLowerCase()))) {
-          pushUnique(article);
-        }
-      }
-    }
-
-    // 3. Ministry keyword match
-    for (const article of allArticles) {
-      const haystack = `${article.title || ""} ${article.excerpt || ""} ${article.seo_description || ""} ${article.seo_keywords || ""}`;
-      if (ministry.keywords.some((kw) => haystack.includes(kw))) {
-        pushUnique(article);
-      }
-    }
-
-    return results;
-  } catch {
-    return [];
-  }
+  return getCachedMinistryArticles(ministry.slug, ministerTermsKey);
 }
 
 export function getAllMinistriesStatic(): MinistryItem[] {

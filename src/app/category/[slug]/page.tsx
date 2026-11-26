@@ -3,7 +3,7 @@ import { PublicCategoryView, PublicDatabaseError } from "@/components/PublicRout
 import { getCategoryPageData } from "@/lib/public-content";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 export const dynamicParams = true;
 
 export default async function CategoryPage({ params }: PageProps<"/category/[slug]">) {

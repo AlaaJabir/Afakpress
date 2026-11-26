@@ -3,7 +3,7 @@ import { PublicDatabaseError, PublicLocationView } from "@/components/PublicRout
 import { getRegionPageData } from "@/lib/public-content";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 export const dynamicParams = true;
 
 export default async function RegionPage({ params }: PageProps<"/region/[slug]">) {
